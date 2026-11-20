@@ -1,0 +1,50 @@
+{
+  "model": "hole_model",
+  "model_version": "1.0.0",
+  "trained": "2026-11-20",
+  "pipeline_version": "0.2.0",
+  "recipe": "Research repo ttc/hole_regions.py (2026-11-18) candidates and measures, on the shared front end (notebook lighting correction and tissue mask). Chosen in Phase 0 on 2026-11-20 (PLAN.md \u00a72d).",
+  "features": [
+    "edge_vs_inside",
+    "contrast",
+    "thickness"
+  ],
+  "cut": 0.8,
+  "uncertain_from": 0.5,
+  "candidate_settings": {
+    "v_max": 145.0,
+    "g_r": 0.5,
+    "b_g": 0.95,
+    "dark_L": 32.0,
+    "min_px": 200,
+    "edge_margin_px": 6,
+    "lr_C": 0.3,
+    "score_cut": 0.8,
+    "uncertain_from": 0.5
+  },
+  "training_labels": {
+    "file": "annotations/holes/hand_marked_holes.json",
+    "sha256": "cea1ffaab56b083bb97bf2e598d859f2fb55185b77f9dec44abb9f4cd022db80",
+    "holes": 10,
+    "slices_with_holes": 8,
+    "candidates": 88,
+    "candidates_matching_a_hole": 10
+  },
+  "held_out": {
+    "holes_found": 5,
+    "holes_marked": 10,
+    "false_holes": 2,
+    "holes_found_pixel_rule": 2,
+    "false_holes_pixel_rule": 2,
+    "worst_slice_tissue_lost_wrongly_pct": 1.47,
+    "slices_wrong": 4,
+    "slices": 30,
+    "roc_auc": 0.881,
+    "candidates": 88,
+    "holes_among_candidates": 9,
+    "passes_phase0_rule": false
+  },
+  "sklearn_version": "1.9.1",
+  "numpy_version": "2.5.5",
+  "joblib_sha256": "6a6e6b37fc099d6aaa249869e2f15ca617301efecf7a587b188e6dd91ace05e9"
+}

@@ -25,7 +25,7 @@ fi
 
 # 2. Lab data never goes into git (the repo is public).
 staged="$(git diff --cached --name-only --diff-filter=ACMR)"
-lab="$(printf '%s\n' "$staged" | grep -iE '\.(tif|tiff|out)$|^data/|^reference/' || true)"
+lab="$(printf '%s\n' "$staged" | grep -iE '\.(tif|tiff|out|joblib|pkl)$|^data/|^reference/|^engine/annotations/' || true)"
 if [ -n "$lab" ]; then
   echo "pre-commit: these files look like lab data or reference material and must not be committed:" >&2
   printf '  %s\n' $lab >&2
