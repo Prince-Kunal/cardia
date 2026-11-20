@@ -82,7 +82,7 @@ Example: `feat(engine): port lighting correction from notebook Part D`
 | Line endings, indentation | `.gitattributes`, `.editorconfig` | LF everywhere |
 | Study data | `scripts/study-data.sha256` | `check_data.py` must pass before running engine tests |
 | Model files | `engine/models/manifest.json` (SHA-256 per file, Phase 0) | The engine refuses a file whose hash doesn't match |
-| Formatting and lint | `ruff` (engine); `prettier` + `eslint` (web, added with the scaffold) | CI runs them on every PR (added with the first engine code) |
+| Formatting and lint | `ruff` (engine); `prettier` + `eslint` (web, added with the scaffold) | CI runs them on every PR (engine: `.github/workflows/engine.yml`, macOS + Linux) |
 | Git hooks | `.githooks/` via `core.hooksPath` | Set by `setup.sh` |
 
 ## Rules
