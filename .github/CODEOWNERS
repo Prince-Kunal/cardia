@@ -1,0 +1,24 @@
+# Who reviews what. The last matching line wins. Areas are explained in CONTRIBUTING.md.
+
+# Default: the repo maintainer
+*                               @Prince-Kunal
+
+# Engine: shared front end, holes, Method B, local API, cloud sync
+/engine/                        @Prince-Kunal
+/engine/cardia_api/             @Prince-Kunal
+
+# Engine: Method A, golden set, parity tests, export
+/engine/ttc_pipeline/method_a/  @MeloveGupta
+/engine/tests/golden/           @MeloveGupta @Prince-Kunal
+/engine/cardia_api/export/      @MeloveGupta
+
+# Web app: shell, Analyze screens, 3D heart, languages
+/web/                           @krrishverma1805-web
+
+# Learn: lesson player, quizzes, lesson content
+/web/src/learn/                 @MeloveGupta
+/content/                       @MeloveGupta @krrishverma1805-web
+
+# Shared decisions need everyone
+/PLAN.md                        @Prince-Kunal @MeloveGupta @krrishverma1805-web
+/CONTRIBUTING.md                @Prince-Kunal @MeloveGupta @krrishverma1805-web

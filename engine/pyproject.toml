@@ -1,0 +1,29 @@
+[project]
+name = "cardia-engine"
+version = "0.0.0"
+description = "Cardia's TTC infarct analysis engine (shared front end, Method A K-Means + RF, Method B a* cut), served to the web app by a local API"
+requires-python = "==3.14.*"
+# Pinned to the environment the reference notebook ran in (PLAN.md §6). numpy and OpenCV
+# match the notebook exactly. The notebook did not record the versions of the other
+# libraries; uv.lock fixes them, and the model files record the scikit-learn version used.
+dependencies = [
+    "numpy==2.5.5",
+    "opencv-python-headless==5.1.0.95",
+    "scikit-learn==1.9.1",
+    "scikit-image==0.26.0",
+    "scipy==1.18.1",
+    "pandas==3.1.1",
+    "pillow==13.0.0",
+    "joblib==1.6.0",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff", "matplotlib", "nbformat"]
+# The local API (milestone 1) adds fastapi + uvicorn; the desktop phase adds a PyInstaller group.
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"

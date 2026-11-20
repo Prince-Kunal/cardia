@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Team rule: no AI attribution in this repo's history.
+# Removes Claude co-author trailers, "Generated with Claude Code" lines and
+# Claude session links from every commit message, then trims trailing blank lines.
+set -euo pipefail
+msg_file="$1"
+tmp="$(mktemp)"
+grep -viE '^[[:space:]]*co-authored-by:.*(claude|anthropic)|generated with \[?claude|^[[:space:]]*claude-session:' "$msg_file" > "$tmp" || true
+awk '{ line[NR] = $0 } END { n = NR; while (n > 0 && line[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print line[i] }' "$tmp" > "$msg_file"
+rm -f "$tmp"

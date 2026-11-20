@@ -1,0 +1,40 @@
+# --- Lab data: GVSU scans and .out reference files. Not ours to publish; never commit. ---
+data/
+*.tif
+*.tiff
+*.out
+
+# --- Reference material: notebook, its saved results, link to the research repo ---
+reference/
+
+# --- Model binaries: derived from GVSU data, shared via the team Drive until the team decides (CONTRIBUTING.md) ---
+engine/models/**/*.joblib
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# --- Node / Electron ---
+node_modules/
+out/
+release/
+
+# --- Generated results ---
+outputs/
+results*/
+*.pkl
+
+# --- OS / editor / secrets ---
+.DS_Store
+.vscode/
+.idea/
+.env
+.env.*
+.claude/settings.local.json
+*.log

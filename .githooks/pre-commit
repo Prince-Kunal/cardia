@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Cardia pre-commit checks: committer is a team member, no lab data, no large files.
+set -euo pipefail
+
+# 1. Commit under your own team identity (see CONTRIBUTING.md, "Who we are").
+team=(
+  "Prince-Kunal <kunalprince615@gmail.com>"
+  "MeloveGupta <melovegupta0406@gmail.com>"
+  "krrishverma1805-web <krrishverma1805@gmail.com>"
+)
+# Both the committer (you, at this machine) and the author (you, or the teammate you commit
+# for with --author) must be one of the three team identities.
+is_team() { local t; for t in "${team[@]}"; do [ "$1" = "$t" ] && return 0; done; return 1; }
+committer="$(git config user.name || true) <$(git config user.email || true)>"
+author="$(git var GIT_AUTHOR_IDENT | sed -E 's/ [0-9]+ [-+][0-9]{4}$//')"
+if ! is_team "$committer"; then
+  echo "pre-commit: your git identity is '$committer', which is not one of the three Cardia identities." >&2
+  echo "Fix it with: scripts/setup.sh <your-github-username>" >&2
+  exit 1
+fi
+if ! is_team "$author"; then
+  echo "pre-commit: the commit author '$author' is not one of the three Cardia identities." >&2
+  exit 1
+fi
+
+# 2. Lab data never goes into git (the repo is public).
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+lab="$(printf '%s\n' "$staged" | grep -iE '\.(tif|tiff|out)$|^data/|^reference/' || true)"
+if [ -n "$lab" ]; then
+  echo "pre-commit: these files look like lab data or reference material and must not be committed:" >&2
+  printf '  %s\n' $lab >&2
+  exit 1
+fi
+
+# 3. No file over 5 MB (models and large assets need a team decision first).
+limit=$((5 * 1024 * 1024))
+big=""
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  size="$(git cat-file -s ":$f" 2>/dev/null || echo 0)"
+  [ "$size" -gt "$limit" ] && big="$big $f($((size / 1024 / 1024)) MB)"
+done <<< "$staged"
+if [ -n "$big" ]; then
+  echo "pre-commit: files over 5 MB:$big" >&2
+  echo "Large files need a team decision (see CONTRIBUTING.md, 'Models and large files')." >&2
+  exit 1
+fi
