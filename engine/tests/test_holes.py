@@ -108,7 +108,8 @@ def test_a_listed_unchanged_model_loads_and_scores(tmp_path):
     pipeline, X = write_model_files(tmp_path)
     model = HoleModel.load(tmp_path)
     cands = pd.DataFrame(X, columns=FEATURES)
-    assert np.array_equal(model.score(cands), pipeline.predict_proba(X)[:, 1])
+    # Same input array on both sides: a column-major copy of X can differ in the last bit on some BLAS builds.
+    assert np.array_equal(model.score(cands), pipeline.predict_proba(cands[FEATURES].values)[:, 1])
     assert (model.cut, model.uncertain_from, model.version) == (0.8, 0.5, "test")
 
 
