@@ -40,7 +40,7 @@ Then:
 
 1. **Tools.** `setup.sh` reports anything missing. You need uv (any recent version; it installs Python 3.14.4 itself), Node 22.21.0 (`.nvmrc`, via nvm or fnm) and pnpm 10.20.0 (`corepack enable`).
 2. **Study data.** Copy the GVSU study set (the 4 infarct hearts from the OneDrive share and the 4 time-control hearts) anywhere inside `data/`. Any folder layout works. `python3 scripts/check_data.py` must report `41/41 study files present and identical`. If a file is missing or changed, ask Prince for the original rather than "fixing" it.
-3. **Reference material.** For engine work, ask Prince for `reference/` (the notebook and the notebook's saved results). It is never committed.
+3. **Reference material and models.** For engine work, ask Prince for `reference/` (the notebook and the notebook's saved results), `engine/annotations/` (hand-marked hole outlines) and the model binaries in `engine/models/` (e.g. `holes/hole_model.joblib`). None of these is committed. With the data and outlines in place, `cd engine && uv run python -m training.train_hole_model` rebuilds the hole model byte for byte.
 4. **VS Code.** Select `engine/.venv/bin/python` as the interpreter (Python: Select Interpreter).
 
 Re-run `scripts/setup.sh` whenever something seems off. It must print only `ok` lines.
@@ -93,4 +93,4 @@ Example: `feat(engine): port lighting correction from notebook Part D`
 
 ## Models and large files
 
-The frozen models (`final_model_K_Means_RF.joblib`, the hole model) and the golden masks are derived from GVSU data. Until the team decides whether they may sit in a public repo, they stay out of git and are shared through the team Drive, each with its SHA-256 in `engine/models/manifest.json`. The pre-commit hook rejects files over 5 MB.
+The frozen models (`final_model_K_Means_RF.joblib`, the hole model), the hand-marked hole outlines and the golden masks are derived from GVSU data. Until the team decides whether they may sit in a public repo, they stay out of git and are shared through the team Drive, each with its SHA-256 in `engine/models/manifest.json`. The pre-commit hook rejects files over 5 MB.

@@ -137,7 +137,7 @@ read → lighting correction → tissue mask → holes (one shared hole-model fi
 
 Sources: `GVSU_Infarct_Pipeline_main.ipynb` (Parts D, E, G, L, O) for the shared steps and Method A; `ttc/pipeline.py` + `ttc/infarct.py` for Method B. Phase 0 (§8) moves both into the package `ttc_pipeline/` **without changing behaviour**. Function names below are the original ones.
 
-Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=0.002`, `hole_dark_dL=10`, `holes={v_frac:145/245, g_r:0.5, b_g:0.95, dark_L:32, min_px:150, lr_C:0.3, score_cut:0.8}`, `dead_threshold=0.5`; Method B cuts `11.75` / `18.66`.
+Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=0.002`, `hole_dark_dL=10`, `holes={v_max:145, g_r:0.5, b_g:0.95, dark_L:32, min_px:200, edge_margin_px:6, lr_C:0.3, score_cut:0.8, uncertain_from:0.5}` (§2d; the notebook used v_frac 145/245 and min_px 150), `dead_threshold=0.5`; Method B cuts `11.75` / `18.66`.
 
 ### 2a. Read
 - RGB image (`PIL ... .convert("RGB")`); heart ID and weight from the file name; DPI from TIFF tags (for mm² only, not used by either method).
@@ -160,30 +160,27 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
 | Fill holes | An enclosed hole is filled as tissue if it is < 0.2% of the slice or no more than 10 L\* darker than the paper (pale dead tissue, glare). Large dark holes stay out. |
 
 ### 2d. Holes: our hole scorer, shared, saved as a file
-- **What it is:** our own hole finder, as a candidate net plus a logistic-regression scorer. It started in `ttc/hole_regions.py` (2026-11-18) and was reworked in the notebook: flatness added, minimum size 150 px instead of 200, measurements scaled to the paper. It is **not** the friend's or GVSU's hole finder. It is also **not** the web app's chamber-opening / lumen / edge-bay rules, which the old measurement pipeline used.
-- **Candidates** inside the filled outline: *darker paper* (brightest channel < 59% of the paper's, G/R > 0.5, B/G < 0.95) or L\* < 32; opening r=2, closing r=3, fill, ≥ 150 px.
-- **Measures:** `edge_vs_inside`, `contrast`, `thickness`, `flatness`.
+- **What it is:** our own hole finder, as a candidate net plus a logistic-regression scorer. It started in `ttc/hole_regions.py` (2026-11-18) and was reworked in the notebook (flatness added, minimum size 150 px instead of 200, measurements scaled to the paper). Phase 0 chose the **repo version** for the shared hole file (below). It is **not** the friend's or GVSU's hole finder. It is also **not** the web app's chamber-opening / lumen / edge-bay rules, which the old measurement pipeline used.
+- **Candidates** inside the filled outline and more than 6 px from its edge: *darker paper* (brightest channel V < 145 on the lighting-corrected photo, G/R > 0.5, B/G < 0.95) or L\* < 32; opening r=2, closing r=3, fill, ≥ 200 px.
+- **Measures:** `edge_vs_inside` (sharp wall, flat floor), `contrast` (darker than the tissue around it), `thickness`.
 - **Decision:**
   - score ≥ 0.8 → hole (removed from tissue);
   - 0.5 ≤ score < 0.8 → **uncertain** (feeds the range, §2g) ◇;
   - below 0.5 → tissue.
-- **Held-out results:** each heart is scored by a model trained on the other 7, against the 10 hand-marked holes.
+- **Phase 0 result (2026-11-20).** Both versions were run on the shared front end and scored against the same 10 hand-marked holes with the same rule (a candidate is a hole if it overlaps a hand-marked one by ≥ 30% of the smaller), each heart scored by a model trained on the other 7 (`engine/training/compare_hole_versions.py`):
 
-  | Version | Holes found | False holes |
-  |---|---|---|
-  | Notebook (4 measures, 150 px) | 5 of 10 | 4 |
-  | Repo `ttc/hole_regions.py` (3 measures, 200 px, 6-px edge margin; `compare_hole_methods.py`) | 6 of 10 | 2 |
+  | Version | Holes found | False holes | Slices wrong (of 30) | Most tissue lost wrongly on one slice |
+  |---|---|---|---|---|
+  | Notebook (4 measures, 150 px) | 5 of 10 | 4 | 6 | 1.43% |
+  | Notebook (3 measures, 150 px) | 5 of 10 | 5 | 6 | 4.33% |
+  | **Repo (3 measures, 200 px, 6-px edge margin): shipped** | **5 of 10** | **2** | **4** | **1.47%** |
 
-  The two were scored with slightly different matching rules. Phase 0 scores both on the same labels with the same rules, and the better one becomes the shared hole file.
-- **The hole file** (Phase 0 creates it; the notebook currently keeps the model only in memory):
-  - `models/holes/hole_model.joblib`: the fitted scaler + logistic regression.
-  - `models/holes/hole_model.json`:
-    - feature names in order;
-    - cut-off 0.8 and the uncertain band 0.5–0.8;
-    - candidate settings (`CFG["holes"]`);
-    - SHA-256 of the training labels;
-    - scikit-learn version, model version, and SHA-256 of the `.joblib`.
-  - Trained by `train_hole_model.py` from `annotations/holes/hand_marked_holes.json`, which holds the 10 outlines now inline in notebook Step 21. Later labels are added to the same file.
+  Neither passes the §8 rule (≤ 3 false holes and no slice losing > 1% wrongly). The team chose the repo version: same holes found, half the false holes. Its one breach is a known limit: on 109IS151 a crease is removed as a hole (1.47% of the slice) while the real hole there is missed. More hole labels (§8, in parallel) are the fix. Choosing it changes Method A's tissue masks on the hole slices compared with the notebook, so the golden set uses this hole file. The notebook's version stays in `engine/training/notebook_holes.py`, where its held-out decisions reproduce the notebook's saved masks on all 30 slices.
+- **The hole file** (model version 1.0.0):
+  - `engine/models/holes/hole_model.joblib`: the fitted scaler + logistic regression. Derived from GVSU data, so it is shared through the team Drive, not git.
+  - `engine/models/holes/hole_model.json` (in git): feature names in order; cut-off 0.8 and the uncertain band from 0.5; candidate settings (`CFG["holes"]`); SHA-256 of the training labels; the held-out results above; scikit-learn version, model version, and SHA-256 of the `.joblib`.
+  - `engine/models/manifest.json` (in git) lists both with their SHA-256. The engine refuses a file that is missing, unlisted or changed, or that was saved with another scikit-learn version or other candidate settings.
+  - Trained by `engine/training/train_hole_model.py` from `engine/annotations/holes/hand_marked_holes.json` (the 10 outlines from notebook Step 21; traced on GVSU scans, so team Drive, not git). Training is deterministic: the same labels and data give a byte-identical `.joblib`. Later labels are added to the same file, with a new model version.
   - The app only loads the file; it never retrains.
 
 ### 2e. Method A: K-Means + RF
@@ -493,7 +490,7 @@ About 18–20 weeks if done one after another, but three people working in paral
 - **Shadows flip verdicts** (limit 4, Method A; Method B untested). Scanner input helps but does not remove fold shadows. Mitigations: Phase 0 variants, the shadow warning, the scanning guide.
 - **Model files and library versions.** joblib models break across scikit-learn versions. Pin, hash and test them in CI.
 - **References are not ground truth; small data.** Never report "accuracy vs GVSU". Get expert tracings (Ref-2) and spot-check new batches.
-- **Hole model learned from 10 holes.** It finds 5–6 of 10 held out, depending on the version. Both methods depend on it. Mitigations: more labels, the range, and scanning on a blue/green background.
+- **Hole model learned from 10 holes.** It finds 5 of 10 held out and calls 2 creases holes; on one slice that removes 1.47% of the tissue (§2d). Both methods depend on it. Mitigations: more labels, the range, and scanning on a blue/green background.
 - **3D content accuracy and licences.** Expert review per module; check every asset's licence; ShareAlike obligations for CC BY-SA models.
 - **3D performance on weak laptops.** Lower-detail meshes and a video/2D fallback.
 - **Translation quality of medical text.** Native-speaker review; English term kept in brackets.
