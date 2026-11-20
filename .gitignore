@@ -38,3 +38,6 @@ results*/
 .env.*
 .claude/settings.local.json
 *.log
+
+# --- Hand-marked hole outlines: traced on GVSU scans, shared via the team Drive like the models ---
+engine/annotations/

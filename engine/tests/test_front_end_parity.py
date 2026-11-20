@@ -6,11 +6,10 @@ removing the holes its held-out hole model found (Step 22). Hole removal is not 
 * on the 22 slices where no hole was removed, our mask must equal the notebook's pixel for pixel;
 * on the 8 where holes were removed, the notebook's mask must lie entirely inside ours.
 
-Once the hole model is ported, the second case becomes exact equality too.
+With the notebook's held-out hole decisions applied, all 30 match exactly (test_holes_parity.py).
 """
 
 import numpy as np
-import pytest
 from PIL import Image
 
 from ttc_pipeline import normalise_lighting, read_rgb, tissue_mask
@@ -29,18 +28,10 @@ HOLES_REMOVED = {
 }
 
 
-@pytest.fixture(scope="module")
-def front_end(study_scans):
-    out = {}
-    for name, path in study_scans.items():
-        norm, paper = normalise_lighting(read_rgb(path))
-        out[name] = (norm, paper, tissue_mask(norm, paper))
-    return out
-
-
-def test_tissue_masks_match_the_notebook(front_end, reference_masks):
+def test_tissue_masks_match_the_notebook(study, reference_masks):
     exact, inside, problems = 0, 0, []
-    for name, (_, _, tm) in front_end.items():
+    for name, sl in study.items():
+        tm = sl.tm
         ref_path = reference_masks / f"{name.rsplit('.', 1)[0]}_tissue.png"
         if not ref_path.exists():
             problems.append(f"{name}: reference mask missing")
@@ -61,15 +52,15 @@ def test_tissue_masks_match_the_notebook(front_end, reference_masks):
     assert (exact, inside) == (22, 8)
 
 
-def test_paper_is_evened_out_as_in_the_notebook(front_end):
+def test_paper_is_evened_out_as_in_the_notebook(study):
     """Notebook Step 13: after correction, paper L* is 95.0-95.4 on all 30 photos."""
-    paper_L = [float(np.median(to_lab(norm)[..., 0][paper])) for norm, paper, _ in front_end.values()]
+    paper_L = [float(np.median(to_lab(s.norm)[..., 0][s.paper])) for s in study.values()]
     assert 95.0 <= round(min(paper_L), 1) and round(max(paper_L), 1) <= 95.4, (min(paper_L), max(paper_L))
 
 
-def test_same_scan_twice_is_bit_identical(study_scans, front_end):
-    name, path = next(iter(study_scans.items()))
+def test_same_scan_twice_is_bit_identical(scans, study):
+    name, path = next(iter(scans.items()))
     norm, paper = normalise_lighting(read_rgb(path))
-    norm0, paper0, tm0 = front_end[name]
-    assert np.array_equal(norm, norm0) and np.array_equal(paper, paper0)
-    assert np.array_equal(tissue_mask(norm, paper).tissue, tm0.tissue)
+    first = study[name]
+    assert np.array_equal(norm, first.norm) and np.array_equal(paper, first.paper)
+    assert np.array_equal(tissue_mask(norm, paper).tissue, first.tm.tissue)

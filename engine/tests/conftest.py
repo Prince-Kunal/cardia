@@ -1,37 +1,27 @@
 """Shared test fixtures.
 
-Parity tests need the GVSU study scans (`data/`) and the notebook's saved results
-(`reference/results_local/`). Neither is in git (the repo is public), so those tests skip with
-a message when the files are missing. CONTRIBUTING.md says how to get them.
+Parity tests need the GVSU study scans (`data/`), the notebook's saved results
+(`reference/results_local/`) and, for holes, the hand-marked outlines
+(`engine/annotations/holes/`). None of these is in git (the repo is public), so those tests
+skip with a message when the files are missing. CONTRIBUTING.md says how to get them.
 """
 
-import os
 from pathlib import Path
 
 import pytest
 
-from ttc_pipeline.read import STUDY_NAME
+from training.holes import LABELS_PATH
+from training.study import REPO, StudySlice, front_end, study_scans
 
-REPO = Path(__file__).resolve().parents[2]
-DATA = REPO / "data"
 REFERENCE_MASKS = REPO / "reference" / "results_local" / "masks"
 
 
-def _study_scans() -> dict[str, Path]:
-    found = {}
-    for d, _, files in os.walk(DATA, followlinks=True):  # data/ may hold symlinks, any layout
-        for f in files:
-            if STUDY_NAME.search(f) and "new_slices" not in Path(d).parts:
-                found[f] = Path(d) / f
-    return dict(sorted(found.items()))
-
-
 @pytest.fixture(scope="session")
-def study_scans() -> dict[str, Path]:
-    scans = _study_scans()
-    if len(scans) != 30:
-        pytest.skip(f"needs the 30 GVSU study scans in data/ (found {len(scans)}); run scripts/check_data.py")
-    return scans
+def scans() -> dict[str, Path]:
+    found = study_scans()
+    if len(found) != 30:
+        pytest.skip(f"needs the 30 GVSU study scans in data/ (found {len(found)}); run scripts/check_data.py")
+    return found
 
 
 @pytest.fixture(scope="session")
@@ -39,3 +29,16 @@ def reference_masks() -> Path:
     if not REFERENCE_MASKS.is_dir():
         pytest.skip("needs the notebook's saved masks in reference/results_local/masks (ask Prince)")
     return REFERENCE_MASKS
+
+
+@pytest.fixture(scope="session")
+def hole_labels() -> Path:
+    if not LABELS_PATH.exists():
+        pytest.skip(f"needs the hand-marked hole outlines in {LABELS_PATH.relative_to(REPO)} (ask Prince)")
+    return LABELS_PATH
+
+
+@pytest.fixture(scope="session")
+def study(scans) -> dict[str, StudySlice]:
+    """The 30 study slices through lighting correction and the tissue mask, in study order."""
+    return {name: front_end(path) for name, path in scans.items()}

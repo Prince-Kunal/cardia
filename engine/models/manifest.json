@@ -1,0 +1,14 @@
+{
+  "description": "Every model file the engine loads, with its SHA-256. The engine refuses a file that is missing or differs. Files with in_git false come from the team Drive.",
+  "files": {
+    "holes/hole_model.joblib": {
+      "sha256": "6a6e6b37fc099d6aaa249869e2f15ca617301efecf7a587b188e6dd91ace05e9",
+      "model_version": "1.0.0",
+      "in_git": false
+    },
+    "holes/hole_model.json": {
+      "sha256": "758231e620ddae5a121dd4eabdfe77d2aaa1a93cf606f3b819b49aa11ecd52ab",
+      "model_version": "1.0.0"
+    }
+  }
+}
