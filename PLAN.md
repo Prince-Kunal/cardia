@@ -195,26 +195,39 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
   - Centres (L\*, a\*, b\*): (49.8, 32.2, 19.9) red → alive; (66.8, 21.8, 18.1) pink → no label; (83.7, 7.2, 17.5) cream → dead. Group names are chosen by paleness = L\* − 1.5·a\*.
   - A pixel is labelled only if it is clearly closer to one centre (distance ratio < 0.8).
   - 2,000 pixels per class per slice → random forest: 150 trees, min_samples_leaf 10, max_features sqrt, class_weight balanced_subsample, random_state 42.
-- **Files:** `models/kmeans_rf/final_model_K_Means_RF.joblib` + `.json` (feature names, cut 0.5, scikit-learn version, SHA-256).
+- **Files (model 1.0.0):** `engine/models/kmeans_rf/kmeans_rf.joblib` is the forest from the notebook's `final_model_K_Means_RF.joblib` (SHA-256 0b29fbe7…), exported unchanged by `engine/training/export_method_a.py` (team Drive, not git). The export is byte-reproducible: unused padding bytes in the tree nodes are zeroed and strings interned, which otherwise made two exports of the same forest differ. `kmeans_rf.json` (in git) holds the feature names, cut 0.5, the source file's hash, the K-Means centres, scikit-learn version and SHA-256. The engine loads it through the manifest check and predicts with one thread, so p is bit-identical between runs.
+- **Port check (Phase 0, 2026-11-20):**
+  - The notebook's file is read only through a guarded loader: known SHA-256, and only numpy / scikit-learn / scipy / joblib classes (the notebook's own `KMeansLabeller` gets a stand-in). A file that tries to run code is refused.
+  - **Exact:** the engine's forest predicts exactly as the notebook's. On the notebook's front end and hole model it gives exactly what the notebook printed with its final model: 108IS132 13.56% (134,940 tissue px), 109IS104 7.72%, 207IS110 86.71% (tissue px, holes removed and unsure share also equal).
+  - **Close, not exact:** retraining with the ported recipe (`engine/training/method_a.py`) moves the K-Means centres by up to 3·10⁻⁴ and the held-out per-slice % by 0.13 pp on average (at most 0.55 pp) from the notebook's. K-Means adds float32 numbers in an order that depends on the CPU and thread count, and the notebook's held-out run shared its random generator across five labellers in an order that changed between Python processes. This is why the shipped forest is the notebook's file, not a retrain; our retrains run K-Means on one thread so they repeat exactly on one machine.
+  - In the app, Method A reads the shared front end, whose holes now come from the shipped hole model (§2d), so on hole slices its numbers differ from the notebook's.
 
 ### 2f. Method B: a\* cut
-- a = Lab a\* (redness), Gaussian-blurred σ 1.5 (`smoothed_a`).
-- **Main (conservative):** dead = a < 11.75. Calibrated leave-one-heart-out on the time-control hearts against Ref-YHS.
-- **Liberal:** a < 18.66, the label-free valley of a 2-component GMM on pooled a\* from all slices. It gives the top of the range.
-- No model file; the two cut-offs and how they were derived are stored in `models/a_cut/a_cut.json`.
-- **Re-calibration on the shared front end (Phase 0):**
-  - The cuts were set on the old front end: `ttc/segment.py` white balance + GrabCut outline + lumen exclusion.
-  - The notebook's lighting correction scales colour differently, so a\* values shift.
-  - Phase 0 re-derives both cuts on the shared front end with the same recipe (leave-one-heart-out on the time-control hearts vs YHS; GMM valley).
-  - If the re-calibrated method is more than 2.9 pp from YHS (the old 2.4 + 0.5), Method B keeps its original front end and still uses the shared hole file.
+- **Front end: its own** (`ttc/segment.py`: white balance, chroma + GrabCut outline, lumen excluded), with the real holes from the shared hole model removed. Phase 0 tried the shared front end and it failed the rule below.
+- a = CIELAB a\* (redness) of the white-balanced photo, Gaussian-blurred σ 1.5 (`smoothed_a`).
+- **Main (conservative):** dead = a < **11.75**. The cut whose slice infarct % is closest to Ref-YHS on the time-control slices; held out by heart it is **2.41 pp** from YHS.
+- **Liberal:** a < **18.60**, the label-free valley of a 2-component GMM on pooled a\* from all slices. It gives the top of the range.
+- The two cut-offs, how they were derived and the Phase 0 evidence are in `engine/models/a_cut/a_cut.json` (model 1.0.0, in git, listed in the manifest).
+- **Phase 0 result (2026-11-20)** (`engine/training/calibrate_method_b.py`). The same recipe (grid 4–22 step 0.25 vs YHS, held out by heart; GMM valley) on three versions of the input:
+
+  | Input | Conservative | Liberal | Held-out cuts 109 / 119 / 129 | Time-control slices vs YHS |
+  |---|---|---|---|---|
+  | Research repo's own run, reproduced exactly | 11.75 | 18.66 | 11.75 / 12.0 / 9.25 | 2.38 pp |
+  | Shared front end (lighting correction, shared holes) | 5.5 | 17.94 | 5.25 / 7.75 / 5.5 | **3.80 pp ✗** |
+  | **Own front end, GrabCut seeded per slice, shared holes removed: shipped** | **11.75** | **18.60** | 11.5 / 12.0 / 9.25 | **2.41 pp ✓** |
+
+  - The shared front end fails the 2.9 pp rule (the old 2.4 + 0.5): its lighting correction lowers tissue a\*, most on the under-exposed 119IS80 (18.8% vs YHS 4.2%). So Method B keeps its own front end, as decided in advance.
+  - **GrabCut is now seeded for every slice.** It draws on OpenCV's process-wide random generator, so in the research repo a slice's outline depended on the slices measured before it in the same run (one slice measured twice in a row: 209,932 then 210,087 px; in reverse order 29 of 30 slices moved, by up to 0.05 pp). Seeding makes the same file give the same result every time (§7). It moved the liberal cut from 18.66 to 18.60.
+  - The port is exact: run as the repo ran it, it reproduces `measure.py` (tissue areas and both %) and `evaluate_final.py` (cuts, per-slice values) on all 30 slices.
+  - Removing the shared holes changes no time-control slice, so the cuts are the same with or without them.
 
 ### 2g. Numbers per slice and per heart
 | | Method A | Method B |
 |---|---|---|
 | Slice infarct % | dead px ÷ tissue px (p ≥ 0.5) | dead px ÷ tissue px (a < 11.75) |
-| Unsure / borderline tissue | 0.35 < p < 0.65; > 15% flags the slice | 11.75 ≤ a < 18.66 |
+| Unsure / borderline tissue | 0.35 < p < 0.65; > 15% flags the slice | 11.75 ≤ a < 18.60 |
 | Range low end | p ≥ 0.65, uncertain holes counted as holes ◇ | a < 11.75, uncertain holes counted as holes |
-| Range high end | p ≥ 0.35, uncertain holes counted as tissue ◇ | a < 18.66, uncertain holes counted as tissue |
+| Range high end | p ≥ 0.35, uncertain holes counted as tissue ◇ | a < 18.60, uncertain holes counted as tissue |
 
 - Dead mass = % × slice weight. Heart % = slice percentages weighted by slice weight (by tissue area if weights are missing, with a flag).
 - **Headline method:** chosen in Settings (default: Method A ◇). The other method is always shown beside it.
@@ -410,9 +423,9 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 
 | Task | Pass rule |
 |---|---|
-| Move notebook Parts D, E, G, L, O and `ttc/pipeline.py` + `ttc/infarct.py` into `ttc_pipeline/` | Method A reproduces the notebook's 30 per-slice numbers exactly; Method B on its original front end reproduces `measure.py` exactly |
-| **Hole file:** move the 10 hand-marked outlines to `annotations/holes/hand_marked_holes.json`; score the repo and notebook versions of our hole scorer on the same labels with the same matching rules; write `train_hole_model.py`; save `models/holes/hole_model.joblib` + `.json` | The version with more holes found wins, provided false holes ≤ 3 ◇ and no slice loses > 1% of its tissue wrongly; a tie goes to fewer false holes |
-| **Method B on the shared front end:** re-derive the 11.75 / 18.66 cuts with the same recipe (leave-one-heart-out on time-control hearts vs YHS; GMM valley) | Time-control slices vs YHS ≤ 2.9 pp; otherwise Method B keeps its original front end (§2f) |
+| Move notebook Parts D, E, G, L, O and `ttc/pipeline.py` + `ttc/infarct.py` into `ttc_pipeline/`. *Done 2026-11-20: shared steps and Method B exact; Method A's frozen forest exact, its retraining within 0.55 pp (§2e, §2f).* | Method A reproduces the notebook's 30 per-slice numbers exactly; Method B on its original front end reproduces `measure.py` exactly |
+| **Hole file:** move the 10 hand-marked outlines to `annotations/holes/hand_marked_holes.json`; score the repo and notebook versions of our hole scorer on the same labels with the same matching rules; write `train_hole_model.py`; save `models/holes/hole_model.joblib` + `.json`. *Done 2026-11-20: neither version passed; the team chose the repo version (§2d).* | The version with more holes found wins, provided false holes ≤ 3 ◇ and no slice loses > 1% of its tissue wrongly; a tie goes to fewer false holes |
+| **Method B on the shared front end:** re-derive the 11.75 / 18.66 cuts with the same recipe (leave-one-heart-out on time-control hearts vs YHS; GMM valley). *Done 2026-11-20: 3.80 pp, failed; Method B keeps its own front end, cuts 11.75 / 18.60 (§2f).* | Time-control slices vs YHS ≤ 2.9 pp; otherwise Method B keeps its original front end (§2f) |
 | **One scorecard for both:** add Method B to the notebook's comparison (Parts J–M) next to Method A | Both methods get every check: Ref-0, Ref-1, Ref-YHS, Dice, heart and slice MAE, rim, shadow test, rotate + flip + darker, area vs weight. Results go into the README table |
 | Same file twice | Bit-identical |
 | Robustness: rotate + flip + 8% darker | Shift ≤ 1.0 pp ◇ |

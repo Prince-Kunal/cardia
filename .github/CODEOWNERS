@@ -8,7 +8,10 @@
 /engine/cardia_api/             @Prince-Kunal
 
 # Engine: Method A, golden set, parity tests, export
-/engine/ttc_pipeline/method_a/  @MeloveGupta
+/engine/ttc_pipeline/method_a.py              @MeloveGupta
+/engine/training/*method_a*.py                @MeloveGupta
+/engine/tests/test_method_a*.py               @MeloveGupta @Prince-Kunal
+/engine/models/kmeans_rf/                     @MeloveGupta @Prince-Kunal
 /engine/tests/golden/           @MeloveGupta @Prince-Kunal
 /engine/cardia_api/export/      @MeloveGupta
 
