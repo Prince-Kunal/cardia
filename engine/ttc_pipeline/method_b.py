@@ -145,19 +145,22 @@ def method_b_tissue(rgb, holes: Holes):
     return seg["tissue"] & ~holes.removed, seg["wb"]
 
 
-def method_b(rgb, holes: Holes, cuts: ACuts) -> MethodB:
-    """Method B on one photo. `holes` comes from the shared front end (`run_front_end`)."""
-    tissue, wb = method_b_tissue(rgb, holes)
-    uncertain = holes.uncertain & tissue
-    a = smoothed_a(wb)
-    dead = tissue & (a < cuts.conservative)
-    liberal = tissue & (a < cuts.liberal)
+def summarise_b(a, tissue, uncertain_holes, conservative, liberal) -> MethodB:
+    """Method B's slice numbers from the smoothed a* image and the cuts."""
+    dead = tissue & (a < conservative)
+    lib = tissue & (a < liberal)
     return MethodB(
         tissue=tissue,
         dead=dead,
-        borderline=liberal & ~dead,
+        borderline=lib & ~dead,
         dead_pct=_pct(dead, tissue),
-        borderline_pct=_pct(liberal & ~dead, tissue),
-        low_pct=_pct(dead, tissue & ~uncertain),
-        high_pct=_pct(liberal, tissue),
+        borderline_pct=_pct(lib & ~dead, tissue),
+        low_pct=_pct(dead, tissue & ~uncertain_holes),
+        high_pct=_pct(lib, tissue),
     )
+
+
+def method_b(rgb, holes: Holes, cuts: ACuts) -> MethodB:
+    """Method B on one photo. `holes` comes from the shared front end (`run_front_end`)."""
+    tissue, wb = method_b_tissue(rgb, holes)
+    return summarise_b(smoothed_a(wb), tissue, holes.uncertain & tissue, cuts.conservative, cuts.liberal)

@@ -226,36 +226,43 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
 |---|---|---|
 | Slice infarct % | dead px ÷ tissue px (p ≥ 0.5) | dead px ÷ tissue px (a < 11.75) |
 | Unsure / borderline tissue | 0.35 < p < 0.65; > 15% flags the slice | 11.75 ≤ a < 18.60 |
-| Range low end | p ≥ 0.65, uncertain holes counted as holes ◇ | a < 11.75, uncertain holes counted as holes |
-| Range high end | p ≥ 0.35, uncertain holes counted as tissue ◇ | a < 18.60, uncertain holes counted as tissue |
+| Range low end | p ≥ 0.65, uncertain holes counted as holes (computed, **not shown** for now) | a < 11.75, uncertain holes counted as holes |
+| Range high end | p ≥ 0.35, uncertain holes counted as tissue (computed, **not shown** for now) | a < 18.60, uncertain holes counted as tissue |
 
 - Dead mass = % × slice weight. Heart % = slice percentages weighted by slice weight (by tissue area if weights are missing, with a flag).
 - **Headline method:** chosen in Settings (default: Method A ◇). The other method is always shown beside it.
-- **"Methods disagree" flag** ◇: raised when A and B differ by more than 10 pp on a heart. It needs no human input and shows where to look first.
+- **Ranges (decided 2026-11-23):** neither method's range passed the Phase 0 rule (§8). For now the app shows **Method B's range only**; Method A's range is computed (and kept in the golden set) but not shown. Ranges are revisited once the app is built, together with the method improvements the team is working on (§13 item 13).
+- **No "methods disagree" flag (decided 2026-11-23).** A and B differ on almost every heart (6–40 pp; median slice difference 25 pp) because A follows the professor's references and B follows YHS, so a 10 pp flag would fire on 7 of 8 hearts. The report shows both methods side by side instead, and Learn module 10 and the About page explain why they differ.
 - QC: area vs weight, implied thickness, edge contact, unsure share, holes removed, non-TIFF input, shadow warning ◆.
 
 ### 2h. Evidence and known limits
 
-| Check | Method A (K-Means + RF, notebook) | Method B (a\* cut, `evaluate_final.py`) |
+Phase 0 scorecard (2026-11-23, `engine/training/scorecard.py`): both methods as the engine runs them, every number held out (A: each heart scored by a forest trained on the other 7; B: each time-control heart with the cut chosen on the other two). Full table in the README.
+
+| Check | Method A (K-Means + RF) | Method B (a\* cut) |
 |---|---|---|
-| Time-control slices vs Ref-YHS (11 slices, hearts 109/119/129), MAE | 21.8 pp, always higher | **2.4 pp** (leave-one-heart-out; its cut was tuned on these hearts) |
-| Infarct % of the 4 time-control hearts (expected ≈ 0–5) | 6.9–33.8 | 0.9–4.8 |
-| Dead-area overlap with Ref-1 (Dice) | **0.912** (ROC AUC 0.963) | not measured |
-| Heart infarct % vs Ref-1 / vs Ref-0, MAE | 3.7 pp / 7.6 pp | not measured |
-| High-infarct hearts 206–210 vs Ref-1 | close (80.5 vs 79.5 … 52.8 vs 56.1) | not measured |
-| Outline area vs slice weight, mean within-heart r | not reported | 0.95 (old outline) |
-| Rotate + flip + 8% darker | not tested | 0.4 pp shift |
-| Mild shadow (75% light) on the tissue | 41.8% of the dead tissue under it reads as alive | not tested |
-| Time per slice | about 1 s, CPU only | under 1 s for the a\* step |
+| Time-control slices vs Ref-YHS (11 slices, hearts 109/119/129), MAE | 22.2 pp, always higher | **2.4 pp** |
+| Heart infarct % vs Ref-YHS / Ref-1 / Ref-0, MAE | 19.0 / **4.0** / **7.7** pp | **2.1** / 24.5 / 20.5 pp |
+| Infarct % of the 4 time-control hearts 108/109/119/129 (expected ≈ 0–5) | 21.4 / 6.7 / 24.9 / 34.2 | 3.5 / 0.8 / 5.1 / 0.9 |
+| High-infarct hearts 206/207/208/210 (Ref-1: 79.5 / 78.7 / 64.4 / 56.1) | 81.2 / 81.4 / 64.6 / 52.0 | 47.8 / 44.8 / 35.2 / 11.9 |
+| Dead-area overlap with Ref-1 (Dice; ROC AUC) | **0.913** (0.963) | 0.562 (0.837) |
+| Edge ring: dead share within 3 px minus 4–10 px in (Ref-1: 12.1) | 15.3 points | 12.9 points |
+| Mild / strong shadow (75% / 55% light): verdicts that flip under it | 40.9% / 65.5% of dead read alive | **3.2%** / 6.6% of alive read dead |
+| Rotate + flip + 8% darker, mean (max) shift | 0.26 (0.62) pp | 0.37 (1.29) pp |
+| Outline area vs slice weight, mean within-heart r. *Done: A 0.930 (limit 8), B 0.950.* | 0.930 | 0.950 |
+| Same file twice. *Done: bit-identical for both methods (tests).* | bit-identical | bit-identical |
+| Time per slice | about 1 s, CPU only | about 1 s (GrabCut outline) |
 
 **Known limits. These must appear on the About-the-method page:**
-1. **Method A reads the time-control hearts high:** 22.5, 6.9, 24.2 and 33.8%, against YHS 1.5, 3.0 and 4.4% for 109, 119 and 129. It was chosen for agreeing with Ref-1, which itself reads these hearts at 8.7–26.7%.
+1. **Method A reads the time-control hearts high:** 21.4, 6.7, 24.9 and 34.2% (held out), against YHS 1.5, 3.0 and 4.4% for 109, 119 and 129. It was chosen for agreeing with Ref-1, which itself reads these hearts at 8.6–26.7%. Phase 0 tried the rim fix (18.5 pp from YHS) and a probability cut calibrated on the time-control hearts (8.1 pp, but Dice vs Ref-1 drops by 0.078); neither passed, so Method A ships as is.
 2. **Method B's good YHS score is partly by design** (cut tuned on those hearts). The notebook's a\* threshold chosen automatically (Otsu) is 15.7 pp from YHS. The conservative cut may miss pale-pink infarct; the liberal cut over-calls the pale rim by about 8 pp on time controls.
 3. **Pale rim (Method A):** the outermost band reads about 15 points more dead than the interior (Ref-1 itself shows about 12).
-4. **Shadows (Method A):** see the table. Method B has not been shadow-tested yet.
-5. **The two methods were scored against different references.** Phase 0 puts both through the same scorecard (§8).
+4. **Shadows (Method A):** under a mild shadow 40.9% of the dead tissue reads as alive. The notebook's shade-trained (17.3%, Dice −0.024) and shade-proof (0.3%, Dice −0.114) variants both fail the Phase 0 rule, so the app shows a shadow warning ◆ instead. Method B is steady (3.2% flip at 75% light).
+5. **The two methods follow different references.** On the same scorecard, A agrees with the professor-based Ref-0 and Ref-1 and B agrees with YHS. On the high-infarct hearts B reads 20–40 pp below Ref-1 (heart 210: 11.9 vs 56.1%), which fits limit 2 (the conservative cut misses pale-pink infarct).
 6. **No ground truth.** Ref-0 and Ref-1 come from the professor's grayscale rule; YHS covers only 3 hearts. Nothing checks missed infarct on the high-infarct hearts. Expert tracings (Ref-2) will decide between the methods.
 7. **Small data.** 8 hearts from 2 photo batches; the hole model learned from 10 holes.
+8. **Method A's outline vs slice weight:** mean within-heart r 0.930, below the 0.95 bar (heart 206: 0.73). Method B's outline reaches 0.950.
+9. **Ranges are not validated.** Method A's range never contained YHS on the time-control slices (0 of 11); Method B's contained it on 6 of 11 but is often wide (median 15.8 pp). Only Method B's is shown (§2g).
 
 ---
 
@@ -426,15 +433,15 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 | Move notebook Parts D, E, G, L, O and `ttc/pipeline.py` + `ttc/infarct.py` into `ttc_pipeline/`. *Done 2026-11-20: shared steps and Method B exact; Method A's frozen forest exact, its retraining within 0.55 pp (§2e, §2f).* | Method A reproduces the notebook's 30 per-slice numbers exactly; Method B on its original front end reproduces `measure.py` exactly |
 | **Hole file:** move the 10 hand-marked outlines to `annotations/holes/hand_marked_holes.json`; score the repo and notebook versions of our hole scorer on the same labels with the same matching rules; write `train_hole_model.py`; save `models/holes/hole_model.joblib` + `.json`. *Done 2026-11-20: neither version passed; the team chose the repo version (§2d).* | The version with more holes found wins, provided false holes ≤ 3 ◇ and no slice loses > 1% of its tissue wrongly; a tie goes to fewer false holes |
 | **Method B on the shared front end:** re-derive the 11.75 / 18.66 cuts with the same recipe (leave-one-heart-out on time-control hearts vs YHS; GMM valley). *Done 2026-11-20: 3.80 pp, failed; Method B keeps its own front end, cuts 11.75 / 18.60 (§2f).* | Time-control slices vs YHS ≤ 2.9 pp; otherwise Method B keeps its original front end (§2f) |
-| **One scorecard for both:** add Method B to the notebook's comparison (Parts J–M) next to Method A | Both methods get every check: Ref-0, Ref-1, Ref-YHS, Dice, heart and slice MAE, rim, shadow test, rotate + flip + darker, area vs weight. Results go into the README table |
+| **One scorecard for both:** add Method B to the notebook's comparison (Parts J–M) next to Method A. *Done 2026-11-23 (`engine/training/scorecard.py`, README table).* | Both methods get every check: Ref-0, Ref-1, Ref-YHS, Dice, heart and slice MAE, rim, shadow test, rotate + flip + darker, area vs weight. Results go into the README table |
 | Same file twice | Bit-identical |
-| Robustness: rotate + flip + 8% darker | Shift ≤ 1.0 pp ◇ |
-| **Method A on time-control hearts** (limit 1): try the rim fix and a probability cut calibrated on the time-control hearts (leave-one-heart-out) | Heart MAE vs YHS ≤ 5 pp ◇ (now about 18.7), while Dice vs Ref-1 drops by < 0.01. If nothing passes, Method A ships as is, with the limit stated |
-| **Shadow steadiness** (limit 4), for both methods: shade-trained and shade-proof variants, or a shadow detector | Mild-shadow flip < 5% without losing > 0.01 Dice; otherwise ship the shadow warning |
-| Range definitions (§2g), for both methods | The range contains Ref-YHS on the time-control hearts and is ≤ 10 pp wide on ≥ 80% of slices ◇ |
-| "Methods disagree" threshold (§2g) | Set from the A–B differences on the 30 study slices ◇ |
+| Robustness: rotate + flip + 8% darker. *Done: mean shift A 0.26 pp, B 0.37 pp (B's worst slice 1.29).* | Shift ≤ 1.0 pp ◇ |
+| **Method A on time-control hearts** (limit 1): try the rim fix and a probability cut calibrated on the time-control hearts (leave-one-heart-out). *Done: nothing passed (rim fix 18.5 pp; calibrated cut 8.1 pp with Dice −0.078); ships as is.* | Heart MAE vs YHS ≤ 5 pp ◇ (now about 18.7), while Dice vs Ref-1 drops by < 0.01. If nothing passes, Method A ships as is, with the limit stated |
+| **Shadow steadiness** (limit 4), for both methods: shade-trained and shade-proof variants, or a shadow detector. *Done: B passes (3.2%); A and its variants fail, so A gets the shadow warning.* | Mild-shadow flip < 5% without losing > 0.01 Dice; otherwise ship the shadow warning |
+| Range definitions (§2g), for both methods. *Done: both fail; show B's range only for now, revisit after the app is built (§2g).* | The range contains Ref-YHS on the time-control hearts and is ≤ 10 pp wide on ≥ 80% of slices ◇ |
+| "Methods disagree" threshold (§2g). *Done: no flag; A and B shown side by side (§2g).* | Set from the A–B differences on the 30 study slices ◇ |
 | Outline area vs slice weight, mean within-heart r | ≥ 0.95 ◇ (same bar as before) |
-| Golden set and README table | Written, with every threshold change and its reason |
+| Golden set and README table. *Done 2026-11-23: `reference/golden/` (team Drive), hashes in `engine/tests/golden/golden.sha256`, `test_golden.py`.* | Written, with every threshold change and its reason |
 
 **In parallel (one-time, training only, allowed by D6):**
 - label more hole candidates, aiming for several hundred, add them to `hand_marked_holes.json`, and retrain the hole file;
@@ -527,3 +534,4 @@ About 18–20 weeks if done one after another, but three people working in paral
 10. **Default headline method** while both run: A (current default ◇) or B?
 11. **Which ◇ proposals to accept** (§1k, §1f, §3e, §4 rollout, §8 pass rules).
 12. **Public repo and derived files:** `cardia` is public. May the frozen models and golden masks (derived from GVSU scans) be committed, or does the repo become private? Until decided they are shared through the team Drive (CONTRIBUTING.md).
+13. **Ranges, Method A's high reading on time-control hearts, and the A-or-B choice: revisit once the app is built** (decided 2026-11-23). Teammates are working on method improvements; the best-performing approach is then implemented. Until then the app shows A and B side by side and only B's range.
