@@ -17,9 +17,10 @@ import sklearn
 from ttc_pipeline import PIPELINE_VERSION
 from ttc_pipeline.config import CFG
 from ttc_pipeline.holes import FEATURES
-from ttc_pipeline.models import HOLE_MODEL_JOBLIB, HOLE_MODEL_JSON, MANIFEST, MODELS_DIR, read_manifest, sha256_file
+from ttc_pipeline.models import HOLE_MODEL_JOBLIB, HOLE_MODEL_JSON, MANIFEST, MODELS_DIR, sha256_file
 
 from .holes import ENGINE, LABELS_PATH, build_candidates, fit_hole_model, held_out_summary, load_labels, loho_scores
+from .manifest import update_manifest, write_json
 from .study import study_slices
 
 MODEL_VERSION = "1.0.0"
@@ -27,10 +28,6 @@ RECIPE = (
     "Research repo ttc/hole_regions.py (2026-11-18) candidates and measures, on the shared front end "
     "(notebook lighting correction and tissue mask). Chosen in Phase 0 on 2026-11-20 (PLAN.md §2d)."
 )
-
-
-def write_json(path, obj):
-    path.write_text(json.dumps(obj, indent=2) + "\n")
 
 
 def main(models_dir=MODELS_DIR):
@@ -70,15 +67,13 @@ def main(models_dir=MODELS_DIR):
     }
     write_json(models_dir / HOLE_MODEL_JSON, info)
 
-    files = read_manifest(models_dir)["files"]
-    files[HOLE_MODEL_JOBLIB] = {"sha256": joblib_sha, "model_version": MODEL_VERSION, "in_git": False}
-    files[HOLE_MODEL_JSON] = {"sha256": sha256_file(models_dir / HOLE_MODEL_JSON), "model_version": MODEL_VERSION}
-    manifest = {
-        "description": "Every model file the engine loads, with its SHA-256. "
-        "The engine refuses a file that is missing or differs. Files with in_git false come from the team Drive.",
-        "files": dict(sorted(files.items())),
-    }
-    write_json(models_dir / MANIFEST, manifest)
+    update_manifest(
+        {
+            HOLE_MODEL_JOBLIB: {"model_version": MODEL_VERSION, "in_git": False},
+            HOLE_MODEL_JSON: {"model_version": MODEL_VERSION},
+        },
+        models_dir,
+    )
 
     print(f"Hole model {MODEL_VERSION}: {', '.join(FEATURES)}; trained on {len(cs.table)} candidates.")
     print("Held out:", json.dumps(held_out))

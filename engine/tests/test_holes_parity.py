@@ -11,10 +11,10 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from training.holes import build_candidates, choose_features, fit_hole_model, held_out_summary, load_labels, loho_scores
-from training.notebook_holes import FEATURES_4, notebook_candidates
+from training.holes import build_candidates, choose_features, fit_hole_model, held_out_summary, loho_scores
+from training.notebook_holes import FEATURES_4
 from ttc_pipeline import HoleModel, ModelFileError
-from ttc_pipeline.holes import FEATURES, decide_holes
+from ttc_pipeline.holes import FEATURES
 from ttc_pipeline.models import HOLE_MODEL_JSON, MODELS_DIR, read_manifest, sha256_file
 
 
@@ -24,29 +24,16 @@ def slices(study, hole_labels):
 
 
 @pytest.fixture(scope="module")
-def labels(hole_labels):
-    return load_labels(hole_labels)[0]
-
-
-@pytest.fixture(scope="module")
 def shipped(slices, labels):
     return build_candidates(slices, labels)
 
 
-def test_notebook_hole_decisions_reproduce_its_masks(slices, labels, reference_masks):
+def test_notebook_hole_decisions_reproduce_its_masks(notebook_cs, notebook_tissue, reference_masks):
     """Notebook Steps 20-22, held out per heart, give its saved tissue masks on all 30 slices."""
-    cs = build_candidates(slices, labels, candidates_fn=notebook_candidates)
-    features, scores = choose_features(cs.table)
-    assert features == FEATURES_4, "the notebook kept flatness"
-    held_out = scores["4 measures"]
-    for i, s in enumerate(slices):
-        rows = (cs.table.slice == i).values
-        tissue = s.tm.tissue
-        if rows.any():
-            holes = decide_holes(cs.labels[s.name], cs.table[rows], held_out[rows].values, tissue, 0.8, 0.5)
-            tissue = tissue & ~holes.removed
-        ref = np.asarray(Image.open(reference_masks / f"{s.name[:-4]}_tissue.png")) > 0
-        assert np.array_equal(tissue, ref), f"{s.name}: {(tissue ^ ref).sum()} px differ"
+    assert choose_features(notebook_cs.table)[0] == FEATURES_4, "the notebook kept flatness"
+    for name, tissue in notebook_tissue.items():
+        ref = np.asarray(Image.open(reference_masks / f"{name[:-4]}_tissue.png")) > 0
+        assert np.array_equal(tissue, ref), f"{name}: {(tissue ^ ref).sum()} px differ"
 
 
 def test_shipped_recipe_held_out_matches_the_model_file(slices, labels, shipped):
