@@ -13,17 +13,17 @@ The 30 study slices, each run through the shared front end and both methods:
 | `file`, `heart`, `weight_mg` | From the file name |
 | `image_sha256` | SHA-256 of the input TIFF (must match `scripts/study-data.sha256`) |
 | `tissue_px`, `holes_removed_px`, `holes_uncertain_px`, `filled_px` | Shared tissue mask and hole decisions |
+| `b_tissue_px` | Method B's own outline, shared holes removed |
 | `a_dead_pct`, `a_low_pct`, `a_high_pct`, `a_unsure_pct` | Method A (K-Means + RF): dead at p ≥ 0.5, range, 0.35 < p < 0.65 |
-| `b_dead_pct`, `b_low_pct`, `b_high_pct`, `b_borderline_pct` | Method B (a\* cut): a\* < 11.75, range, 11.75 ≤ a\* < 18.66 |
-| `qc_flags` | Semicolon-separated QC flags |
+| `b_dead_pct`, `b_low_pct`, `b_high_pct`, `b_borderline_pct` | Method B (a\* cut): a\* < 11.75, range, 11.75 ≤ a\* < 18.60 |
+| `qc_flags` | Semicolon-separated slice-level QC flags: `unvalidated_input`, `many_unsure`, `holes_removed`, `uncertain_holes` |
 | `pipeline_version`, `models_manifest_sha256` | What produced the row |
 
-Masks per slice (PNG, 0/255): `tissue`, `holes_removed`, `a_dead`, `b_dead`, `b_borderline`.
+Masks per slice (PNG, 0/255): `tissue`, `holes_removed`, `a_dead`, `b_tissue`, `b_dead`, `b_borderline`. `meta.json` records the pipeline and model versions and the platform that generated the set.
 
 ## Where it comes from
 
-* **Method A and the shared steps:** the reference notebook (`GVSU_Infarct_Pipeline_main.ipynb`, Parts D, E, G, L, O) with the frozen `final_model_K_Means_RF.joblib`. Its tissue masks must equal `reference/results_local/masks/*_tissue.png`.
-* **Method B:** `ttc/` from the research repo, after its Phase 0 re-calibration (PLAN.md §2f).
+`engine/training/golden.py` runs the engine exactly as the app does: shared front end and hole model, Method A with the notebook's frozen forest, Method B with its own front end and the shipped cuts. Before that, Phase 0 showed each part reproduces its source: the shared steps and the notebook's held-out hole decisions give the notebook's tissue masks on all 30 slices; Method B reproduces the research repo's `measure.py`; Method A's forest gives the notebook's printed results (PLAN.md §2d–§2f).
 
 ## Pass rules
 
@@ -33,6 +33,6 @@ Masks per slice (PNG, 0/255): `tissue`, `holes_removed`, `a_dead`, `b_dead`, `b_
 
 ## Storage
 
-The masks and `per_slice.csv` are derived from GVSU scans. Until the team settles PLAN.md §13 item 12 (public repo), they live in the team Drive next to the models, with their SHA-256 in `engine/models/manifest.json`, and are not committed. Tests look for them in `reference/golden/` and skip with a clear message when they are missing.
+The masks and `per_slice.csv` are derived from GVSU scans. Until the team settles PLAN.md §13 item 12 (public repo), they live in `reference/golden/` (team Drive) and are not committed. `golden.sha256` in this folder (in git) lists every golden file's SHA-256; `test_golden.py` checks the copy against it and skips with a message when the set is missing. To regenerate it: `cd engine && uv run python -m training.golden`.
 
-Any intended change to engine output bumps the pipeline version, regenerates this set (from the notebook first), and is listed in "What's new".
+Any intended change to engine output bumps the pipeline version, regenerates this set, and is listed in "What's new".
