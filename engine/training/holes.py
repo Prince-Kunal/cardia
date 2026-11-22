@@ -20,9 +20,9 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from ttc_pipeline.config import CFG
-from ttc_pipeline.holes import hole_candidates
+from ttc_pipeline.holes import decide_holes, hole_candidates
 
-from .notebook_holes import FEATURES_3, FEATURES_4
+from .notebook_holes import FEATURES_3, FEATURES_4, notebook_candidates
 
 ENGINE = Path(__file__).resolve().parents[1]
 LABELS_PATH = ENGINE / "annotations" / "holes" / "hand_marked_holes.json"
@@ -157,3 +157,21 @@ def held_out_summary(cs, scores, slices, labels, cut=None):
         "holes_among_candidates": int(t.hole_id[t.is_hole == 1].nunique()),
         "passes_phase0_rule": bool(false <= MAX_FALSE and worst <= MAX_LOST_PCT),
     }
+
+
+def notebook_tissues(slices, labels, cs=None):
+    """{file name: tissue mask} as the notebook saved them: its own hole recipe, each heart's holes decided
+    by a model trained on the other hearts (Steps 20-22). Method A's frozen forest was trained on these.
+    `cs`: the notebook recipe's CandidateSet, if already built."""
+    cs = cs or build_candidates(slices, labels, candidates_fn=notebook_candidates)
+    features, scores = choose_features(cs.table)
+    held_out = scores["4 measures" if len(features) == 4 else "3 measures"]
+    out = {}
+    for i, s in enumerate(slices):
+        rows = (cs.table.slice == i).values
+        tissue = s.tm.tissue
+        if rows.any():
+            holes = decide_holes(cs.labels[s.name], cs.table[rows], held_out[rows].values, tissue, 0.8, 0.5)
+            tissue = tissue & ~holes.removed
+        out[s.name] = tissue
+    return out

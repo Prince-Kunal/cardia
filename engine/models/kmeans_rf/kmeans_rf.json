@@ -1,0 +1,69 @@
+{
+  "model": "kmeans_rf",
+  "model_version": "1.0.0",
+  "exported": "2026-11-22",
+  "pipeline_version": "0.3.0",
+  "method": "Method A: K-Means + RF",
+  "source": {
+    "file": "final_model_K_Means_RF.joblib (reference notebook Step 67, trained on all 8 hearts)",
+    "sha256": "0b29fbe79217803b68a51e8eef2af8dcaa7a8f8be502fbc89d1aca9eaa1300a1"
+  },
+  "features": [
+    "L",
+    "a",
+    "b",
+    "S",
+    "V",
+    "r_chrom",
+    "g_chrom",
+    "L_s1",
+    "a_s1",
+    "b_s1",
+    "L_s2",
+    "a_s2",
+    "b_s2",
+    "L_s4",
+    "a_s4",
+    "b_s4",
+    "L_s8",
+    "a_s8",
+    "b_s8",
+    "L_std3",
+    "grad1.5",
+    "rim_dist"
+  ],
+  "dead_class": 1,
+  "cut": 0.5,
+  "forest": {
+    "n_estimators": 150,
+    "min_samples_leaf": 10,
+    "max_features": "sqrt",
+    "class_weight": "balanced_subsample",
+    "random_state": 42
+  },
+  "kmeans_training_labels": {
+    "centres_L_a_b": [
+      [
+        49.81999969482422,
+        32.25,
+        19.8799991607666
+      ],
+      [
+        66.80999755859375,
+        21.81999969482422,
+        18.1299991607666
+      ],
+      [
+        83.69999694824219,
+        7.170000076293945,
+        17.549999237060547
+      ]
+    ],
+    "alive_centre": 0,
+    "dead_centre": 2
+  },
+  "notes": "The forest is the notebook's own, exported unchanged (tree padding zeroed and strings interned so the export is byte-reproducible). The engine predicts with one thread so p is bit-identical between runs. Retraining with training/method_a.py on another machine gives a slightly different forest (K-Means float32 sums depend on CPU and thread count).",
+  "sklearn_version": "1.9.1",
+  "numpy_version": "2.5.5",
+  "joblib_sha256": "1b4acf612822764967335c96a3829ad3bb48f59e4659eac29ddd1c039bc0d03d"
+}
