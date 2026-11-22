@@ -108,9 +108,8 @@ def _pct(part, whole):
     return 100.0 * float((part & whole).sum()) / n if n else float("nan")
 
 
-def method_a(norm_img, tissue, uncertain_holes, model: ForestModel, dead_threshold=0.5) -> MethodA:
-    """Method A on one lighting-corrected photo. `tissue` has removed holes taken out; uncertain holes are in it."""
-    p_tissue = model.dead_probability(pixel_features(norm_img, tissue))
+def summarise_a(p_tissue, tissue, uncertain_holes, dead_threshold=0.5) -> MethodA:
+    """Method A's slice numbers from the dead probability of each tissue pixel (in tissue-pixel order)."""
     p = np.full(tissue.shape, np.nan, np.float32)
     p[tissue] = p_tissue
     dead = tissue & (p >= dead_threshold)
@@ -124,4 +123,11 @@ def method_a(norm_img, tissue, uncertain_holes, model: ForestModel, dead_thresho
         low_pct=_pct(tissue & (p >= UNSURE[1]), tissue & ~uncertain_holes),
         high_pct=_pct(tissue & (p >= UNSURE[0]), tissue),
         many_unsure=unsure_pct > UNSURE_FLAG_PCT,
+    )
+
+
+def method_a(norm_img, tissue, uncertain_holes, model: ForestModel, dead_threshold=0.5) -> MethodA:
+    """Method A on one lighting-corrected photo. `tissue` has removed holes taken out; uncertain holes are in it."""
+    return summarise_a(
+        model.dead_probability(pixel_features(norm_img, tissue)), tissue, uncertain_holes, dead_threshold
     )
