@@ -6,7 +6,7 @@
 // Schematic, not to scale, but anatomical: the shapes are in geometry.ts. Right and left are the
 // heart's own, so its right side is on the left of the picture, as in every anatomy book.
 
-import { type KeyboardEvent, type ReactNode, useEffect, useState } from 'react';
+import { type KeyboardEvent, type ReactNode } from 'react';
 import type { Scene } from '../learn/lesson';
 import {
   ANTERIOR,
@@ -22,7 +22,8 @@ import {
   smooth,
   tube,
 } from './geometry';
-import { type Anim, LOOPING, PART_NAMES, VIEW_NAMES, VIEW_PARTS, type View, partName, viewOf } from './parts';
+import { type Anim, LOOPING, PART_NAMES, VIEW_NAMES, VIEW_PARTS, partName, shortName, viewOf } from './parts';
+import { captionOf, clamp, ease, reducedMotion, useTimeline } from './timeline';
 import './heart.css';
 
 /** Parts with the same place as another part; "labels: all" leaves them out. */
@@ -41,59 +42,6 @@ const STAINED = [164, 46, 40];
 function mix(a: number[], b: number[], t: number): string {
   const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
   return `rgb(${c[0]} ${c[1]} ${c[2]})`;
-}
-
-const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
-const clamp = (t: number) => Math.min(1, Math.max(0, t));
-
-function reducedMotion(): boolean {
-  if (typeof window === 'undefined') return true;
-  return (
-    document.documentElement.dataset.motion === 'reduced' ||
-    (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  );
-}
-
-/** 0 → 1 over the animation's length; the end at once with reduced motion. A new `key` plays it again. */
-function useTimeline(active: boolean, seconds: number, key: string): number {
-  const [state, setState] = useState({ key, t: 0 });
-  const skip = !active || reducedMotion();
-  useEffect(() => {
-    if (skip) return;
-    let frame = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = clamp((now - start) / (seconds * 1000));
-      setState({ key, t });
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [skip, seconds, key]);
-  if (skip) return 1;
-  return state.key === key ? state.t : 0;
-}
-
-/** "Time since the artery was blocked" for the occlusion and wavefront animations: 0 min to 3 h. */
-function clock(t: number): string {
-  const minutes = Math.round(180 * t * t);
-  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60 ? `${minutes % 60} min` : ''}`.trim();
-}
-
-/** A line under the picture saying what the animation shows, as it plays. */
-function captionOf(view: View, anim: Anim | null, t: number): string | null {
-  if (view === 'anterior') {
-    if (anim === 'slicing') return 'Slices are cut across the ventricles, from the apex up to the base';
-    if (anim === 'occlusion') return `Artery blocked for ${clock(t)}`;
-    if (anim === 'reperfusion') return t < 0.25 ? 'Artery blocked' : 'Artery reopened: blood flows again';
-  }
-  if (view === 'slice') {
-    if (anim === 'ttc') return t < 1 ? 'In warm TTC, living muscle turns red…' : 'Living muscle is red; dead muscle stays pale';
-    if (anim === 'wavefront' || anim === 'occlusion') return `Artery blocked for ${clock(t)}: the dead zone grows outward`;
-    if (anim === 'reperfusion') return 'Reopened in time: part of the wall is saved';
-  }
-  if (view === 'section' && anim === 'flow') return 'Blue: oxygen-poor blood. Red: oxygen-rich blood';
-  return null;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -231,13 +179,6 @@ export function HeartDiagram({ scene, onPartClick, pins, focus, marks, replay = 
       })}
     </svg>
   );
-}
-
-/** Label text: the name without the bracketed abbreviation, which is long for the picture. */
-function shortName(id: string): string {
-  const name = partName(id);
-  const abbr = /\(([A-Za-z]+)\)$/.exec(name);
-  return abbr && abbr[1].toUpperCase() === abbr[1] ? abbr[1] : name.replace(/\s*\(.*\)$/, '');
 }
 
 function textWidth(id: string): number {

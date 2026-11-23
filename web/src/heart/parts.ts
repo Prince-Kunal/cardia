@@ -110,3 +110,10 @@ export const LOOPING: Anim[] = ['heartbeat', 'flow', 'coronary-flow'];
 export function partName(id: string): string {
   return PART_NAMES[id] ?? id;
 }
+
+/** Label text: the name without the bracketed abbreviation, which is long for the picture. */
+export function shortName(id: string): string {
+  const name = partName(id);
+  const abbr = /\(([A-Za-z]+)\)$/.exec(name);
+  return abbr && abbr[1].toUpperCase() === abbr[1] ? abbr[1] : name.replace(/\s*\(.*\)$/, '');
+}
