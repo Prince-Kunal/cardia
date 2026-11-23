@@ -1,15 +1,18 @@
 """The engine's HTTP API (PLAN.md §6). Every route is under /api/v1; the contract is `openapi.json`."""
 
 import json
+import os
 import re
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path as FilePath
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Path, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import TypeAdapter, ValidationError
+from starlette.background import BackgroundTask
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ttc_pipeline import PIPELINE_VERSION, Models, parse_name
@@ -17,6 +20,7 @@ from ttc_pipeline.method_b import ACuts
 
 from . import API_VERSION
 from .catalog import LAYERS, methods
+from .export import hearts_csv, methods_paragraphs, safe_name, slices_csv, write_bundle
 from .hearts import MixedVersions, heart_record, summarise
 from .jobs import Entry, JobManager
 from .library import Library
@@ -32,6 +36,7 @@ from .schemas import (
     HeartUpdate,
     Job,
     Layer,
+    MethodsParagraph,
     SliceResult,
     UploadMeta,
     WatchStatus,
@@ -46,6 +51,7 @@ JobId = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
 SliceId = Annotated[str, Path(pattern=r"^[0-9a-f]{24}$")]
 HeartKey = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
 NOT_FOUND = {404: {"model": ErrorResponse}}
+CSV = {200: {"content": {"text/csv": {}}, "description": 'CSV, UTF-8, decimal point "."'}}
 _META = TypeAdapter(list[UploadMeta])
 
 
@@ -148,6 +154,7 @@ def create_app(settings: Settings) -> FastAPI:
         allow_origins=list(settings.allowed_origins),
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["Content-Disposition"],  # so downloads keep the file name the engine gives them
         max_age=600,
     )
     app.add_middleware(OriginGuard, allowed_origins=settings.allowed_origins)
@@ -310,6 +317,103 @@ def create_app(settings: Settings) -> FastAPI:
             return summarise(results, weights, req.heart_id)
         except MixedVersions as e:
             raise HTTPException(409, str(e)) from e
+
+    # export (PLAN.md §1e) -----------------------------------------------------------------------
+
+    def _settings() -> dict:
+        stored = library.get_settings()
+        return AppSettings.model_validate(
+            {k: v for k, v in stored.items() if k in AppSettings.model_fields}
+        ).model_dump()
+
+    def _heart_and_results(heart_key: str) -> tuple[dict, dict[str, dict]]:
+        heart = heart_record(_found(library.get_heart(heart_key), "heart"), store).model_dump(mode="json")
+        return heart, {s["slice_id"]: store.read_result(s["slice_id"]) for s in heart["slices"]}
+
+    def _csv(text: str, name: str) -> Response:
+        return Response(
+            text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        )
+
+    @api.get("/hearts.csv", operation_id="exportHeartsCsv", tags=["export"], response_class=Response, responses=CSV)
+    def export_hearts_csv(
+        q: Annotated[str | None, Query(max_length=200)] = None,
+        group: Annotated[str | None, Query(max_length=100)] = None,
+        tag: Annotated[str | None, Query(max_length=100)] = None,
+        favourite: bool | None = None,
+    ):
+        """One row per library heart (the same filters as GET /hearts; never the trash)."""
+        hearts = library.list_hearts(q=q, group=group, tag=tag, favourite=favourite)
+        return _csv(hearts_csv([heart_record(h, store).model_dump(mode="json") for h in hearts]), "cardia-hearts.csv")
+
+    @api.get(
+        "/hearts/{heart_key}/slices.csv",
+        operation_id="exportHeartSlicesCsv",
+        tags=["export"],
+        response_class=Response,
+        responses={**CSV, **NOT_FOUND},
+    )
+    def export_slices_csv(heart_key: HeartKey):
+        """One row per slice of a heart, apex to base. Only the ranges reports show are included."""
+        heart, results = _heart_and_results(heart_key)
+        return _csv(slices_csv(heart, results), f"cardia-heart-{safe_name(heart['label'])}-slices.csv")
+
+    @api.get(
+        "/hearts/{heart_key}/methods",
+        operation_id="getHeartMethods",
+        tags=["export"],
+        responses={**NOT_FOUND, 409: {"model": ErrorResponse}},
+    )
+    def heart_methods(heart_key: HeartKey) -> list[MethodsParagraph]:
+        """The Methods paragraph for each method, the headline method (Settings) first. English."""
+        heart, results = _heart_and_results(heart_key)
+        if not heart["slices"]:
+            return []
+        if heart["summary"] is None:
+            raise HTTPException(409, "These slices were analysed with different pipeline versions or models.")
+        ordered = [results[s["slice_id"]] for s in heart["slices"]]
+        paragraphs = methods_paragraphs(ordered, heart["summary"], heart["label"], cuts, _settings()["headline_method"])
+        return [MethodsParagraph.model_validate(p) for p in paragraphs]
+
+    @api.get(
+        "/hearts/{heart_key}/export.zip",
+        operation_id="exportHeartZip",
+        tags=["export"],
+        response_class=FileResponse,
+        responses={200: {"content": {"application/zip": {}}, "description": "The heart's bundle"}, **NOT_FOUND},
+    )
+    def export_zip(heart_key: HeartKey):
+        """Everything about a heart in one ZIP: original scans, results, image layers, CSVs, the Methods
+        paragraph, settings, and a manifest with the SHA-256 of every file."""
+        heart, results = _heart_and_results(heart_key)
+        ordered = [results[s["slice_id"]] for s in heart["slices"]]
+        try:
+            paragraphs = (
+                methods_paragraphs(ordered, heart["summary"], heart["label"], cuts, _settings()["headline_method"])
+                if heart["summary"]
+                else []
+            )
+        except KeyError, TypeError:
+            paragraphs = []
+        images = {r["image_sha256"]: store.image_path(r["image_sha256"]) for r in ordered}
+        layers = {
+            r["slice_id"]: [p for name in r["layers"] if (p := store.layer_path(r["slice_id"], name)).exists()]
+            for r in ordered
+        }
+        fd, tmp = tempfile.mkstemp(prefix="cardia-export-", suffix=".zip")
+        os.close(fd)
+        try:
+            root = write_bundle(
+                FilePath(tmp), heart, results, images, layers, paragraphs, _settings(), info.model_dump(mode="json")
+            )
+        except BaseException:
+            os.unlink(tmp)
+            raise
+        return FileResponse(
+            tmp, media_type="application/zip", filename=f"{root}.zip", background=BackgroundTask(os.unlink, tmp)
+        )
 
     # settings and the watch folder -------------------------------------------------------------
 

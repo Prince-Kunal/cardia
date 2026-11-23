@@ -270,6 +270,15 @@ class Heart(HeartDetails):
     )
 
 
+class MethodsParagraph(Model):
+    """A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes."""
+
+    method: Literal["a", "b"]
+    name: str = Field(description='e.g. "Method A: K-Means + RF"')
+    text: str = Field(description="English. For demo (--mock) results, a warning instead of a paragraph")
+    mock: bool
+
+
 class HeartSliceUpdate(Model):
     model_config = ConfigDict(extra="forbid")
     slice_id: str
