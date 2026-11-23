@@ -1,0 +1,252 @@
+{
+  "heart": {
+    "title": "Heart",
+    "short": "A hollow pump made of muscle, about the size of a fist, that pushes blood around the body. It has four chambers.",
+    "lesson": 1
+  },
+  "atrium": {
+    "title": "Atrium (plural: atria)",
+    "short": "One of the two upper chambers of the heart. The atria collect blood coming back to the heart and pass it to the ventricles below.",
+    "lesson": 1
+  },
+  "ventricle": {
+    "title": "Ventricle",
+    "short": "One of the two lower chambers of the heart. The ventricles are the strong pumps: the right one sends blood to the lungs, the left one to the whole body.",
+    "lesson": 1
+  },
+  "septum": {
+    "title": "Septum",
+    "short": "The wall of muscle that divides the heart into a right side and a left side.",
+    "lesson": 1
+  },
+  "valve": {
+    "title": "Valve",
+    "short": "A one-way door in the heart. Its flaps open when blood pushes forward and close if it tries to flow back. The heart has four: tricuspid, pulmonary, mitral and aortic.",
+    "lesson": 1
+  },
+  "myocardium": {
+    "title": "Myocardium",
+    "short": "The heart muscle: the thick middle layer of the heart wall that does the squeezing. It is the tissue that dies in a heart attack, and the tissue Cardia measures.",
+    "lesson": 1
+  },
+  "endocardium": {
+    "title": "Endocardium",
+    "short": "The thin inner lining of the heart, touching the blood in the chambers. The muscle just under it (the subendocardium) is the first to die when an artery is blocked.",
+    "lesson": 1
+  },
+  "epicardium": {
+    "title": "Epicardium",
+    "short": "The thin outer layer of the heart wall. The coronary arteries run over it.",
+    "lesson": 1
+  },
+  "apex": {
+    "title": "Apex",
+    "short": "The pointed bottom end of the heart. Lab slices are numbered from the apex to the base.",
+    "lesson": 1
+  },
+  "base": {
+    "title": "Base",
+    "short": "The wide top of the heart, where the large blood vessels join it.",
+    "lesson": 1
+  },
+  "artery": {
+    "title": "Artery",
+    "short": "A blood vessel that carries blood away from the heart. Most carry oxygen-rich blood, but the pulmonary artery carries oxygen-poor blood to the lungs.",
+    "lesson": 3
+  },
+  "vein": {
+    "title": "Vein",
+    "short": "A blood vessel that carries blood back to the heart. Most carry oxygen-poor blood, but the pulmonary veins bring oxygen-rich blood back from the lungs.",
+    "lesson": 3
+  },
+  "aorta": {
+    "title": "Aorta",
+    "short": "The body's largest artery. It leaves the left ventricle and carries oxygen-rich blood to the whole body, including the heart's own coronary arteries.",
+    "lesson": 3
+  },
+  "vena-cava": {
+    "title": "Vena cava (plural: venae cavae)",
+    "short": "The two large veins that bring oxygen-poor blood from the body into the right atrium: the superior vena cava from above, the inferior vena cava from below.",
+    "lesson": 3
+  },
+  "pulmonary-circulation": {
+    "title": "Pulmonary circulation",
+    "short": "The short loop from the right ventricle through the lungs and back to the left atrium. Blood drops off carbon dioxide and picks up oxygen.",
+    "lesson": 3
+  },
+  "systemic-circulation": {
+    "title": "Systemic circulation",
+    "short": "The long loop from the left ventricle through the aorta to every organ, and back through the venae cavae to the right atrium.",
+    "lesson": 3
+  },
+  "coronary-arteries": {
+    "title": "Coronary arteries",
+    "short": "The arteries that feed the heart muscle itself. They branch off the aorta just above the aortic valve: the right coronary artery (RCA) and the left, which splits into the LAD and the LCx.",
+    "lesson": 5
+  },
+  "lad": {
+    "title": "LAD (left anterior descending artery)",
+    "short": "The coronary artery that runs down the front of the heart. It feeds the front wall of the left ventricle, much of the septum and the apex.",
+    "lesson": 5
+  },
+  "lcx": {
+    "title": "LCx (left circumflex artery)",
+    "short": "The branch of the left coronary artery that wraps around the left side of the heart and feeds the side wall of the left ventricle.",
+    "lesson": 5
+  },
+  "rca": {
+    "title": "RCA (right coronary artery)",
+    "short": "The coronary artery that feeds mostly the right ventricle and the back of the heart.",
+    "lesson": 5
+  },
+  "territory": {
+    "title": "Territory",
+    "short": "The patch of heart muscle that one coronary artery feeds. If the artery is blocked, this is the muscle at risk.",
+    "lesson": 5
+  },
+  "ischemia": {
+    "title": "Ischemia",
+    "short": "Too little blood flow to a tissue, so it gets too little oxygen. In the heart, the starved muscle stops squeezing within about a minute and starts to die after about 20 minutes.",
+    "lesson": 5
+  },
+  "infarct": {
+    "title": "Infarct",
+    "short": "An area of tissue that has died because its blood supply was cut off. In a TTC-stained slice it is the pale part.",
+    "lesson": 5
+  },
+  "myocardial-infarction": {
+    "title": "Myocardial infarction",
+    "short": "The medical name for a heart attack: death of heart muscle caused by a lack of blood flow.",
+    "lesson": 5
+  },
+  "wavefront": {
+    "title": "Wavefront",
+    "short": "The way an infarct grows: muscle dies first in the inner wall and the dead zone spreads outward over a few hours while the artery stays blocked.",
+    "lesson": 5
+  },
+  "reperfusion": {
+    "title": "Reperfusion",
+    "short": "Restoring blood flow after a blockage. It saves muscle that is still alive, and the sooner it happens the more is saved. Module 6 covers it.",
+    "lesson": 5
+  },
+  "area-at-risk": {
+    "title": "Area at risk",
+    "short": "All the muscle fed by the blocked artery. The infarct is the part of it that actually died. Some labs mark it with a blue dye (Evans blue).",
+    "lesson": 8
+  },
+  "infarct-size": {
+    "title": "Infarct size",
+    "short": "How much of the heart muscle died, usually given as a percentage. It is the main result in studies of treatments that protect the heart.",
+    "lesson": 8
+  },
+  "ttc": {
+    "title": "TTC (triphenyltetrazolium chloride)",
+    "short": "A colourless stain. Enzymes in living cells turn it into red formazan; dead cells have lost those enzymes and stay pale. So in a stained slice, red means alive and pale means dead.",
+    "lesson": 8
+  },
+  "formazan": {
+    "title": "Formazan",
+    "short": "The brick-red compound that living cells make from TTC. It stays inside the cells, colouring living muscle red.",
+    "lesson": 8
+  },
+  "dehydrogenase": {
+    "title": "Dehydrogenase",
+    "short": "A family of enzymes in living cells. With their helper molecules (such as NADH) they turn TTC into red formazan. Dead cells lose them.",
+    "lesson": 8
+  },
+  "short-axis": {
+    "title": "Short-axis slice",
+    "short": "A slice cut straight across the heart, from one side to the other, like slicing a carrot into rounds. It shows the left ventricle as a ring and the right ventricle as a crescent beside it.",
+    "lesson": 8
+  },
+  "slice-weight": {
+    "title": "Slice weight",
+    "short": "The weight of one heart slice, in mg. Cardia reads it from file names like 206IS89mg.tif and uses it to weight each slice when adding up the whole heart.",
+    "lesson": 10
+  },
+  "dead-mass": {
+    "title": "Dead mass",
+    "short": "How many milligrams of muscle died: the infarct percentage times the slice weight, added up over the slices.",
+    "lesson": 10
+  },
+  "tiff": {
+    "title": "TIFF",
+    "short": "An image file format that keeps every pixel exactly as the scanner saw it. Cardia's settings were all chosen on TIFF scans, so PNG and JPG files are marked as unvalidated input.",
+    "lesson": 10
+  },
+  "dpi": {
+    "title": "DPI (dots per inch)",
+    "short": "How many pixels a scanner records per inch. Cardia uses it to turn pixel counts into areas in mm².",
+    "lesson": 10
+  },
+  "lighting-correction": {
+    "title": "Lighting correction",
+    "short": "Cardia's first step: it fits a smooth surface to the brightness of the paper around the slice and divides it out, so the paper is equally white everywhere.",
+    "lesson": 10
+  },
+  "tissue-mask": {
+    "title": "Tissue mask",
+    "short": "The map of which pixels are heart tissue and which are paper, holes or ruler. Every percentage is a share of the tissue mask.",
+    "lesson": 10
+  },
+  "chroma": {
+    "title": "Chroma",
+    "short": "How colourful a pixel is, whatever its colour. Paper has almost none; stained tissue has a lot. Cardia uses it to find the tissue.",
+    "lesson": 10
+  },
+  "hole": {
+    "title": "Hole",
+    "short": "A gap inside the slice that is not tissue, such as the chamber in the middle. Cardia's hole scorer decides which dark patches are real holes; unsure ones widen the range.",
+    "lesson": 10
+  },
+  "lab-colour": {
+    "title": "Lab colour (CIE L*a*b*)",
+    "short": "A way of describing colour with three numbers: L* is lightness, a* goes from green to red, b* from blue to yellow. Distances in it roughly match how different colours look to us.",
+    "lesson": 10
+  },
+  "a-star": {
+    "title": "a* (redness)",
+    "short": "The red–green number in Lab colour. TTC-stained living muscle has a high a*; pale dead muscle has a low a*. Method B decides dead or alive from it.",
+    "lesson": 10
+  },
+  "k-means": {
+    "title": "K-Means",
+    "short": "A method that sorts data points into a chosen number of groups by similarity. Method A used it once, during training, to sort pixels into red, pink and cream groups.",
+    "lesson": 10
+  },
+  "random-forest": {
+    "title": "Random forest",
+    "short": "A machine-learning model made of many decision trees that vote. Method A's forest gives every tissue pixel a probability of being dead.",
+    "lesson": 10
+  },
+  "method-a": {
+    "title": "Method A: K-Means + RF",
+    "short": "One of Cardia's two ways of deciding dead or alive: a random forest looks at 22 numbers per pixel and calls it dead when the probability is 0.5 or more.",
+    "lesson": 10
+  },
+  "method-b": {
+    "title": "Method B: a* cut",
+    "short": "Cardia's other way of deciding dead or alive: a pixel is dead when its smoothed redness a* is below 11.75, and borderline up to 18.60.",
+    "lesson": 10
+  },
+  "unsure-tissue": {
+    "title": "Unsure tissue (Method A)",
+    "short": "Pixels whose probability of being dead is between 0.35 and 0.65. If more than 15% of a slice is unsure, Cardia flags the slice.",
+    "lesson": 10
+  },
+  "borderline-tissue": {
+    "title": "Borderline tissue (Method B)",
+    "short": "Pixels whose redness a* is between Method B's two cuts (11.75 and 18.60): not clearly dead, not clearly alive. They make up Method B's range.",
+    "lesson": 10
+  },
+  "range": {
+    "title": "Range",
+    "short": "The lowest and highest infarct percentage the method can defend: the low end counts only clearly dead tissue, the high end also counts borderline tissue and uncertain holes.",
+    "lesson": 10
+  },
+  "percentage-points": {
+    "title": "Percentage points (pp)",
+    "short": "The plain difference between two percentages. From 20% to 30% is 10 percentage points (but 50% more).",
+    "lesson": 10
+  }
+}
