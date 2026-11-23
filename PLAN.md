@@ -10,7 +10,7 @@
    * what the result means for the heart.
 
    Two methods run on every slice until the team picks one (§2): **Method A "K-Means + RF"** (the notebook) and **Method B "a\* cut"** (the earlier repo method). Analysis always runs on the computer. Reports are stored locally and, if the user signs in, synced to the cloud so the same library is available on every computer and can be shared with the lab.
-2. **Learn.** A course for someone with no biology background, built around an animated, interactive 3D heart. It covers what the heart is, what an infarct is, why we measure it, how TTC staining works, the traditional methods, and what our method does. It includes quizzes along the way, in many languages.
+2. **Learn.** A course for someone with no biology background, built around an animated, interactive 3D heart. It covers what the heart is, what an infarct is, why we measure it, how TTC staining works, the traditional methods, and what our method does. It includes quizzes along the way. English only (languages dropped 2026-11-23, D10).
 
 ---
 
@@ -27,7 +27,7 @@
 | D7 | **Design for the whole slice now, and leave room for LV-only % and area at risk.** | The lab protocol (LV vs whole slice, Evans blue) is not known yet. |
 | D8 | **Web first, desktop later.** UI: React + TypeScript (Vite, pnpm) in the browser. Engine: the notebook's and `ttc/` code as a Python package behind a **local FastAPI server on 127.0.0.1**, so scans never leave the computer. Desktop phase: Electron wraps the same UI and launches the same engine (frozen with PyInstaller). No C++ port. | No Windows machine yet, and a web app needs no installers, signing or Windows setup. The engine *is* the reference code. Because the UI talks to the engine over HTTP from day one, the desktop step only changes packaging. Electron then gives the same Chromium/WebGL on every OS for the 3D heart (Tauri is the alternative; see §13). |
 | D9 | **A Learn section with an interactive 3D heart**, aimed at students and people with no biology knowledge. | Explains the science and the method to new lab members, students and reviewers. |
-| D10 | **Multilingual UI and Learn content** (major Indian and world languages). Exported scientific text (the Methods paragraph) defaults to English. | Reach learners in their own language; papers are written in English. |
+| D10 | **English only (decided 2026-11-23).** The multilingual UI and Learn content are dropped from the plan; §4 is kept only for reference. | Effort goes to the analysis, the reports, Learn and the 3D heart instead. |
 
 ### What changed from the 2026-11-18 plan
 
@@ -40,7 +40,7 @@
 | Holes | Logistic scorer, 3 measures (not yet saved as a file) | Our logistic scorer, saved as one shared hole-model file; Phase 0 picks the better of the repo and notebook versions |
 | Camera | Capture mat, auto-shutter | Dropped |
 | Storage | Fully offline | Offline-first + optional cloud sync with accounts and lab workspaces |
-| New | — | Learn section with a 3D heart, quizzes, many languages, About/Help with a walkthrough |
+| New | — | Learn section with a 3D heart, quizzes, About/Help with a walkthrough |
 
 ---
 
@@ -108,9 +108,8 @@
 - ★ FAQ, keyboard shortcuts, and "What's new" (lists pipeline version changes).
 - ★ "About the method" page: version, settings, what was validated, known limits (§2h).
 
-### 1i. Languages (details in §4)
-- ★ UI, Learn, glossary and 3D labels translated. Language picker in Settings; the system language is the default.
-- ★ The report language is chosen separately from the app language.
+### 1i. Languages: dropped (2026-11-23, D10)
+- The app, Learn and reports are English only. No language picker.
 
 ### 1j. Polish and trust
 - ★ Onboarding with a demo heart from the study set (bundled, so it works offline).
@@ -279,8 +278,8 @@ Phase 0 scorecard (2026-11-23, `engine/training/scorecard.py`): both methods as 
 | 5 | What a heart attack is | A blocked artery → no oxygen (ischemia) → muscle dies (infarct); "time is muscle"; death spreads from the inner wall outward | Occlusion animation; the territory pales over time |
 | 6 | Reopening the artery | Reperfusion saves tissue but adds its own injury; why researchers study this | Flow returns; part of the territory recovers, the rest stays dead |
 | 7 | Why measure infarct size | The main outcome in preclinical studies testing heart-protecting treatments; area at risk vs infarct | Area-at-risk overlay (Evans blue idea) |
-| 8 | How TTC staining works | Living cells' enzymes turn colourless TTC into red formazan; dead cells cannot, so they stay pale. Protocol: excise → slice → stain → fix → scan | Heart sliced apex → base; TTC reaches the tissue (§3c); live tissue turns red |
-| 9 | Traditional methods | Manual tracing in ImageJ, grayscale cut-offs, histology; in patients, cardiac MRI, SPECT, troponin. Slow, subjective, people disagree | Side by side: a slice traced by hand vs a cut-off |
+| 8 | How TTC staining works | Living cells' enzymes turn colourless TTC into red formazan; dead cells cannot, so they stay pale. Protocol: excise → slice → stain → fix → scan. The gold standard: after TTC, the pale (dead) tissue is cut away from the red (living) tissue and both are weighed; infarct % = dead weight ÷ total weight | Heart sliced apex → base; TTC reaches the tissue (§3c); live tissue turns red |
+| 9 | Traditional methods | The gold standard (TTC, then dissecting and weighing the dead and living tissue); manual tracing in ImageJ (planimetry), grayscale cut-offs, histology; in patients, cardiac MRI, SPECT, troponin. Slow, destructive or subjective, and people disagree | Side by side: a slice traced by hand vs a cut-off |
 | 10 | How our app does it | Lighting correction, tissue mask, holes, colour in Lab, the two ways of deciding dead vs alive (random forest and a\* cut), why a range, validation and limits | A real study slice runs through the pipeline step by step, each step drawn on the slice |
 | 11 | Good research practice | Blinding, reproducibility, the 3Rs (consistent measurement can mean fewer animals) | — |
 | 12 | Bonus for CS students | Pixels, DPI, colour spaces, morphology, connected components, random forests | Interactive image-processing demos |
@@ -348,7 +347,7 @@ of the **[left ventricle](part:lv)**. When it is blocked…
 
 ---
 
-## 4. Languages
+## 4. Languages (dropped 2026-11-23, D10; kept for reference)
 
 - **Indian languages:** Hindi, Bengali, Marathi, Telugu, Tamil, Gujarati, Kannada, Malayalam, Urdu, Odia, Punjabi.
 - **World languages:** English, Mandarin Chinese (Simplified), Spanish, French, Arabic, Portuguese, Russian, German, Japanese, Korean, Indonesian.
@@ -389,7 +388,7 @@ of the **[left ventricle](part:lv)**. When it is blocked…
 ┌──────── Browser now, Electron window later · web/: React + TypeScript (Vite, pnpm) ────────┐
 │ Analyze: import · library · reports · export (CSV, ZIP; PDF from a print stylesheet)       │
 │ Learn: lesson player · quizzes · glossary · 3D heart (Three.js / React Three Fiber, GLB)    │
-│ About & Help · walkthrough · settings · i18next          lessons: content/<lang>/*.md      │
+│ About & Help · walkthrough · settings                     lessons: content/en/*.md          │
 └───────────────┬────────────────────────────────────────────────────────────────────────────┘
                 │ HTTP on 127.0.0.1, OpenAPI contract: analyses, jobs + progress, results JSON, layer PNGs
 ┌───────────────▼────────────────────────────────────────────────────────────────────────────┐
@@ -461,7 +460,7 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 8. **Lesson player:** 3D viewport beside the lesson text, step navigation, inline quizzes.
 9. **Glossary.**
 10. **About & Help:** walkthrough, flag explanations, FAQ, what's new, how to cite, licences.
-11. **Settings:** language (app and report), units, theme, **headline method (A or B)**, method info, backup / restore.
+11. **Settings:** units, theme, **headline method (A or B)**, method info, backup / restore.
 12. **Account & workspaces:** sign in, workspaces and members, devices, sync settings (images on/off).
 
 ---
@@ -493,13 +492,37 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 | 5 | Learn engine | Screens 7, 8, 9; lesson format, quizzes, progress. *2026-11-23: lesson format parser, course map with tracks, lesson player, seven quiz types (all but spot-the-dead-tissue, which waits for expert tracings), glossary, spaced review, badges; progress kept in the browser until milestone 4; works without the engine* | Melove | 1.5 wk |
 | 6 | 3D heart | Model prepared and split, scene-state sync, heartbeat, flow, coronaries, occlusion, slicing, TTC animations. *2026-11-23: a 2D diagram (cut open, outside, short-axis slice) reads the lessons' scenes with the same part ids and animations; it is the 2D fallback and stands in until the model source is chosen (§13 item 8)* | Krrish | 3 wk |
 | 7 | Learn content v1 | Modules 1, 3, 5, 8, 10 written, reviewed, quizzes (in parallel with 5–6). *2026-11-23: English drafts of all five with quizzes, sources and a 50-term glossary; awaiting GVSU review* | Melove leads, all write | 2 wk |
-| 8 | Languages wave 1 | i18n framework, English + Hindi, RTL support ready | Krrish | 1 wk |
+| 8 | ~~Languages wave 1~~ | Dropped (2026-11-23, D10) | — | — |
 | 9 | Polish | Walkthrough, About & Help, dark mode, accessibility | Krrish + Prince | 1 wk |
 | 10 | Pilot (web app) | 2–3 lab users + 5–10 student learners | all | 1 wk |
 | 11 | Desktop | Electron wrapper around the same UI and engine; PyInstaller engine for Windows + macOS; Windows parity in CI; signing; auto-update | Prince | 1.5–2 wk, once a Windows machine is available |
-| later | Remaining modules and languages, study dashboard, ◆ analyses, re-analyse diff, scanner acquisition, 3D stack view, ONNX engine | | | |
+| later | Study dashboard, ◆ analyses, re-analyse diff, scanner acquisition, 3D stack view, ONNX engine | | | |
 
 About 18–20 weeks if done one after another, but three people working in parallel need much less. Milestones 2, 5, 6 and 7 do not depend on Phase 0 and can start now. Ownership and workflow: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### 11a. What's left (2026-11-23)
+
+In order. Phase A needs nothing from anyone outside the code; Phase B waits on data, decisions, accounts or Prince's laptop, so it comes last. ◇ marks a default chosen to keep moving, open to the team.
+
+**Phase A: can be built now**
+
+1. **Frontend design pass.** Install the `design-taste-frontend` skill (read before use) and apply it across Analyze and Learn; smooth scrolling with Lenis (off with reduced motion); remove the language picker (D10).
+2. **Better heart pictures.** Redraw the 2D diagrams (cut open, outside, slice) with anatomical shapes and shading; they stay the 2D fallback.
+3. **3D heart v1 (milestone 6).** Three.js + React Three Fiber; a stylised heart modelled in code ◇ (§13 item 8) with the §3f part ids, driven by the same lesson scenes: highlight, labels, x-ray, slicing, heartbeat, flow, coronaries, occlusion, TTC. Falls back to the 2D diagram without WebGL.
+4. **Learn content.** Add the gravimetric gold standard to module 8; draft modules 2, 4, 6, 7, 9, 11 and 12 with quizzes and sources (drafts until reviewed, B3).
+5. **Milestone 3, the rest.** Backup and restore of the whole library as one file; a heart's context against the study set measured by the same pipeline version (§1d).
+6. **Cloud sync (milestone 4), built and tested without accounts.** Supabase ◇ (§13 item 2): database schema with row-level security, the engine's sync queue (SQLite stays the source of truth), sign-in and workspaces screen, sync status, Learn progress sync, images opt-in. Off until the environment variables exist (B1); tested against a fake backend.
+7. **Polish (milestone 9).** About & Help, the walkthrough on a demo heart from the study set, "why was my slice flagged?", FAQ, keyboard shortcuts, what's new, an accessibility pass.
+8. **Speed.** Measure the real engine on the 30 study slices (milestone 2's last item).
+
+**Phase B: needs data, people or Prince's laptop**
+
+1. **Cloud accounts.** A Supabase project and its environment variables from Krrish or Melove; then turn sync on and test it live. Agree with GVSU what lab data may leave the lab computer before lab workspaces are used (§5).
+2. **Reviews.** Krrish and Melove review the merged PRs (#7, #8, #10 and later); a GVSU faculty member reviews every lesson and fills in `reviewed_by`.
+3. **Decisions.** The confidence rule and the area–weight bar (milestone 3 ◇), the default headline method (§13 item 10), the 3D model source (item 8), the lab protocol for the TTC animation (item 5).
+4. **Data.** Expert tracings (Ref-2) to choose between Methods A and B and revisit the ranges (§13 items 9, 13); more hole labels to retrain the hole model.
+5. **Pilot** with 2–3 lab users and 5–10 students (milestone 10).
+6. **Desktop app** once a Windows machine is available (milestone 11).
 
 ---
 
@@ -528,8 +551,8 @@ About 18–20 weeks if done one after another, but three people working in paral
 4. **Original images in the cloud:** off by default (current plan) or on?
 5. **Lab protocol:** whole slice vs LV only; Evans blue (area at risk); TTC by slice incubation or coronary perfusion. This decides the TTC animation (§3c).
 6. **Platforms for the pilot:** the web app on macOS (decided 2026-11-20). Which browsers count as supported, and whether lab Windows PCs join through the web app before the desktop phase?
-7. **Languages in wave 1** beyond English and Hindi.
-8. **3D model source:** Z-Anatomy (CC BY-SA), NIH 3D (licence per model), or a paid model?
+7. ~~Languages in wave 1~~: dropped (2026-11-23, D10).
+8. **3D model source:** Z-Anatomy (CC BY-SA), NIH 3D (licence per model), or a paid model? *Until decided (2026-11-23): v1 is a stylised heart modelled in code (no licence to track, every part named as in §3f); an anatomical model can replace it later with the same part ids.*
 9. **Which method to move forward with, A or B, and how to decide.** Proposed rule ◇: when Ref-2 tracings arrive, pick the method with the better Dice and heart MAE against Ref-2, with the YHS time-control check as a tie-breaker. Until then both run.
 10. **Default headline method** while both run: A (current default ◇) or B?
 11. **Which ◇ proposals to accept** (§1k, §1f, §3e, §4 rollout, §8 pass rules).
