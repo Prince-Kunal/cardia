@@ -9,7 +9,7 @@ Cardia measures infarct size on scanned TTC heart slices automatically, and teac
 
 | Path | What | In git |
 |---|---|---|
-| `engine/` | Python engine: `ttc_pipeline/` (analysis), `training/` (one-time training and Phase 0 checks), `models/`, `tests/` | yes, except model binaries (`*.joblib`) and `annotations/` (team Drive) |
+| `engine/` | Python engine: `ttc_pipeline/` (analysis), `cardia_api/` (the local API the web app calls, contract in `openapi.json`), `training/` (one-time training and Phase 0 checks), `models/`, `tests/` | yes, except model binaries (`*.joblib`) and `annotations/` (team Drive) |
 | `web/` | React + TypeScript web app (milestone 2) | yes |
 | `content/` | Learn lessons, glossary and quizzes, one folder per language | yes |
 | `scripts/` | `setup.sh`, `check_data.py`, `study-data.sha256` | yes |
@@ -20,8 +20,11 @@ Cardia measures infarct size on scanned TTC heart slices automatically, and teac
 
 ```bash
 scripts/setup.sh <your-github-username>
-cd engine && uv run python -c "import cv2, numpy, sklearn; print('engine ok')"
+cd engine && uv run python -m cardia_api --mock   # the engine API with fake analysis, for UI work
+cd engine && uv run python -m cardia_api          # the real engine (model binaries from the team Drive)
 ```
+
+The engine listens on 127.0.0.1 only and prints a link that opens the app with a fresh token. How the app uses it: [engine/cardia_api/README.md](engine/cardia_api/README.md).
 
 ## Study data at a glance
 

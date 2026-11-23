@@ -1,0 +1,1733 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cardia engine",
+    "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "engine"
+        ],
+        "summary": "Health",
+        "description": "Whether the engine is up. The only route that needs no token.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/engine": {
+      "get": {
+        "tags": [
+          "engine"
+        ],
+        "summary": "Engine",
+        "description": "Versions, model files, methods and image layers. Use it to check the token works.",
+        "operationId": "getEngine",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "description": "Jobs since the engine started, newest first.",
+        "operationId": "listJobs",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Job"
+                  },
+                  "type": "array",
+                  "title": "Response Listjobs"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Create Job",
+        "description": "Upload scans and start analysing them. Poll GET /jobs/{job_id} for progress.\n\nProblems with a single file (unsupported type, too large, duplicate) fail that slice, not the job.",
+        "operationId": "createJob",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_createJob"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "description": "A job's state and every slice's progress.",
+        "operationId": "getJob",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}/cancel": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Cancel Job",
+        "description": "Stop a job: slices not yet started are cancelled; slices already running finish and are kept.",
+        "operationId": "cancelJob",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slices": {
+      "get": {
+        "tags": [
+          "slices"
+        ],
+        "summary": "List Slices",
+        "description": "Every stored slice result, newest first.",
+        "operationId": "listSlices",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SliceResult"
+                  },
+                  "type": "array",
+                  "title": "Response Listslices"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/slices/{slice_id}": {
+      "get": {
+        "tags": [
+          "slices"
+        ],
+        "summary": "Get Slice",
+        "description": "One slice's numbers, QC flags, versions and layer names.",
+        "operationId": "getSlice",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Slice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SliceResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slices/{slice_id}/layers/{layer}": {
+      "get": {
+        "tags": [
+          "slices"
+        ],
+        "summary": "Get Layer",
+        "description": "A layer image. Fetch it with the token header and show it through URL.createObjectURL.\n\nResults never change, so the response may be cached for good.",
+        "operationId": "getSliceLayer",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Slice Id"
+            }
+          },
+          {
+            "name": "layer",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Layer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG, full resolution",
+            "content": {
+              "image/png": {}
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hearts/summary": {
+      "post": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Summarise Heart",
+        "description": "Heart numbers from its slices (PLAN.md §2g). Weights typed by the user override the file names'.",
+        "operationId": "summariseHeart",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_createJob": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "One or more slice scans (TIFF; PNG or JPG are flagged)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_createJob"
+      },
+      "EngineInfo": {
+        "properties": {
+          "api_version": {
+            "type": "string",
+            "title": "Api Version"
+          },
+          "pipeline_version": {
+            "type": "string",
+            "title": "Pipeline Version"
+          },
+          "mock": {
+            "type": "boolean",
+            "title": "Mock",
+            "description": "True when the engine runs the fake analysis for UI work (numbers are made up)"
+          },
+          "models_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models Manifest Sha256"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelFile"
+            },
+            "type": "array",
+            "title": "Models"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/MethodInfo"
+            },
+            "type": "array",
+            "title": "Methods"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/LayerInfo"
+            },
+            "type": "array",
+            "title": "Layers"
+          },
+          "accepted_extensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Accepted Extensions"
+          },
+          "max_upload_mb": {
+            "type": "integer",
+            "title": "Max Upload Mb"
+          },
+          "workers": {
+            "type": "integer",
+            "title": "Workers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_version",
+          "pipeline_version",
+          "mock",
+          "models_manifest_sha256",
+          "models",
+          "methods",
+          "layers",
+          "accepted_extensions",
+          "max_upload_mb",
+          "workers"
+        ],
+        "title": "EngineInfo"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "api_version": {
+            "type": "string",
+            "title": "Api Version"
+          },
+          "pipeline_version": {
+            "type": "string",
+            "title": "Pipeline Version"
+          },
+          "mock": {
+            "type": "boolean",
+            "title": "Mock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "api_version",
+          "pipeline_version",
+          "mock"
+        ],
+        "title": "Health"
+      },
+      "HeartMethodA": {
+        "properties": {
+          "dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Pct"
+          },
+          "dead_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Mg"
+          },
+          "unsure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsure Pct"
+          },
+          "range": {
+            "$ref": "#/components/schemas/PctRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dead_pct",
+          "dead_mg",
+          "unsure_pct",
+          "range"
+        ],
+        "title": "HeartMethodA"
+      },
+      "HeartMethodB": {
+        "properties": {
+          "dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Pct"
+          },
+          "dead_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Mg"
+          },
+          "borderline_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Borderline Pct"
+          },
+          "range": {
+            "$ref": "#/components/schemas/PctRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dead_pct",
+          "dead_mg",
+          "borderline_pct",
+          "range"
+        ],
+        "title": "HeartMethodB"
+      },
+      "HeartSliceRef": {
+        "properties": {
+          "slice_id": {
+            "type": "string",
+            "title": "Slice Id"
+          },
+          "weight_mg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Mg",
+            "description": "Overrides the weight from the file name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slice_id"
+        ],
+        "title": "HeartSliceRef"
+      },
+      "HeartSummary": {
+        "properties": {
+          "heart_id": {
+            "type": "string",
+            "title": "Heart Id"
+          },
+          "slice_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Slice Ids"
+          },
+          "weighting": {
+            "type": "string",
+            "enum": [
+              "slice_weight",
+              "tissue_area"
+            ],
+            "title": "Weighting",
+            "description": "Slice percentages are weighted by slice weight, or by tissue area when any weight is missing"
+          },
+          "total_weight_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Weight Mg"
+          },
+          "flags": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "weights_missing",
+                "mixed_heart_ids"
+              ]
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "pipeline_version": {
+            "type": "string",
+            "title": "Pipeline Version"
+          },
+          "models_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models Manifest Sha256"
+          },
+          "mock": {
+            "type": "boolean",
+            "title": "Mock"
+          },
+          "method_a": {
+            "$ref": "#/components/schemas/HeartMethodA"
+          },
+          "method_b": {
+            "$ref": "#/components/schemas/HeartMethodB"
+          }
+        },
+        "type": "object",
+        "required": [
+          "heart_id",
+          "slice_ids",
+          "weighting",
+          "total_weight_mg",
+          "flags",
+          "pipeline_version",
+          "models_manifest_sha256",
+          "mock",
+          "method_a",
+          "method_b"
+        ],
+        "title": "HeartSummary"
+      },
+      "HeartSummaryRequest": {
+        "properties": {
+          "heart_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heart Id",
+            "description": "Defaults to the first slice's heart_id"
+          },
+          "slices": {
+            "items": {
+              "$ref": "#/components/schemas/HeartSliceRef"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Slices"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slices"
+        ],
+        "title": "HeartSummaryRequest"
+      },
+      "Job": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "cancelled"
+            ],
+            "title": "State",
+            "description": "done: every slice is done or failed. cancelled: cancel was asked; slices already running finish"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "progress": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Progress"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/JobCounts"
+          },
+          "slices": {
+            "items": {
+              "$ref": "#/components/schemas/JobSlice"
+            },
+            "type": "array",
+            "title": "Slices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "state",
+          "created_at",
+          "finished_at",
+          "progress",
+          "counts",
+          "slices"
+        ],
+        "title": "Job"
+      },
+      "JobCounts": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "queued": {
+            "type": "integer",
+            "title": "Queued"
+          },
+          "running": {
+            "type": "integer",
+            "title": "Running"
+          },
+          "done": {
+            "type": "integer",
+            "title": "Done"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "cancelled": {
+            "type": "integer",
+            "title": "Cancelled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "queued",
+          "running",
+          "done",
+          "failed",
+          "cancelled"
+        ],
+        "title": "JobCounts"
+      },
+      "JobSlice": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "Position in the upload"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "heart_id": {
+            "type": "string",
+            "title": "Heart Id"
+          },
+          "weight_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Mg"
+          },
+          "image_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Sha256"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reading",
+                  "front_end",
+                  "method_a",
+                  "method_b",
+                  "layers"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage",
+            "description": "While running: the step in progress"
+          },
+          "progress": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Progress"
+          },
+          "slice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slice Id",
+            "description": "Set when done: GET /api/v1/slices/{slice_id}"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "description": "The result already existed, so nothing was re-analysed"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SliceError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "file_name",
+          "heart_id",
+          "weight_mg",
+          "image_sha256",
+          "state",
+          "stage",
+          "progress",
+          "slice_id",
+          "cached",
+          "error"
+        ],
+        "title": "JobSlice"
+      },
+      "Layer": {
+        "type": "string",
+        "enum": [
+          "original",
+          "corrected",
+          "tissue",
+          "holes_removed",
+          "holes_uncertain",
+          "filled",
+          "a_dead",
+          "a_unsure",
+          "a_probability",
+          "b_tissue",
+          "b_dead",
+          "b_borderline"
+        ],
+        "title": "Layer"
+      },
+      "LayerInfo": {
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/Layer"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "photo",
+              "mask",
+              "heatmap"
+            ],
+            "title": "Kind",
+            "description": "photo: RGB PNG. mask: PNG that is white where true and transparent elsewhere (tint it with CSS mask-image). heatmap: RGBA PNG, viridis colour map from p = 0 (dark blue) to 1 (yellow), transparent outside the tissue."
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "title",
+          "description"
+        ],
+        "title": "LayerInfo"
+      },
+      "MethodAResult": {
+        "properties": {
+          "dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Pct",
+            "description": "Dead share of the shared tissue: p >= 0.5"
+          },
+          "dead_px": {
+            "type": "integer",
+            "title": "Dead Px"
+          },
+          "dead_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Mg",
+            "description": "dead_pct x slice weight; null without a weight"
+          },
+          "unsure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsure Pct",
+            "description": "0.35 < p < 0.65"
+          },
+          "many_unsure": {
+            "type": "boolean",
+            "title": "Many Unsure",
+            "description": "More than 15% of the tissue is unsure"
+          },
+          "range": {
+            "$ref": "#/components/schemas/PctRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dead_pct",
+          "dead_px",
+          "dead_mg",
+          "unsure_pct",
+          "many_unsure",
+          "range"
+        ],
+        "title": "MethodAResult"
+      },
+      "MethodBResult": {
+        "properties": {
+          "tissue_px": {
+            "type": "integer",
+            "title": "Tissue Px",
+            "description": "Method B's own outline, real holes removed"
+          },
+          "tissue_mm2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tissue Mm2"
+          },
+          "dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Pct",
+            "description": "Dead share of Method B's tissue: a* below the conservative cut"
+          },
+          "dead_px": {
+            "type": "integer",
+            "title": "Dead Px"
+          },
+          "dead_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Mg"
+          },
+          "borderline_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Borderline Pct",
+            "description": "a* between the conservative and the liberal cut"
+          },
+          "borderline_px": {
+            "type": "integer",
+            "title": "Borderline Px"
+          },
+          "range": {
+            "$ref": "#/components/schemas/PctRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tissue_px",
+          "tissue_mm2",
+          "dead_pct",
+          "dead_px",
+          "dead_mg",
+          "borderline_pct",
+          "borderline_px",
+          "range"
+        ],
+        "title": "MethodBResult"
+      },
+      "MethodInfo": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Label to show, e.g. \"Method A: K-Means + RF\""
+          },
+          "dead_rule": {
+            "type": "string",
+            "title": "Dead Rule"
+          },
+          "unsure_rule": {
+            "type": "string",
+            "title": "Unsure Rule",
+            "description": "Method A: unsure tissue; Method B: borderline tissue"
+          },
+          "range_shown": {
+            "type": "boolean",
+            "title": "Range Shown",
+            "description": "Whether reports show this method's range (PLAN.md §2g)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "dead_rule",
+          "unsure_rule",
+          "range_shown"
+        ],
+        "title": "MethodInfo"
+      },
+      "ModelFile": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "title": "File",
+            "description": "Path inside engine/models/, e.g. kmeans_rf/kmeans_rf.joblib"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "version",
+          "sha256"
+        ],
+        "title": "ModelFile"
+      },
+      "PctRange": {
+        "properties": {
+          "low_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low Pct"
+          },
+          "high_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Pct"
+          },
+          "shown": {
+            "type": "boolean",
+            "title": "Shown",
+            "description": "Show this range in reports. For now only Method B's is shown (PLAN.md §2g)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "low_pct",
+          "high_pct",
+          "shown"
+        ],
+        "title": "PctRange"
+      },
+      "SliceError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "unsupported_file",
+              "file_too_large",
+              "duplicate",
+              "unreadable_image",
+              "analysis_failed",
+              "engine_stopped"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "SliceError"
+      },
+      "SliceResult": {
+        "properties": {
+          "slice_id": {
+            "type": "string",
+            "title": "Slice Id",
+            "description": "Same image, file name, pipeline and models give the same slice_id"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "heart_id": {
+            "type": "string",
+            "title": "Heart Id",
+            "description": "From names like 206IS89mg.tif; otherwise the file name without extension"
+          },
+          "weight_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Mg",
+            "description": "From the file name; null if it has none"
+          },
+          "image_sha256": {
+            "type": "string",
+            "title": "Image Sha256"
+          },
+          "width_px": {
+            "type": "integer",
+            "title": "Width Px"
+          },
+          "height_px": {
+            "type": "integer",
+            "title": "Height Px"
+          },
+          "dpi": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dpi",
+            "description": "[x, y] from the image file; null if it has none"
+          },
+          "mm2_per_px": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mm2 Per Px"
+          },
+          "analysed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Analysed At"
+          },
+          "pipeline_version": {
+            "type": "string",
+            "title": "Pipeline Version"
+          },
+          "models_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models Manifest Sha256"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelFile"
+            },
+            "type": "array",
+            "title": "Models"
+          },
+          "mock": {
+            "type": "boolean",
+            "title": "Mock"
+          },
+          "tissue": {
+            "$ref": "#/components/schemas/TissueResult"
+          },
+          "method_a": {
+            "$ref": "#/components/schemas/MethodAResult"
+          },
+          "method_b": {
+            "$ref": "#/components/schemas/MethodBResult"
+          },
+          "qc_flags": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unvalidated_input",
+                "many_unsure",
+                "holes_removed",
+                "uncertain_holes"
+              ]
+            },
+            "type": "array",
+            "title": "Qc Flags"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/Layer"
+            },
+            "type": "array",
+            "title": "Layers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slice_id",
+          "file_name",
+          "heart_id",
+          "weight_mg",
+          "image_sha256",
+          "width_px",
+          "height_px",
+          "dpi",
+          "mm2_per_px",
+          "analysed_at",
+          "pipeline_version",
+          "models_manifest_sha256",
+          "models",
+          "mock",
+          "tissue",
+          "method_a",
+          "method_b",
+          "qc_flags",
+          "layers"
+        ],
+        "title": "SliceResult"
+      },
+      "TissueResult": {
+        "properties": {
+          "tissue_px": {
+            "type": "integer",
+            "title": "Tissue Px",
+            "description": "Shared tissue (Method A's), real holes removed, uncertain holes kept"
+          },
+          "tissue_mm2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tissue Mm2"
+          },
+          "holes_removed_px": {
+            "type": "integer",
+            "title": "Holes Removed Px"
+          },
+          "holes_uncertain_px": {
+            "type": "integer",
+            "title": "Holes Uncertain Px"
+          },
+          "filled_px": {
+            "type": "integer",
+            "title": "Filled Px",
+            "description": "Enclosed gaps filled in as tissue (glare, very pale tissue)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tissue_px",
+          "tissue_mm2",
+          "holes_removed_px",
+          "holes_uncertain_px",
+          "filled_px"
+        ],
+        "title": "TissueResult"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "The token the engine printed when it started (a new one each launch).",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

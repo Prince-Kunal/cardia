@@ -5,6 +5,8 @@ model). Method A ("K-Means + RF") reads the shared front end with the notebook's
 Method B ("a* cut") runs on its own original front end with the shared holes removed.
 """
 
+from .analysis import Models, SliceAnalysis, analyse_slice
+from .heart import HeartNumbers, heart_numbers
 from .holes import Holes, find_holes
 from .lighting import find_paper, flat_field, normalise_lighting
 from .method_a import ForestModel, MethodA, method_a
@@ -21,15 +23,20 @@ __all__ = [
     "ACuts",
     "ForestModel",
     "FrontEnd",
+    "HeartNumbers",
     "HoleModel",
     "Holes",
     "MethodA",
     "MethodB",
     "ModelFileError",
+    "Models",
+    "SliceAnalysis",
     "TissueMask",
+    "analyse_slice",
     "find_holes",
     "find_paper",
     "flat_field",
+    "heart_numbers",
     "method_a",
     "method_b",
     "normalise_lighting",

@@ -486,7 +486,7 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 | # | Milestone | Output | Owner | Est. |
 |---|---|---|---|---|
 | 0 | Phase 0 gate for both methods (+ hole labelling, tracings request) | `ttc_pipeline/` with Methods A and B, `models/` (hole file, RF, a\* cuts, manifest), one scorecard, golden set, README table | Prince (shared steps, holes, B, scorecard) + Melove (A, golden set) | 2–2.5 wk |
-| 1 | Engine API | Local FastAPI server: jobs with progress, results JSON + layer PNGs, local-only access; **OpenAPI contract published in week 1** so the web app can be built on mock data; golden parity in CI (macOS + Linux) | Prince | 1 wk |
+| 1 | Engine API | Local FastAPI server: jobs with progress, results JSON + layer PNGs, local-only access; **OpenAPI contract published in week 1** so the web app can be built on mock data; golden parity in CI (macOS + Linux). *2026-11-23: contract 0.1.0 (`engine/cardia_api/openapi.json`), server, `--mock` mode; the API reproduces the golden set exactly on team machines. CI has no data yet (§13 item 14)* | Prince | 1 wk |
 | 2 | Web shell | Screens 1, 2, 3, 11; library (SQLite in the engine); watch folder; speed measured | Krrish | 2 wk |
 | 3 | Reports and export | Screens 4, 5, 6; PDF, CSV, ZIP; backup / restore | Krrish (screens) + Melove (export, Methods paragraph) | 1.5 wk |
 | 4 | Cloud sync | Screen 12; accounts, workspaces, sync engine, image opt-in | Prince | 2 wk |
@@ -535,3 +535,4 @@ About 18–20 weeks if done one after another, but three people working in paral
 11. **Which ◇ proposals to accept** (§1k, §1f, §3e, §4 rollout, §8 pass rules).
 12. **Public repo and derived files:** `cardia` is public. May the frozen models and golden masks (derived from GVSU scans) be committed, or does the repo become private? Until decided they are shared through the team Drive (CONTRIBUTING.md).
 13. **Ranges, Method A's high reading on time-control hearts, and the A-or-B choice: revisit once the app is built** (decided 2026-11-23). Teammates are working on method improvements; the best-performing approach is then implemented. Until then the app shows A and B side by side and only B's range.
+14. **Golden parity in CI.** CI runs on GitHub's machines, which have no scans, models or golden set (the repo is public), so the golden tests skip there and run on team machines before a merge. Options: a self-hosted runner on a team Mac that has the data (macOS only); or fetch the data in CI from private storage with a secret, which needs item 12 and the GVSU data agreement (§5); or keep running them on team machines (current).

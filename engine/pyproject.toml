@@ -15,14 +15,20 @@ dependencies = [
     "pandas==3.1.1",
     "pillow==13.0.0",
     "joblib==1.6.0",
+    # The local API (cardia_api/, milestone 1). Not part of the analysis, so these never change a result.
+    "fastapi==0.162.0",
+    "uvicorn==0.54.0",
+    "python-multipart==0.0.33",
 ]
 
 [dependency-groups]
-dev = ["pytest", "ruff", "matplotlib", "nbformat"]
-# The local API (milestone 1) adds fastapi + uvicorn; the desktop phase adds a PyInstaller group.
+dev = ["pytest", "ruff", "matplotlib", "nbformat", "httpx2==2.16.0"]
+# The desktop phase adds a PyInstaller group.
 
 [tool.uv]
 package = false
+# Packages the API pulls in, held at releases that had been out for a while when it was added (2026-11-23).
+constraint-dependencies = ["pydantic<2.14.4", "annotated-doc<0.0.7"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
