@@ -1,0 +1,58 @@
+/* The 3D heart's frame, labels and caption. Labels follow the theme; the heart's colours do not. */
+
+.heart3d {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2, 8px);
+}
+.heart3d-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 640 / 440;
+  border-radius: var(--radius-small, 6px);
+  background: radial-gradient(circle at 50% 40%, var(--surface, #fff), var(--surface-2, #f0eeeb));
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+.heart3d-canvas:active {
+  cursor: grabbing;
+}
+.heart3d-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.heart3d-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
+  border: 1px solid var(--border, #e2ded9);
+  color: var(--text, #24201e);
+  font: 500 13px/1.4 var(--sans, system-ui);
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+}
+.heart3d-label.strong {
+  font-weight: 700;
+  border-color: #f4b400;
+}
+.heart3d-caption {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  font-size: var(--t-small, 0.875rem);
+}
+.heart3d-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2, 8px);
+  min-height: 32px;
+}
