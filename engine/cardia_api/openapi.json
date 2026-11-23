@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -110,7 +110,7 @@
           "jobs"
         ],
         "summary": "Create Job",
-        "description": "Upload scans and start analysing them. Poll GET /jobs/{job_id} for progress.\n\nProblems with a single file (unsupported type, too large, duplicate) fail that slice, not the job.",
+        "description": "Upload scans and start analysing them. Poll GET /jobs/{job_id} for progress.\n\nProblems with a single file (unsupported type, too large, duplicate) fail that slice, not the job.\nEach slice that is done is filed into the library heart with its heart ID.",
         "operationId": "createJob",
         "requestBody": {
           "content": {
@@ -482,13 +482,429 @@
         }
       }
     },
+    "/api/v1/hearts": {
+      "get": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "List Hearts",
+        "description": "Library hearts, most recently changed first.",
+        "operationId": "listHearts",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Text in label, group, operator, notes, tags",
+              "title": "Q"
+            },
+            "description": "Text in label, group, operator, notes, tags"
+          },
+          {
+            "name": "group",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "favourite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Favourite"
+            }
+          },
+          {
+            "name": "trash",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "List the hearts in the trash instead",
+              "default": false,
+              "title": "Trash"
+            },
+            "description": "List the hearts in the trash instead"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Heart"
+                  },
+                  "title": "Response Listhearts"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hearts/{heart_key}": {
+      "get": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Get Heart",
+        "description": "One heart: details, slices in order, and its numbers.",
+        "operationId": "getHeart",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Update Heart",
+        "description": "Change experiment details, tags, favourite, slice order or typed weights. Only fields sent change.",
+        "operationId": "updateHeart",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Trash Heart",
+        "description": "Move a heart to the trash. It can be restored for 30 days.",
+        "operationId": "trashHeart",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hearts/{heart_key}/restore": {
+      "post": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Restore Heart",
+        "description": "Take a heart out of the trash.",
+        "operationId": "restoreHeart",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hearts/summary": {
       "post": {
         "tags": [
           "hearts"
         ],
         "summary": "Summarise Heart",
-        "description": "Heart numbers from its slices (PLAN.md §2g). Weights typed by the user override the file names'.",
+        "description": "Heart numbers from any slices (PLAN.md §2g). Weights typed by the user override the file names'.",
         "operationId": "summariseHeart",
         "requestBody": {
           "content": {
@@ -558,10 +974,274 @@
           }
         ]
       }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Settings",
+        "description": "The app's settings (defaults until changed).",
+        "operationId": "getSettings",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppSettings-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Put Settings",
+        "description": "Replace the settings. Choosing a watch folder takes effect within seconds.",
+        "operationId": "putSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppSettings-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppSettings-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/watch": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Watch Status",
+        "description": "Whether the watch folder is being watched, and what it imported since the engine started.",
+        "operationId": "getWatchStatus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AppSettings-Input": {
+        "properties": {
+          "headline_method": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Headline Method",
+            "description": "The method reports lead with (PLAN.md §2g)",
+            "default": "a"
+          },
+          "theme": {
+            "type": "string",
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "default": "system"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$",
+            "title": "Language",
+            "description": "App language",
+            "default": "en"
+          },
+          "report_language": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$",
+            "title": "Report Language",
+            "default": "en"
+          },
+          "reduced_motion": {
+            "type": "boolean",
+            "title": "Reduced Motion",
+            "default": false
+          },
+          "watch_folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Folder",
+            "description": "Absolute path of the folder to watch for new scans"
+          },
+          "watch_enabled": {
+            "type": "boolean",
+            "title": "Watch Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AppSettings",
+        "description": "Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same."
+      },
+      "AppSettings-Output": {
+        "properties": {
+          "headline_method": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Headline Method",
+            "description": "The method reports lead with (PLAN.md §2g)",
+            "default": "a"
+          },
+          "theme": {
+            "type": "string",
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "default": "system"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$",
+            "title": "Language",
+            "description": "App language",
+            "default": "en"
+          },
+          "report_language": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$",
+            "title": "Report Language",
+            "default": "en"
+          },
+          "reduced_motion": {
+            "type": "boolean",
+            "title": "Reduced Motion",
+            "default": false
+          },
+          "watch_folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Folder",
+            "description": "Absolute path of the folder to watch for new scans"
+          },
+          "watch_enabled": {
+            "type": "boolean",
+            "title": "Watch Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "headline_method",
+          "theme",
+          "language",
+          "report_language",
+          "reduced_motion",
+          "watch_folder",
+          "watch_enabled"
+        ],
+        "title": "AppSettings",
+        "description": "Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same."
+      },
       "Body_createJob": {
         "properties": {
           "files": {
@@ -572,6 +1252,18 @@
             "type": "array",
             "title": "Files",
             "description": "One or more slice scans (TIFF; PNG or JPG are flagged)"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta",
+            "description": "Optional JSON list of UploadMeta, one per file in order: what the user typed"
           }
         },
         "type": "object",
@@ -713,6 +1405,195 @@
         ],
         "title": "Health"
       },
+      "Heart": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label",
+            "description": "The heart ID, e.g. 206"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group",
+            "description": "e.g. control, treatment"
+          },
+          "ischemia_min": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ischemia Min"
+          },
+          "reperfusion_min": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reperfusion Min"
+          },
+          "experiment_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Date"
+          },
+          "operator": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator"
+          },
+          "heart_weight_mg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heart Weight Mg"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Tags"
+          },
+          "favourite": {
+            "type": "boolean",
+            "title": "Favourite",
+            "default": false
+          },
+          "heart_key": {
+            "type": "string",
+            "title": "Heart Key",
+            "description": "The library's ID for this heart"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "Set while the heart is in the trash"
+          },
+          "purge_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purge After",
+            "description": "When a heart in the trash is removed for good (30 days)"
+          },
+          "slices": {
+            "items": {
+              "$ref": "#/components/schemas/HeartSlice"
+            },
+            "type": "array",
+            "title": "Slices"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeartSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Heart numbers; null without slices, or when they come from different pipeline versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "group",
+          "ischemia_min",
+          "reperfusion_min",
+          "experiment_date",
+          "operator",
+          "heart_weight_mg",
+          "notes",
+          "tags",
+          "favourite",
+          "heart_key",
+          "created_at",
+          "updated_at",
+          "deleted_at",
+          "purge_after",
+          "slices",
+          "summary"
+        ],
+        "title": "Heart"
+      },
       "HeartMethodA": {
         "properties": {
           "dead_pct": {
@@ -809,6 +1690,97 @@
         ],
         "title": "HeartMethodB"
       },
+      "HeartSlice": {
+        "properties": {
+          "slice_id": {
+            "type": "string",
+            "title": "Slice Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "description": "Order in the heart, from 0 (apex to base when the user has ordered them)"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "weight_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Mg",
+            "description": "The typed weight, else the file name's"
+          },
+          "weight_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "typed",
+                  "file_name"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Source"
+          },
+          "method_a_dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method A Dead Pct"
+          },
+          "method_b_dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method B Dead Pct"
+          },
+          "qc_flags": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "unvalidated_input",
+                "many_unsure",
+                "holes_removed",
+                "uncertain_holes"
+              ]
+            },
+            "type": "array",
+            "title": "Qc Flags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slice_id",
+          "position",
+          "file_name",
+          "weight_mg",
+          "weight_source",
+          "method_a_dead_pct",
+          "method_b_dead_pct",
+          "qc_flags"
+        ],
+        "title": "HeartSlice"
+      },
       "HeartSliceRef": {
         "properties": {
           "slice_id": {
@@ -835,6 +1807,33 @@
           "slice_id"
         ],
         "title": "HeartSliceRef"
+      },
+      "HeartSliceUpdate": {
+        "properties": {
+          "slice_id": {
+            "type": "string",
+            "title": "Slice Id"
+          },
+          "weight_mg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Mg",
+            "description": "A typed weight; null uses the file name's"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slice_id"
+        ],
+        "title": "HeartSliceUpdate"
       },
       "HeartSummary": {
         "properties": {
@@ -951,11 +1950,164 @@
         ],
         "title": "HeartSummaryRequest"
       },
+      "HeartUpdate": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "ischemia_min": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ischemia Min"
+          },
+          "reperfusion_min": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reperfusion Min"
+          },
+          "experiment_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Date"
+          },
+          "operator": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator"
+          },
+          "heart_weight_mg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heart Weight Mg"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "favourite": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Favourite"
+          },
+          "slices": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/HeartSliceUpdate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slices"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "HeartUpdate",
+        "description": "Only the fields sent change. `slices` is the heart's new slice list, in order; slices left out are\ntaken out of the heart (their results are kept)."
+      },
       "Job": {
         "properties": {
           "job_id": {
             "type": "string",
             "title": "Job Id"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "upload",
+              "watch_folder"
+            ],
+            "title": "Source"
           },
           "state": {
             "type": "string",
@@ -1005,6 +2157,7 @@
         "type": "object",
         "required": [
           "job_id",
+          "source",
           "state",
           "created_at",
           "finished_at",
@@ -1151,6 +2304,30 @@
                 "type": "null"
               }
             ]
+          },
+          "heart_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heart Key",
+            "description": "Set when the job has finished: the library heart it was filed into"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds",
+            "description": "Analysis time in seconds (null if cached or not finished)"
           }
         },
         "type": "object",
@@ -1165,7 +2342,9 @@
           "progress",
           "slice_id",
           "cached",
-          "error"
+          "error",
+          "heart_key",
+          "seconds"
         ],
         "title": "JobSlice"
       },
@@ -1720,6 +2899,67 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WatchStatus": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "off",
+              "watching",
+              "folder_missing"
+            ],
+            "title": "State"
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder"
+          },
+          "last_scan_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scan At"
+          },
+          "files_imported": {
+            "type": "integer",
+            "title": "Files Imported",
+            "description": "Files imported from the folder since the engine started"
+          },
+          "last_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Job Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "folder",
+          "last_scan_at",
+          "files_imported",
+          "last_job_id"
+        ],
+        "title": "WatchStatus"
       }
     },
     "securitySchemes": {

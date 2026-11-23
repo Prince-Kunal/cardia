@@ -5,14 +5,19 @@ already stored is done at once (`cached`). The same slice in two jobs is analyse
 sends at most `workers` slices to the pool at a time, so cancel can drop every slice not yet started.
 Slices already running finish (a slice takes seconds) and their results are kept.
 
-Jobs live in memory until the engine stops; slice results stay on disk (store.py).
+When a job finishes, its done slices are handed to `on_done` in upload order (the library files them
+into their hearts, so a heart's slices keep the order they were imported in). Jobs live in memory until
+the engine stops; slice results stay on disk (store.py) and hearts in the library.
 """
 
 import hashlib
+import logging
 import multiprocessing as mp
 import threading
+import time
 import uuid
 from collections import deque
+from collections.abc import Callable
 from concurrent.futures import CancelledError, ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass, field
@@ -23,6 +28,7 @@ from . import worker
 from .settings import Settings
 from .store import Store
 
+log = logging.getLogger("cardia.jobs")
 FINAL = ("done", "failed", "cancelled")
 STAGE_PROGRESS = {"reading": 0.05, "front_end": 0.1, "method_a": 0.45, "method_b": 0.75, "layers": 0.9}
 KEEP_FINISHED_JOBS = 200
@@ -42,6 +48,9 @@ class Entry:
     state: str = "queued"
     cached: bool = False
     error: dict | None = None
+    typed_weight_mg: float | None = None  # typed at import; the library keeps it with the heart
+    heart_key: str | None = None  # the library heart it was filed into, once done
+    seconds: float | None = None  # analysis time, from sending it to a worker to its result
 
 
 @dataclass(eq=False)
@@ -49,6 +58,7 @@ class JobRecord:
     job_id: str
     created_at: datetime
     entries: list[Entry]
+    source: str = "upload"
     cancel_requested: bool = False
     finished_at: datetime | None = None
 
@@ -61,11 +71,20 @@ class _Slot:
     entries: list[Entry] = field(default_factory=list)
     stage: str | None = None
     generation: int = -1  # pool generation it was sent to; -1 while waiting
+    started: float | None = None  # time.monotonic() when sent to a worker
 
 
 class JobManager:
-    def __init__(self, settings: Settings, store: Store, pipeline_version: str, manifest_sha256: str | None):
+    def __init__(
+        self,
+        settings: Settings,
+        store: Store,
+        pipeline_version: str,
+        manifest_sha256: str | None,
+        on_done: Callable[[Entry], str | None] | None = None,
+    ):
         self.settings = settings
+        self.on_done = on_done  # called (lock held) per done entry when its job finishes; returns its heart key
         self.store = store
         self.pipeline_version = pipeline_version
         self.manifest_sha256 = manifest_sha256
@@ -121,8 +140,8 @@ class JobManager:
         key = "\0".join([image_sha256, file_name, self.pipeline_version, self.manifest_sha256 or "none"])
         return hashlib.sha256(key.encode()).hexdigest()[:24]
 
-    def submit(self, entries: list[Entry]) -> str:
-        job = JobRecord(job_id=uuid.uuid4().hex, created_at=datetime.now(UTC), entries=entries)
+    def submit(self, entries: list[Entry], source: str = "upload") -> str:
+        job = JobRecord(job_id=uuid.uuid4().hex, created_at=datetime.now(UTC), entries=entries, source=source)
         with self._lock:
             for e in entries:
                 if e.error is not None:
@@ -188,6 +207,7 @@ class JobManager:
             slot = self._slots[sid]
             self._running.add(sid)
             slot.generation = self._generation
+            slot.started = time.monotonic()
             for e in slot.entries:
                 e.state = "running"
             try:
@@ -218,11 +238,21 @@ class JobManager:
     def _finish_slot(self, sid: str, out: dict) -> None:
         slot = self._slots.pop(sid, None)
         self._running.discard(sid)
+        seconds = time.monotonic() - slot.started if slot and slot.started is not None else None
         for e in slot.entries if slot else []:
+            e.seconds = seconds
             if out["ok"]:
                 e.state = "done"
             else:
                 e.state, e.error = "failed", out["error"]
+
+    def _file(self, e: Entry) -> None:
+        if self.on_done is None:
+            return
+        try:
+            e.heart_key = self.on_done(e)
+        except Exception:  # the analysis is done and stored; filing it must not break the job
+            log.exception("could not file slice %s into the library", e.slice_id)
 
     def _replace_pool(self, generation: int) -> None:
         """A worker died (e.g. out of memory): start a new pool once, unless the engine is stopping."""
@@ -236,6 +266,9 @@ class JobManager:
         now = datetime.now(UTC)
         for job in self._jobs.values():
             if job.finished_at is None and all(e.state in FINAL for e in job.entries):
+                for e in job.entries:
+                    if e.state == "done":
+                        self._file(e)
                 job.finished_at = now
 
     def _forget_old_jobs(self) -> None:
@@ -268,6 +301,8 @@ class JobManager:
                     "slice_id": e.slice_id if e.state == "done" else None,
                     "cached": e.cached,
                     "error": e.error,
+                    "heart_key": e.heart_key,
+                    "seconds": e.seconds,
                 }
             )
         counts = {s: sum(x["state"] == s for x in slices) for s in ("queued", "running", "done", "failed", "cancelled")}
@@ -281,6 +316,7 @@ class JobManager:
             state = "queued"
         return {
             "job_id": job.job_id,
+            "source": job.source,
             "state": state,
             "created_at": job.created_at,
             "finished_at": job.finished_at,

@@ -71,6 +71,7 @@ def test_same_photo_twice_is_bit_identical():
         ("206IS89.5mg.TIF", ("206", 89.5)),
         ("scan_207IS110mg.png", ("207", 110.0)),
         ("my slice.jpg", ("my slice", None)),
+        ("206IS1.2.3mg.tif", ("206", None)),  # a heart ID, but no readable weight
     ],
 )
 def test_parse_name(name, expected):

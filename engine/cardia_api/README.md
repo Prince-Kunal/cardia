@@ -34,13 +34,19 @@ The engine refuses requests whose `Origin` is not an allowed UI origin (403) and
 
 | Step | Call | Notes |
 |---|---|---|
-| Import | `POST /api/v1/jobs` (multipart, field `files`, one or more) | Returns `202` and a `Job` right away. Heart ID and weight come from names like `206IS89mg.tif` |
+| Import | `POST /api/v1/jobs` (multipart, field `files`, one or more; optional field `meta`) | Returns `202` and a `Job` right away. Heart ID and weight come from names like `206IS89mg.tif`; `meta` is a JSON list, one `{"heart_id"?, "weight_mg"?}` per file, for what the user typed where the name had nothing |
 | Progress | `GET /api/v1/jobs/{job_id}` every ~0.5 s until `finished_at` is set | Each slice has `state`, `stage` and `progress` (0–1); the job has `progress` and `counts` |
 | Cancel | `POST /api/v1/jobs/{job_id}/cancel` | Slices not yet started are cancelled; running ones (a few seconds each) finish and are kept |
 | Slice report | `GET /api/v1/slices/{slice_id}` | `SliceResult`: tissue, Method A, Method B, QC flags, versions, layer names |
 | Layers | `GET /api/v1/slices/{slice_id}/layers/{layer}` | PNG at full resolution; see below |
-| Heart report | `POST /api/v1/hearts/summary` with `{"slices": [{"slice_id": …, "weight_mg"?: …}]}` | Weighted heart numbers. `weight_mg` here overrides the file name (a weight the user typed) |
-| Library | `GET /api/v1/slices` | Every stored result, newest first. Jobs are kept only until the engine stops; results stay on disk |
+| Library | `GET /api/v1/hearts?q=&group=&tag=&favourite=&trash=` | Hearts with their slices and numbers, most recently changed first. When a job finishes, its slices are filed into the heart with the same heart ID (made if needed), in upload order; each job slice then has `heart_key` |
+| Heart report | `GET /api/v1/hearts/{heart_key}` | Details, slices in order (each with its weight and where it came from) and `summary`, the heart numbers |
+| Edit a heart | `PATCH /api/v1/hearts/{heart_key}` | Only the fields sent change: experiment details, tags, favourite, and `slices` (new order, typed weights; slices left out are taken out of the heart) |
+| Trash | `DELETE /api/v1/hearts/{heart_key}`, `POST …/restore` | Hearts stay in the trash 30 days (`purge_after`), then go for good. Slice results stay on disk |
+| Any slices | `POST /api/v1/hearts/summary` with `{"slices": [{"slice_id": …, "weight_mg"?: …}]}` | Heart numbers for slices you choose, e.g. a preview before saving |
+| Settings | `GET` / `PUT /api/v1/settings` | Headline method, theme, languages, reduced motion, watch folder. Kept by the engine, so every browser sees the same |
+| Watch folder | `GET /api/v1/watch` | Set `watch_folder` (absolute path) and `watch_enabled` in the settings. New scans saved there are imported within seconds as `source: "watch_folder"` jobs; files already there when the folder is chosen are not |
+| All results | `GET /api/v1/slices` | Every stored slice result, newest first. Jobs are kept only until the engine stops; results and the library stay on disk |
 
 A problem with one file fails that slice and leaves the rest of the job running. Each failed slice gets an `error.code`:
 
@@ -93,6 +99,9 @@ Edit `schemas.py` / `app.py`, then run `uv run python -m cardia_api.openapi` to 
 | `jobs.py` | Job queue: a pool of worker processes (`spawn`), progress, cancel |
 | `worker.py` | One slice in a worker: `ttc_pipeline.analyse_slice` (the function the golden set is made with), then the layers and `result.json` |
 | `store.py` | The data folder: images by SHA-256 and one folder per slice |
+| `library.py` | The library in SQLite (`<data dir>/library.sqlite3`): hearts, their slices, details, trash, settings |
+| `hearts.py` | Heart records and heart numbers from stored results |
+| `watch.py` | The watch folder |
 | `mock.py` | Fake analysis for `--mock` |
 
 `tests/test_api_golden.py` runs the 30 study scans through the API and checks every number and mask against the golden set (it needs the data, the models and the golden set, so it skips in CI).
