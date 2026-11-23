@@ -14,4 +14,5 @@ Three people work on this repo from different machines. Read [PLAN.md](PLAN.md) 
 
 - Setup check: `scripts/setup.sh`
 - Engine: `cd engine && uv sync --locked`, then `uv run pytest` and `uv run ruff check .`
+- Engine API: `cd engine && uv run python -m cardia_api [--mock]`; after changing the API, `uv run python -m cardia_api.openapi` rewrites the contract
 - Data check: `python3 scripts/check_data.py`

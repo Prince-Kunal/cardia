@@ -11,13 +11,14 @@ in engine/tests/golden/golden.sha256 (in git), so a copy can be checked.
 import json
 import platform
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 
-from ttc_pipeline import PIPELINE_VERSION, ACuts, ForestModel, HoleModel, method_a, method_b, read_rgb, run_front_end
-from ttc_pipeline.models import MANIFEST, MODELS_DIR, sha256_file
+from ttc_pipeline import PIPELINE_VERSION, Models, analyse_slice, read_rgb
+from ttc_pipeline.models import sha256_file
 
 from .study import REPO, study_scans
 
@@ -26,51 +27,11 @@ HASHES = REPO / "engine" / "tests" / "golden" / "golden.sha256"
 MASKS = ("tissue", "holes_removed", "a_dead", "b_tissue", "b_dead", "b_borderline")
 
 
-def qc_flags(path, a, holes):
-    """Slice-level QC flags that need no other slice (PLAN.md §2g)."""
-    flags = []
-    if not str(path).lower().endswith((".tif", ".tiff")):
-        flags.append("unvalidated_input")
-    if a.many_unsure:
-        flags.append("many_unsure")
-    if holes.removed.any():
-        flags.append("holes_removed")
-    if holes.uncertain.any():
-        flags.append("uncertain_holes")
-    return ";".join(flags)
-
-
-def analyse(path, hole_model, forest, cuts):
+def analyse(path, models: Models):
     """One slice as the app analyses it: (row of numbers, {mask name: bool array})."""
-    rgb = read_rgb(path)
-    fe = run_front_end(rgb, hole_model)
-    a = method_a(fe.norm, fe.tissue, fe.holes.uncertain, forest)
-    b = method_b(rgb, fe.holes, cuts)
-    row = {
-        "tissue_px": int(fe.tissue.sum()),
-        "holes_removed_px": int(fe.holes.removed.sum()),
-        "holes_uncertain_px": int(fe.holes.uncertain.sum()),
-        "filled_px": int(fe.filled.sum()),
-        "a_dead_pct": a.dead_pct,
-        "a_low_pct": a.low_pct,
-        "a_high_pct": a.high_pct,
-        "a_unsure_pct": a.unsure_pct,
-        "b_tissue_px": int(b.tissue.sum()),
-        "b_dead_pct": b.dead_pct,
-        "b_low_pct": b.low_pct,
-        "b_high_pct": b.high_pct,
-        "b_borderline_pct": b.borderline_pct,
-        "qc_flags": qc_flags(path, a, fe.holes),
-    }
-    masks = {
-        "tissue": fe.tissue,
-        "holes_removed": fe.holes.removed,
-        "a_dead": a.dead,
-        "b_tissue": b.tissue,
-        "b_dead": b.dead,
-        "b_borderline": b.borderline,
-    }
-    return row, masks
+    sa = analyse_slice(read_rgb(path), Path(path).name, models)
+    masks = sa.masks()
+    return sa.numbers(), {k: masks[k] for k in MASKS}
 
 
 def platform_tag():
@@ -80,23 +41,27 @@ def platform_tag():
 def main():
     scans = study_scans()
     assert len(scans) == 30, f"expected the 30 study scans in data/, found {len(scans)}"
-    hole_model, forest, cuts = HoleModel.load(), ForestModel.load(), ACuts.load()
+    models = Models.load()
     (GOLDEN / "masks").mkdir(parents=True, exist_ok=True)
     rows = []
     for name, path in scans.items():
-        row, masks = analyse(path, hole_model, forest, cuts)
+        row, masks = analyse(path, models)
         heart, weight = name[:3], float(name.split("IS")[1][: -len("mg.tif")])
         rows.append({"file": name, "heart": heart, "weight_mg": weight, "image_sha256": sha256_file(path), **row})
         for k, m in masks.items():
             Image.fromarray((m * 255).astype(np.uint8)).save(GOLDEN / "masks" / f"{name[:-4]}_{k}.png", optimize=False)
     df = pd.DataFrame(rows)
     df["pipeline_version"] = PIPELINE_VERSION
-    df["models_manifest_sha256"] = sha256_file(MODELS_DIR / MANIFEST)
+    df["models_manifest_sha256"] = models.manifest_sha256
     df.to_csv(GOLDEN / "per_slice.csv", index=False, float_format="%.10g")
     meta = {
         "pipeline_version": PIPELINE_VERSION,
-        "models": {"hole_model": hole_model.version, "kmeans_rf": forest.version, "a_cut": cuts.version},
-        "models_manifest_sha256": sha256_file(MODELS_DIR / MANIFEST),
+        "models": {
+            "hole_model": models.holes.version,
+            "kmeans_rf": models.forest.version,
+            "a_cut": models.cuts.version,
+        },
+        "models_manifest_sha256": models.manifest_sha256,
         "platform": platform_tag(),
         "python": sys.version.split()[0],
         "numpy": np.__version__,

@@ -12,7 +12,7 @@ import pytest
 from PIL import Image
 
 from training.golden import GOLDEN, HASHES, MASKS, analyse, platform_tag
-from ttc_pipeline import PIPELINE_VERSION, ACuts, ForestModel, HoleModel, ModelFileError
+from ttc_pipeline import PIPELINE_VERSION, ModelFileError, Models
 from ttc_pipeline.models import MANIFEST, MODELS_DIR, sha256_file
 
 PCT_COLUMNS = [
@@ -52,12 +52,12 @@ def test_the_golden_set_matches_this_engine_version(golden):
 def test_the_engine_reproduces_the_golden_set(golden, scans):
     table, meta = golden
     try:
-        models = HoleModel.load(), ForestModel.load(), ACuts.load()
+        models = Models.load()
     except ModelFileError as e:
         pytest.skip(f"no frozen models on this machine: {e}")
     exact = meta["platform"] == platform_tag()
     for name, path in scans.items():
-        row, masks = analyse(path, *models)
+        row, masks = analyse(path, models)
         want = table.loc[name]
         assert row["qc_flags"] == want.qc_flags, name
         for col in PCT_COLUMNS:
