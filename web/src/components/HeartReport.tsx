@@ -66,7 +66,7 @@ export function Strip({ heart }: { heart: Heart }) {
       <ol className="strip" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {heart.slices.map((s, i) => (
           <li key={s.slice_id}>
-            <a className="strip-slice" href={href({ name: 'slice', id: s.slice_id, heart: heart.heart_key })}>
+            <a className="strip-slice card-link" href={href({ name: 'slice', id: s.slice_id, heart: heart.heart_key })}>
               <Thumb sliceId={s.slice_id} label={`Slice ${i + 1}, ${s.file_name}`} />
               <span className="fine">
                 <strong>{i + 1}</strong> · {s.weight_mg === null ? 'no weight' : `${s.weight_mg} mg`}
@@ -107,7 +107,7 @@ export function Quality({ heart }: { heart: Heart }) {
       {q.reasons.length === 0 ? (
         <p className="muted">Nothing about these slices lowers confidence.</p>
       ) : (
-        <ul className="reasons" style={{ fontSize: '0.95rem' }}>
+        <ul className="reasons">
           {q.reasons.map((r) => (
             <li key={r.key}>{r.text}</li>
           ))}
