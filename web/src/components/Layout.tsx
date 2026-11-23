@@ -1,5 +1,6 @@
-import { type ReactNode, useContext } from 'react';
+import { type ReactNode, useContext, useLayoutEffect } from 'react';
 import { LEARN_ROUTES, type Route, href } from '../lib/router';
+import { scrollPageTo, takeForwardNavigation } from '../lib/scroll';
 import { AppContext } from '../state';
 
 const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart', 'slice'];
@@ -8,6 +9,12 @@ const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart', 'slice'];
 export function Layout({ route, children }: { route: Route; children: ReactNode }) {
   const app = useContext(AppContext);
   const learn = LEARN_ROUTES.includes(route.name);
+  const at = href(route);
+  // A page reached by a link starts at the top; Back and Forward leave the scroll to the browser.
+  // A layout effect, so a screen's own effect (the glossary scrolling to a term) runs after it.
+  useLayoutEffect(() => {
+    if (takeForwardNavigation()) scrollPageTo(0);
+  }, [at]);
   const tab = (name: Route['name'], label: string) => (
     <a href={href({ name } as Route)} className="nav-link" aria-current={route.name === name ? 'page' : undefined}>
       {label}
