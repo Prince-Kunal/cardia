@@ -6,15 +6,28 @@ all in git. Method B's parity test also needs the research repo at `reference/re
 (CONTRIBUTING.md). Tests skip with a message when files are missing.
 """
 
+import json
 from pathlib import Path
 
 import pytest
 
+from training.golden import GOLDEN, platform_tag
 from training.holes import LABELS_PATH, build_candidates, load_labels, notebook_tissues
 from training.notebook_holes import notebook_candidates
 from training.study import REPO, StudySlice, front_end, study_scans
 
 REFERENCE_MASKS = REPO / "reference" / "results_local" / "masks"
+
+
+@pytest.fixture(scope="session")
+def on_reference_platform() -> bool:
+    """True on the platform the models and the golden set were made on (reference/golden/meta.json).
+
+    There, training and analysis must be bit-identical; on other platforms PLAN.md §7's tolerances apply,
+    because the linear algebra libraries differ in the last bits.
+    """
+    meta = GOLDEN / "meta.json"
+    return meta.exists() and json.loads(meta.read_text())["platform"] == platform_tag()
 
 
 @pytest.fixture(scope="session")
