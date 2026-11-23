@@ -4,11 +4,12 @@
 import { type FormEvent, type InputHTMLAttributes, useState } from 'react';
 import type { Heart, HeartSlice, HeartUpdate } from '../api/types.gen';
 import { EngineError } from '../api/client';
+import { ExportCard, MethodsText, PrintDetails, Quality, Strip } from '../components/HeartReport';
 import { ErrorNote, MethodsPanel } from '../components/ui';
 import { DASH, METHOD_SHORT, QC_LABEL, date, mg, methodOrder, pct, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { typedWeight } from '../lib/filenames';
-import { navigate } from '../lib/router';
+import { href, navigate } from '../lib/router';
 import { useApp, useResource } from '../state';
 
 const QC_SHORT: Record<string, string> = {
@@ -305,7 +306,9 @@ function Slices({ heart, onSaved }: { heart: Heart; onSaved: (h: Heart) => void 
             {heart.slices.map((s, i) => (
               <tr key={s.slice_id}>
                 <td className="num muted">{i + 1}</td>
-                <td className="mono">{s.file_name}</td>
+                <td className="mono">
+                  <a href={href({ name: 'slice', id: s.slice_id, heart: heart.heart_key })}>{s.file_name}</a>
+                </td>
                 <td>
                   <WeightCell
                     s={s}
@@ -492,7 +495,12 @@ export function HeartScreen({ heartKey }: { heartKey: string }) {
         )
       )}
 
+      {h.slices.length > 0 && <Strip heart={h} />}
       {h.slices.length > 0 && <Slices heart={h} onSaved={setCurrent} />}
+      {h.slices.length > 0 && <Quality heart={h} />}
+      {h.slices.length > 0 && s && <MethodsText heart={h} />}
+      {h.slices.length > 0 && <ExportCard heart={h} />}
+      <PrintDetails heart={h} />
       <Details heart={h} onSaved={setCurrent} />
     </div>
   );

@@ -2,6 +2,7 @@
 // favourites, the 30-day trash, and any import still running.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { EngineError, saveFile } from '../api/client';
 import type { Heart, Job } from '../api/types.gen';
 import { Empty, ErrorNote, Progress } from '../components/ui';
 import { DASH, METHOD_SHORT, date, mg, methodOrder, pct, plural, range } from '../lib/format';
@@ -202,6 +203,17 @@ export function LibraryScreen() {
   );
   const tags = useMemo(() => [...new Set((all.data ?? []).flatMap((h) => h.tags))].sort(), [all.data]);
   const filtered = !!(q || group || tag || favourites);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string>();
+  const exportCsv = () => {
+    setExporting(true);
+    setExportError(undefined);
+    client
+      .heartsCsv({ q, group, tag, favourite: favourites || undefined })
+      .then(saveFile)
+      .catch((e: unknown) => setExportError(e instanceof EngineError ? e.message : String(e)))
+      .finally(() => setExporting(false));
+  };
   const order = methodOrder(settings.headline_method);
   const list = hearts.data ?? [];
 
@@ -222,6 +234,17 @@ export function LibraryScreen() {
           <button type="button" className="button" aria-pressed={trash} onClick={() => setTrash((t) => !t)}>
             {trash ? 'Back to library' : 'Trash'}
           </button>
+          {!trash && list.length > 0 && (
+            <button
+              type="button"
+              className="button"
+              disabled={exporting}
+              onClick={exportCsv}
+              title={filtered ? 'One row per heart shown below' : 'One row per heart in the library'}
+            >
+              {exporting ? 'Preparing…' : 'Export CSV'}
+            </button>
+          )}
           {!trash && (
             <a className="button primary" href="#/import">
               New analysis
@@ -278,6 +301,7 @@ export function LibraryScreen() {
       )}
 
       <ErrorNote error={hearts.error} />
+      <ErrorNote error={exportError} />
 
       {hearts.data && list.length === 0 ? (
         trash ? (
