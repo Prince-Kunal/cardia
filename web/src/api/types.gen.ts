@@ -1,7 +1,7 @@
 // Generated from engine/cardia_api/openapi.json by `uv run python -m cardia_api.openapi`. Do not edit.
-// Cardia engine API 0.3.0.
+// Cardia engine API 0.4.0.
 
-export const API_VERSION = "0.3.0";
+export const API_VERSION = "0.4.0";
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettingsInput {
@@ -271,6 +271,17 @@ export interface PctRange {
   shown: boolean;
 }
 
+/** What a restore added. Restoring never overwrites: hearts already here are skipped. */
+export interface RestoreReport {
+  hearts_added: number;
+  /** Hearts already in this library (by key), or whose slices all are */
+  hearts_skipped: number;
+  slices_added: number;
+  slice_results_copied: number;
+  images_copied: number;
+  backup_created_at: string | null;
+}
+
 export interface SliceError {
   code: "unsupported_file" | "file_too_large" | "duplicate" | "unreadable_image" | "analysis_failed" | "engine_stopped";
   message: string;
@@ -300,6 +311,21 @@ export interface SliceResult {
   method_b: MethodBResult;
   qc_flags: ("unvalidated_input" | "many_unsure" | "holes_removed" | "uncertain_holes")[];
   layers: Layer[];
+}
+
+export interface StudyHeart {
+  heart_id: string;
+  slices: number;
+  total_weight_mg: number | null;
+  method_a_dead_pct: number | null;
+  method_b_dead_pct: number | null;
+}
+
+/** The hearts the pipeline was checked on (PLAN.md §1d), as context for a report. Compare a heart with them only when it was measured with the same pipeline version and model files. */
+export interface StudySet {
+  pipeline_version: string;
+  models_manifest_sha256: string | null;
+  hearts: StudyHeart[];
 }
 
 export interface TissueResult {

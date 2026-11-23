@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path as FilePath
 from typing import Annotated
 
@@ -19,6 +20,7 @@ from ttc_pipeline import PIPELINE_VERSION, Models, parse_name
 from ttc_pipeline.method_b import ACuts
 
 from . import API_VERSION
+from .backup import BadBackup, restore_backup, write_backup
 from .catalog import LAYERS, methods
 from .export import hearts_csv, methods_paragraphs, safe_name, slices_csv, write_bundle
 from .hearts import MixedVersions, heart_record, summarise
@@ -37,13 +39,16 @@ from .schemas import (
     Job,
     Layer,
     MethodsParagraph,
+    RestoreReport,
     SliceResult,
+    StudySet,
     UploadMeta,
     WatchStatus,
 )
 from .security import OriginGuard, require_token
 from .settings import ACCEPTED_SUFFIXES, Settings
 from .store import FileTooLarge, Store
+from .study_set import load as load_study_set
 from .watch import Watcher
 from .worker import model_files
 
@@ -414,6 +419,62 @@ def create_app(settings: Settings) -> FastAPI:
         return FileResponse(
             tmp, media_type="application/zip", filename=f"{root}.zip", background=BackgroundTask(os.unlink, tmp)
         )
+
+    # the study set, and backing up the library -------------------------------------------------
+
+    @api.get("/study-set", operation_id="getStudySet", tags=["hearts"], responses=NOT_FOUND)
+    def study_set() -> StudySet:
+        """The hearts the pipeline was checked on, with each method's infarct %, as context for a report.
+        Compare a heart with them only when its pipeline version and model files are the same."""
+        return _found(load_study_set(), "study set in this build")
+
+    @api.get(
+        "/library/backup.zip",
+        operation_id="backupLibrary",
+        tags=["library"],
+        response_class=FileResponse,
+        responses={200: {"content": {"application/zip": {}}, "description": "The whole library in one file"}},
+    )
+    def backup_library():
+        """The whole library as one ZIP: every heart and its details, every slice result and image layer,
+        every original scan, and a manifest with the SHA-256 of each file. Restore it with POST
+        /library/restore, here or on another computer."""
+        fd, tmp = tempfile.mkstemp(prefix="cardia-backup-", suffix=".zip")
+        os.close(fd)
+        try:
+            write_backup(
+                FilePath(tmp),
+                library,
+                store,
+                {"api_version": API_VERSION, "pipeline_version": pipeline_version, "mock": settings.mock},
+            )
+        except BaseException:
+            os.unlink(tmp)
+            raise
+        name = f"cardia-backup-{datetime.now(UTC).strftime('%Y-%m-%d')}.zip"
+        return FileResponse(tmp, media_type="application/zip", filename=name, background=BackgroundTask(os.unlink, tmp))
+
+    @api.post(
+        "/library/restore",
+        operation_id="restoreLibrary",
+        tags=["library"],
+        responses={400: {"model": ErrorResponse, "description": "Not a Cardia backup, or a damaged one"}},
+    )
+    def restore_library(
+        backup: Annotated[UploadFile, File(description="A backup made by GET /library/backup.zip")],
+    ) -> RestoreReport:
+        """Add a backup's hearts to this library. Nothing here is overwritten: hearts already here are
+        skipped, and a damaged backup is refused before anything changes."""
+        fd, tmp = tempfile.mkstemp(prefix="cardia-restore-", suffix=".zip")
+        try:
+            with os.fdopen(fd, "wb") as out:
+                while chunk := backup.file.read(1 << 20):
+                    out.write(chunk)
+            return RestoreReport.model_validate(restore_backup(FilePath(tmp), library, store))
+        except BadBackup as e:
+            raise HTTPException(400, str(e)) from None
+        finally:
+            os.unlink(tmp)
 
     # settings and the watch folder -------------------------------------------------------------
 

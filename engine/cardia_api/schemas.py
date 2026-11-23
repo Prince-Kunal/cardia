@@ -338,5 +338,33 @@ class WatchStatus(Model):
     last_job_id: str | None
 
 
+class StudyHeart(Model):
+    heart_id: str
+    slices: int
+    total_weight_mg: float | None
+    method_a_dead_pct: float | None
+    method_b_dead_pct: float | None
+
+
+class StudySet(Model):
+    """The hearts the pipeline was checked on (PLAN.md §1d), as context for a report. Compare a heart with
+    them only when it was measured with the same pipeline version and model files."""
+
+    pipeline_version: str
+    models_manifest_sha256: str | None
+    hearts: list[StudyHeart]
+
+
+class RestoreReport(Model):
+    """What a restore added. Restoring never overwrites: hearts already here are skipped."""
+
+    hearts_added: int
+    hearts_skipped: int = Field(description="Hearts already in this library (by key), or whose slices all are")
+    slices_added: int
+    slice_results_copied: int
+    images_copied: int
+    backup_created_at: datetime | None
+
+
 class ErrorResponse(Model):
     detail: str
