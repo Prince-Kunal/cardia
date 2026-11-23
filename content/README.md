@@ -1,24 +1,20 @@
 # Learn content
 
-Lessons, glossary and quizzes for Cardia's Learn section (PLAN.md §3, §4). These are plain Markdown and JSON files, so biology reviewers can edit them without touching code. The web app bundles them at build time, so Learn works offline. Owner: Melove; everyone writes.
+Lessons, glossary and quizzes for Cardia's Learn section (PLAN.md §3). These are plain Markdown and JSON files, so biology reviewers can edit them without touching code. The web app bundles them at build time, so Learn works offline. Owner: Melove; everyone writes. The course is English only (PLAN.md D10).
 
 ## Layout
 
 ```
 content/
-  en/                           English is the source language
+  en/
     01-heart-from-zero.md       one file per module, numbered as in PLAN.md §3a
-    03-where-the-blood-goes.md
-    05-what-a-heart-attack-is.md
-    08-how-ttc-staining-works.md
-    10-how-our-app-does-it.md
+    02-how-the-heart-pumps.md
+    …
+    12-bonus-for-cs-students.md
     glossary.json               term id -> { title, short, lesson }
-  hi/                           one folder per language, same file names (languages milestone)
 ```
 
-v1 modules: **1** (the heart, from zero), **3** (where the blood goes), **5** (what a heart attack is), **8** (how TTC staining works) and **10** (how our app does it). All five are **drafts** (`reviewed_by: ""`): the app shows them with a "not yet expert-reviewed" badge until a GVSU faculty member signs them off. A module without a file shows as "coming later" on the course map.
-
-A translated lesson replaces the English one for that language; untranslated lessons and glossary terms fall back to English.
+All twelve modules have a lesson. All are **drafts** (`reviewed_by: ""`): the app shows them with a "not yet expert-reviewed" badge until a GVSU faculty member signs them off. A module without a file shows as "coming later" on the course map.
 
 ## Checking your changes
 
@@ -85,7 +81,7 @@ Each `::scene{…}` line starts a new **step** of the lesson and sets the heart 
 | `anterior` | `ra`, `la`, `rv`, `lv`, `aorta`, `pulmonary-trunk`, `svc`, `lad`, `lcx`, `rca`, `lad-territory`, `lcx-territory`, `rca-territory`, `lv-anterior-wall`, `apex`, `base`, `epicardium` |
 | `short-axis`, `ttc` | `lv`, `rv`, `septum`, `lv-cavity`, `rv-cavity`, `endocardium`, `epicardium`, `myocardium`, `infarct`, `lv-anterior-wall` |
 
-The heart is a 2D diagram for now, schematic and not to scale; it is also the 2D fallback the 3D heart (milestone 6) keeps. Scenes written for it will drive the 3D heart unchanged.
+The same scene drives both hearts: the 3D heart where the browser has WebGL, and the 2D diagram (schematic, not to scale) everywhere else and in quizzes.
 
 ### Quizzes
 
@@ -120,5 +116,4 @@ A wrong answer comes back in the learner's **Review**, then again after 1, 3 and
 
 * Every module is reviewed by a GVSU faculty member (or a cardiology/physiology teacher) before release, and its sources are cited. Put the reviewer's name in `reviewed_by` at sign-off.
 * "Spot the dead tissue" answers come only from expert tracings or clear-cut examples, never from the app's own output (PLAN.md §2h).
-* Translations: the scientific term goes first in the target language, with the English term in brackets on first use. A native speaker checks medical text; machine translation alone is not enough.
 * No GVSU slice images go into this folder until the team agrees what may be published (PLAN.md §13).
