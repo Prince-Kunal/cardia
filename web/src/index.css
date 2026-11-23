@@ -103,8 +103,8 @@
     --danger-soft: rgb(240 122 110 / 0.13);
     --info: #7fa9e6;
     --info-soft: rgb(127 169 230 / 0.13);
-    --method-a: #79a6ec;
-    --method-b: #eba45a;
+    --method-a: #6a95dd;
+    --method-b: #c58141;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.3);
     --shadow-raised: 0 8px 28px rgb(0 0 0 / 0.5);
     color-scheme: dark;
@@ -134,8 +134,8 @@
   --danger-soft: rgb(240 122 110 / 0.13);
   --info: #7fa9e6;
   --info-soft: rgb(127 169 230 / 0.13);
-  --method-a: #79a6ec;
-  --method-b: #eba45a;
+  --method-a: #6a95dd;
+  --method-b: #c58141;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.3);
   --shadow-raised: 0 8px 28px rgb(0 0 0 / 0.5);
   color-scheme: dark;
@@ -1459,6 +1459,97 @@ select.input {
 }
 .print-only {
   display: none;
+}
+
+/* the heart's context: a dot strip per method (the study hearts grey, this heart in its method's colour) */
+.context-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.context-plot {
+  position: relative;
+  height: 76px;
+  margin: 0 var(--s-3);
+}
+.context-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38px;
+  border-top: 1px solid var(--border-strong);
+}
+.context-tick {
+  position: absolute;
+  top: 34px;
+  height: 9px;
+  border-left: 1px solid var(--border-strong);
+}
+.context-tick .fine {
+  position: absolute;
+  top: 14px;
+  transform: translateX(-50%);
+  font-size: var(--t-label);
+  white-space: nowrap;
+}
+/* Dots: 10px (this heart 16px), with a 2px ring in the surface colour so overlapping dots stay apart. */
+.context-study,
+.context-this {
+  position: absolute;
+  top: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  transform: translate(-50%, -50%);
+  box-sizing: content-box;
+}
+.context-study {
+  width: 10px;
+  height: 10px;
+  background: var(--text-faint);
+}
+.context-study::after {
+  /* A hit target bigger than the dot. */
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+}
+.context-study:hover,
+.context-study:focus-visible {
+  background: var(--text);
+}
+.context-this {
+  width: 16px;
+  height: 16px;
+  z-index: 1;
+}
+.context-this.a {
+  background: var(--method-a);
+}
+.context-this.b {
+  background: var(--method-b);
+}
+.context-label,
+.context-tip {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--t-label);
+  font-weight: 600;
+  color: var(--text);
+}
+.context-tip {
+  top: auto;
+  bottom: calc(100% - 22px);
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  font-weight: 500;
+  pointer-events: none;
 }
 
 /* ---------- printing: the heart report as a PDF (PLAN.md §6) ---------- */

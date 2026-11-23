@@ -1,10 +1,11 @@
-// Screen 11, Settings (PLAN.md §9): headline method, look, watch folder, and what the engine runs.
+// Screen 11, Settings (PLAN.md §9): headline method, look, watch folder, backup and restore, and what the
+// engine runs.
 // Settings are kept by the engine, so every browser on this computer sees the same. The app is English
 // only (PLAN.md D10), so there is no language choice.
 
 import { type MouseEvent, type ReactNode, useState } from 'react';
-import type { AppSettings, WatchStatus } from '../api/types.gen';
-import { EngineError } from '../api/client';
+import type { AppSettings, RestoreReport, WatchStatus } from '../api/types.gen';
+import { EngineError, saveFile } from '../api/client';
 import { ErrorNote } from '../components/ui';
 import { dateTime, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
@@ -23,6 +24,92 @@ function Section({ id, title, children, intro }: { id: string; title: string; in
       </div>
       {children}
     </section>
+  );
+}
+
+/** The whole library as one file, and back (PLAN.md §1e). Works without an account. */
+function Backup() {
+  const { client } = useApp();
+  const [busy, setBusy] = useState<'backup' | 'restore'>();
+  const [file, setFile] = useState<File | null>(null);
+  const [report, setReport] = useState<RestoreReport>();
+  const [error, setError] = useState<string>();
+
+  async function download() {
+    setBusy('backup');
+    setError(undefined);
+    try {
+      saveFile(await client.backupLibrary());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
+  async function restore() {
+    if (!file) return;
+    setBusy('restore');
+    setError(undefined);
+    setReport(undefined);
+    try {
+      setReport(await client.restoreLibrary(file));
+      setFile(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
+  return (
+    <Section
+      id="backup"
+      title="Backup and restore"
+      intro="A backup is one file with every heart and its details, every original scan and every result. Keep it somewhere safe, or restore it on another computer."
+    >
+      <div className="row">
+        <button type="button" className="button" disabled={!!busy} onClick={() => void download()}>
+          {busy === 'backup' ? 'Preparing the backup…' : 'Download a backup'}
+        </button>
+      </div>
+      <div className="stack tight">
+        <label className="field">
+          <span>Restore from a backup</span>
+          <input
+            className="input"
+            type="file"
+            accept=".zip,application/zip"
+            disabled={!!busy}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setReport(undefined);
+            }}
+          />
+          <span className="hint">
+            Restoring adds the backup&apos;s hearts to this library. Nothing here is overwritten: hearts already here stay
+            as they are, and settings don&apos;t change.
+          </span>
+        </label>
+        <div className="row">
+          <button type="button" className="button" disabled={!file || !!busy} onClick={() => void restore()}>
+            {busy === 'restore' ? 'Restoring…' : 'Restore'}
+          </button>
+        </div>
+      </div>
+      {report && (
+        <p className="note ok" role="status">
+          {report.hearts_added === 0
+            ? 'Nothing to add: every heart in the backup is already here.'
+            : `Added ${plural(report.hearts_added, 'heart')} with ${plural(report.slices_added, 'slice')}.`}
+          {report.hearts_skipped > 0 && report.hearts_added > 0
+            ? ` ${plural(report.hearts_skipped, 'heart')} already here ${report.hearts_skipped === 1 ? 'was' : 'were'} left as ${report.hearts_skipped === 1 ? 'it was' : 'they were'}.`
+            : ''}
+          {report.backup_created_at ? ` The backup was made ${dateTime(report.backup_created_at)}.` : ''}
+        </p>
+      )}
+      <ErrorNote error={error} />
+    </Section>
   );
 }
 
@@ -146,6 +233,7 @@ export function SettingsScreen() {
           <a href="#/settings" onClick={(e) => scrollTo(e, 'reports')}>Reports</a>
           <a href="#/settings" onClick={(e) => scrollTo(e, 'look')}>Look</a>
           <a href="#/settings" onClick={(e) => scrollTo(e, 'watch')}>Watch folder</a>
+          <a href="#/settings" onClick={(e) => scrollTo(e, 'backup')}>Backup</a>
           <a href="#/settings" onClick={(e) => scrollTo(e, 'engine')}>Engine</a>
         </nav>
 
@@ -211,6 +299,8 @@ export function SettingsScreen() {
           </Section>
 
           <WatchFolder />
+
+          <Backup />
 
           <Section id="engine" title="Engine" intro="The engine analyses scans on this computer. Every report names these versions and files.">
             {info.mock && (

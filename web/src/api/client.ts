@@ -11,7 +11,9 @@ import type {
   Job,
   Layer,
   MethodsParagraph,
+  RestoreReport,
   SliceResult,
+  StudySet,
   WatchStatus,
 } from './types.gen';
 
@@ -191,6 +193,23 @@ export class EngineClient {
     for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') params.set(k, String(v));
     const qs = params.toString();
     return this.download(`/hearts.csv${qs ? `?${qs}` : ''}`, 'cardia-hearts.csv');
+  }
+
+  /** The hearts the pipeline was checked on, for a report's context (404 if this engine has none). */
+  studySet() {
+    return this.json<StudySet>('GET', '/study-set');
+  }
+
+  /** The whole library as one ZIP. */
+  backupLibrary() {
+    return this.download('/library/backup.zip', 'cardia-backup.zip');
+  }
+
+  /** Add a backup's hearts to the library; nothing here is overwritten. */
+  restoreLibrary(file: File) {
+    const form = new FormData();
+    form.append('backup', file, file.name);
+    return this.json<RestoreReport>('POST', '/library/restore', { body: form });
   }
 }
 
