@@ -34,15 +34,30 @@
     "short": "The wide top of the heart, where the large blood vessels join it.",
     "lesson": 1
   },
+  "blinding": {
+    "title": "Blinding",
+    "short": "Keeping the person who measures from knowing which group each sample belongs to, so their hopes cannot nudge the result.",
+    "lesson": 11
+  },
   "borderline-tissue": {
     "title": "Borderline tissue (Method B)",
     "short": "Pixels whose redness a* is between Method B's two cuts (11.75 and 18.60): not clearly dead, not clearly alive. They make up Method B's range.",
     "lesson": 10
   },
+  "cardiac-cycle": {
+    "title": "Cardiac cycle",
+    "short": "One full heartbeat: the atria squeeze, then the ventricles, then everything relaxes and fills again.",
+    "lesson": 2
+  },
   "chroma": {
     "title": "Chroma",
     "short": "How colourful a pixel is, whatever its colour. Paper has almost none; stained tissue has a lot. Cardia uses it to find the tissue.",
     "lesson": 10
+  },
+  "collateral": {
+    "title": "Collateral vessels",
+    "short": "Small vessels linking one coronary artery's territory to another's. When one artery is blocked, blood can reach its muscle through them. Guinea pigs have many; rats, rabbits and pigs few.",
+    "lesson": 4
   },
   "coronary-arteries": {
     "title": "Coronary arteries",
@@ -58,6 +73,11 @@
     "title": "Dehydrogenase",
     "short": "A family of enzymes in living cells. With their helper molecules (such as NADH) they turn TTC into red formazan. Dead cells lose them.",
     "lesson": 8
+  },
+  "diastole": {
+    "title": "Diastole",
+    "short": "The part of the heartbeat when the ventricles relax and fill. Most of the left ventricle's own blood supply arrives now.",
+    "lesson": 2
   },
   "dpi": {
     "title": "DPI (dots per inch)",
@@ -154,10 +174,20 @@
     "short": "The heart muscle: the thick middle layer of the heart wall that does the squeezing. It is the tissue that dies in a heart attack, and the tissue Cardia measures.",
     "lesson": 1
   },
+  "pci": {
+    "title": "PCI (percutaneous coronary intervention)",
+    "short": "Opening a blocked coronary artery from inside: a thin tube is pushed up to the blockage, a tiny balloon opens it, and a stent usually holds it open.",
+    "lesson": 6
+  },
   "percentage-points": {
     "title": "Percentage points (pp)",
     "short": "The plain difference between two percentages. From 20% to 30% is 10 percentage points (but 50% more).",
     "lesson": 10
+  },
+  "preconditioning": {
+    "title": "Ischemic preconditioning",
+    "short": "A few short blockages before a long one make the final infarct smaller. Found in 1986, it showed the heart can be protected.",
+    "lesson": 6
   },
   "pulmonary-circulation": {
     "title": "Pulmonary circulation",
@@ -184,6 +214,11 @@
     "short": "Restoring blood flow after a blockage. It saves muscle that is still alive, and the sooner it happens the more is saved. Module 6 covers it.",
     "lesson": 5
   },
+  "reperfusion-injury": {
+    "title": "Reperfusion injury",
+    "short": "Extra damage when blood returns to muscle that was starved of it: free radicals, calcium overload and inflammation kill some cells that had survived the blockage.",
+    "lesson": 6
+  },
   "septum": {
     "title": "Septum",
     "short": "The wall of muscle that divides the heart into a right side and a left side.",
@@ -193,6 +228,11 @@
     "title": "Short-axis slice",
     "short": "A slice cut straight across the heart, from one side to the other, like slicing a carrot into rounds. It shows the left ventricle as a ring and the right ventricle as a crescent beside it.",
     "lesson": 8
+  },
+  "sinoatrial-node": {
+    "title": "Sinoatrial node",
+    "short": "A small patch of special cells in the right atrium that fires the electrical signal starting every heartbeat: the heart's own pacemaker.",
+    "lesson": 2
   },
   "slice-weight": {
     "title": "Slice weight",
@@ -204,10 +244,20 @@
     "short": "The long loop from the left ventricle through the aorta to every organ, and back through the venae cavae to the right atrium.",
     "lesson": 3
   },
+  "systole": {
+    "title": "Systole",
+    "short": "The part of the heartbeat when the ventricles squeeze and push blood out.",
+    "lesson": 2
+  },
   "territory": {
     "title": "Territory",
     "short": "The patch of heart muscle that one coronary artery feeds. If the artery is blocked, this is the muscle at risk.",
     "lesson": 5
+  },
+  "three-rs": {
+    "title": "The 3Rs",
+    "short": "Replace, Reduce, Refine: use methods without animals where possible, as few animals as give a reliable answer, and as little pain and distress as possible.",
+    "lesson": 11
   },
   "tiff": {
     "title": "TIFF",
