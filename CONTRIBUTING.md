@@ -49,14 +49,14 @@ Re-run `scripts/setup.sh` whenever something seems off. It must print only `ok` 
 
 1. `git switch main && git pull`
 2. Branch: `<area>/<short-name>`, e.g. `engine/hole-model`, `web/library-screen`, `learn/quiz-types`. Keep branches short-lived (days, not weeks).
-3. Commit small and often, under your own identity (the pre-commit hook checks this).
+3. Commit small and often. **Each commit belongs to the owner of its files** (`.github/CODEOWNERS`, last match wins), whoever wrote it: if a change touches several people's areas, split it into one commit per owner and set each commit's author to that owner (below). You are always the committer. The pre-commit hook checks that both are team identities.
 4. Push and open a PR to `main`. Fill in the template. The area owner reviews. One approval is needed, and you can't approve your own PR.
-5. **Squash and merge.** The squashed commit keeps the PR author as its author, so each person's contributions stay visible on GitHub.
+5. **Rebase and merge.** Every commit lands on `main` as it is, with its own author, so each person's work shows as theirs. Don't squash: a squash commit is authored by whoever opened the PR, and everyone else is reduced to a co-author line.
 6. Delete the branch.
 
-Never push directly to `main`. The only exception was the initial commit set on 2026-11-20.
+Never push directly to `main`. The only exception was the initial commit set on 2026-11-20. Commits merged before this rule (PRs #2 to #8) were squashed and stay as they are.
 
-**Committing for a teammate.** Sometimes one of us prepares a part another owns, for example while pairing or setting up. Commit it with your own identity as committer and the owner as author:
+**Committing in a teammate's area.** We cover for each other: whoever does the work, a commit goes to the person who owns that part of the code. Commit it with your own identity as committer and the owner as author:
 
 ```bash
 git commit --author="MeloveGupta <melovegupta0406@gmail.com>" -m "docs(content): lesson format"
