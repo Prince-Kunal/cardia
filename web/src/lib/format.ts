@@ -64,3 +64,21 @@ export const QC_LABEL: Record<string, string> = {
   weights_missing: 'Some slice weights are missing: weighted by tissue area',
   mixed_heart_ids: 'Slices from different heart IDs',
 };
+
+/** The first 12 hex digits of a SHA-256: enough to tell files apart on screen (the full hash goes in a tooltip). */
+export function shortHash(sha: string | null | undefined): string {
+  return sha ? sha.slice(0, 12) : DASH;
+}
+
+/** "1 slice", "3 slices". */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+export const SLICE_STATE_LABEL: Record<string, string> = {
+  queued: 'Waiting',
+  running: 'Analysing',
+  done: 'Done',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+};

@@ -92,3 +92,10 @@ export async function sha256Hex(file: Blob): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
+
+/** A weight typed by the user, in mg: undefined when the box is empty, NaN when it isn't a positive number. */
+export function typedWeight(text: string | undefined): number | undefined {
+  if (text === undefined || text.trim() === '') return undefined;
+  const n = Number(text.trim().replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : Number.NaN;
+}

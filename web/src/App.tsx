@@ -103,9 +103,17 @@ export default function App({ initial }: { initial?: Connection | null }) {
       client,
       info: status.info,
       settings: status.settings,
+      // Show the change at once, then keep what the engine saved (or go back if it refused).
       saveSettings: async (next) => {
-        const saved = await client.putSettings(next);
-        setStatus({ kind: 'ready', info: status.info, settings: saved });
+        const before = status.settings;
+        setStatus({ kind: 'ready', info: status.info, settings: next });
+        try {
+          const saved = await client.putSettings(next);
+          setStatus({ kind: 'ready', info: status.info, settings: saved });
+        } catch (e) {
+          setStatus({ kind: 'ready', info: status.info, settings: before });
+          throw e;
+        }
       },
       disconnect,
     };
