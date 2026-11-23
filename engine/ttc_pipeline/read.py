@@ -18,4 +18,9 @@ def read_rgb(path):
 def parse_name(name):
     """(heart ID, slice weight in mg) from a name like `109IS104mg.tif`; (file stem, None) if it doesn't match."""
     m = _NAME_INFO.search(name)
-    return (m.group(1), float(m.group(2))) if m else (Path(name).stem, None)
+    if not m:
+        return Path(name).stem, None
+    try:
+        return m.group(1), float(m.group(2))
+    except ValueError:  # e.g. "206IS1.2.3mg": a heart ID but no readable weight
+        return m.group(1), None

@@ -1,122 +1,142 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+// The app: connect to the engine, then show the screen the route asks for.
 
-function App() {
-  const [count, setCount] = useState(0)
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { EngineClient, EngineError } from './api/client';
+import { type Connection, connectionAtStartup, saveConnection } from './api/connection';
+import type { AppSettings, EngineInfo } from './api/types.gen';
+import { Layout } from './components/Layout';
+import { ConnectScreen } from './screens/ConnectScreen';
+import { HeartScreen } from './screens/HeartScreen';
+import { ImportScreen } from './screens/ImportScreen';
+import { LearnScreen } from './screens/LearnScreen';
+import { LibraryScreen } from './screens/LibraryScreen';
+import { ProcessingScreen } from './screens/ProcessingScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { type Route, useRoute } from './lib/router';
+import { AppContext, type AppState } from './state';
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+type Status =
+  | { kind: 'connecting' }
+  | { kind: 'needs-link'; reason?: string }
+  | { kind: 'offline' }
+  | { kind: 'ready'; info: EngineInfo; settings: AppSettings };
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function applyLook(settings: AppSettings | undefined) {
+  const root = document.documentElement;
+  if (!settings || settings.theme === 'system') delete root.dataset.theme;
+  else root.dataset.theme = settings.theme;
+  if (settings?.reduced_motion) root.dataset.motion = 'reduced';
+  else delete root.dataset.motion;
 }
 
-export default App
+function screen(route: Route) {
+  switch (route.name) {
+    case 'import':
+      return <ImportScreen />;
+    case 'job':
+      return <ProcessingScreen jobId={route.id} />;
+    case 'heart':
+      return <HeartScreen heartKey={route.key} />;
+    case 'settings':
+      return <SettingsScreen />;
+    case 'learn':
+      return <LearnScreen />;
+    default:
+      return <LibraryScreen />;
+  }
+}
+
+export default function App({ initial }: { initial?: Connection | null }) {
+  const [connection, setConnection] = useState<Connection | null>(() =>
+    initial === undefined ? connectionAtStartup() : initial,
+  );
+  const [status, setStatus] = useState<Status>(connection ? { kind: 'connecting' } : { kind: 'needs-link' });
+  const client = useMemo(() => (connection ? new EngineClient(connection) : null), [connection]);
+  const route = useRoute();
+
+  const connect = useCallback(async () => {
+    if (!client) return;
+    try {
+      const [info, settings] = await Promise.all([client.engine(), client.getSettings()]);
+      setStatus({ kind: 'ready', info, settings });
+    } catch (e) {
+      if (e instanceof EngineError && e.offline) setStatus({ kind: 'offline' });
+      else {
+        saveConnection(null);
+        setStatus({
+          kind: 'needs-link',
+          reason: e instanceof EngineError && e.unauthorised ? 'The engine was restarted: open its new link.' : String(e),
+        });
+      }
+    }
+  }, [client]);
+
+  useEffect(() => {
+    if (client) void connect();
+  }, [client, connect]);
+
+  // While offline, try again every few seconds; while connected, notice when the engine stops.
+  useEffect(() => {
+    if (!client || (status.kind !== 'offline' && status.kind !== 'ready')) return;
+    const id = window.setInterval(async () => {
+      try {
+        await client.health();
+        if (status.kind === 'offline') void connect();
+      } catch {
+        if (status.kind === 'ready') setStatus({ kind: 'offline' });
+      }
+    }, status.kind === 'offline' ? 3000 : 5000);
+    return () => window.clearInterval(id);
+  }, [client, status.kind, connect]);
+
+  useEffect(() => applyLook(status.kind === 'ready' ? status.settings : undefined), [status]);
+
+  const disconnect = useCallback(() => {
+    saveConnection(null);
+    setConnection(null);
+    setStatus({ kind: 'needs-link' });
+  }, []);
+
+  const state: AppState | null = useMemo(() => {
+    if (status.kind !== 'ready' || !client) return null;
+    return {
+      client,
+      info: status.info,
+      settings: status.settings,
+      // Show the change at once, then keep what the engine saved (or go back if it refused).
+      saveSettings: async (next) => {
+        const before = status.settings;
+        setStatus({ kind: 'ready', info: status.info, settings: next });
+        try {
+          const saved = await client.putSettings(next);
+          setStatus({ kind: 'ready', info: status.info, settings: saved });
+        } catch (e) {
+          setStatus({ kind: 'ready', info: status.info, settings: before });
+          throw e;
+        }
+      },
+      disconnect,
+    };
+  }, [status, client, disconnect]);
+
+  if (status.kind === 'needs-link' || status.kind === 'offline' || status.kind === 'connecting' || !state) {
+    return (
+      <ConnectScreen
+        status={status.kind}
+        reason={status.kind === 'needs-link' ? status.reason : undefined}
+        onConnect={(c) => {
+          saveConnection(c);
+          setConnection(c);
+          setStatus({ kind: 'connecting' });
+        }}
+        onRetry={() => void connect()}
+      />
+    );
+  }
+
+  return (
+    <AppContext.Provider value={state}>
+      <Layout route={route}>{screen(route)}</Layout>
+    </AppContext.Provider>
+  );
+}

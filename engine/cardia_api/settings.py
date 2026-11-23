@@ -42,3 +42,4 @@ class Settings:
     mock_delay_s: float = 0.4  # per stage, so the UI sees progress
     max_upload_bytes: int = 200 * 2**20
     models_dir: Path = MODELS_DIR
+    watch_interval_s: float = 3.0  # how often the watch folder is looked at

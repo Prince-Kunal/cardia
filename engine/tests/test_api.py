@@ -7,73 +7,21 @@ test_api_golden.py runs the real analysis through the API against the golden set
 import io
 import os
 import stat
-import time
 
 import numpy as np
 import pytest
-from fastapi.testclient import TestClient
+from apiutil import AUTH, UI, make_client, scan, upload, wait
 from PIL import Image
 
 from cardia_api.__main__ import write_engine_file
-from cardia_api.app import create_app
-from cardia_api.openapi import OPENAPI, contract
+from cardia_api.openapi import main as openapi_main
 from cardia_api.schemas import Layer
-from cardia_api.settings import Settings
-
-TOKEN = "test-token-" + "x" * 32
-AUTH = {"Authorization": f"Bearer {TOKEN}"}
-UI = "http://localhost:5173"
-
-
-def scan(seed=0, fmt="TIFF", dpi=(1200, 1200)) -> bytes:
-    """A synthetic slice: a red ring with a pale (dead-looking) side on white paper."""
-    h, w = 220, 200
-    img = np.full((h, w, 3), 245, np.uint8)
-    yy, xx = np.mgrid[:h, :w]
-    disc = (yy - 110) ** 2 + (xx - 100) ** 2 < 80**2
-    img[disc] = (170, 40, 50)
-    img[disc & (xx > 120)] = (225, 200, 170)
-    img[(yy - 110) ** 2 + (xx - 100) ** 2 < 15**2] = 245  # a hole in the middle
-    img[0, 0] = (seed, seed, seed)  # different bytes, so a different image
-    buf = io.BytesIO()
-    Image.fromarray(img).save(buf, format=fmt, dpi=dpi)
-    return buf.getvalue()
-
-
-def make_client(tmp_path, **kw) -> TestClient:
-    settings = Settings(
-        data_dir=tmp_path,
-        token=TOKEN,
-        allowed_origins=(UI,),
-        allowed_hosts=("127.0.0.1", "localhost", "testserver"),
-        workers=kw.pop("workers", 1),
-        mock=True,
-        mock_delay_s=kw.pop("mock_delay_s", 0.0),
-        **kw,
-    )
-    return TestClient(create_app(settings))
 
 
 @pytest.fixture(scope="module")
 def client(tmp_path_factory):
     with make_client(tmp_path_factory.mktemp("engine"), max_upload_bytes=2**20) as c:
         yield c
-
-
-def upload(client, files):
-    r = client.post("/api/v1/jobs", headers=AUTH, files=[("files", (name, data)) for name, data in files])
-    assert r.status_code == 202, r.text
-    return r.json()
-
-
-def wait(client, job_id, timeout=90.0):
-    end = time.monotonic() + timeout
-    while time.monotonic() < end:
-        job = client.get(f"/api/v1/jobs/{job_id}", headers=AUTH).json()
-        if job["finished_at"] is not None:
-            return job
-        time.sleep(0.05)
-    raise AssertionError(f"job {job_id} did not finish: {job}")
 
 
 @pytest.fixture(scope="module")
@@ -83,8 +31,8 @@ def heart_206(client):
     return wait(client, job["job_id"])
 
 
-def test_the_published_contract_is_up_to_date():
-    assert OPENAPI.read_text() == contract(), "run: uv run python -m cardia_api.openapi"
+def test_the_published_contract_and_web_types_are_up_to_date():
+    assert openapi_main(["--check"]) == 0, "run: uv run python -m cardia_api.openapi"
 
 
 def test_health_needs_no_token(client):
