@@ -1,0 +1,328 @@
+/* The heart diagram. Illustration colours stay the same in both themes (they mean something:
+   blue = oxygen-poor blood, red = oxygen-rich, cream = dead tissue); lines and labels follow the theme. */
+
+.heart-diagram {
+  --h-muscle: #c9605a;
+  --h-muscle-edge: #8a3330;
+  --h-surface: #cf6a63;
+  --h-poor: #9db5e3;
+  --h-poor-vessel: #5f82c7;
+  --h-rich: #f0a29b;
+  --h-rich-vessel: #cf3f37;
+  --h-valve: #fff4dc;
+  --h-coronary: #e8473c;
+  --h-pale: #f0e2bf;
+  --h-hl: #f4b400;
+  --h-right: #1f9d55;
+  --h-wrong: #d93025;
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  user-select: none;
+}
+
+.heart-diagram .muscle {
+  fill: var(--h-muscle);
+  stroke: var(--h-muscle-edge);
+  stroke-width: 2;
+}
+.heart-diagram .muscle.outside {
+  fill: var(--h-surface);
+}
+.heart-diagram .surface {
+  fill: var(--h-surface);
+  stroke: var(--h-muscle-edge);
+  stroke-width: 1.2;
+  stroke-opacity: 0.5;
+}
+.heart-diagram .chamber {
+  stroke: var(--h-muscle-edge);
+  stroke-width: 1.5;
+}
+.heart-diagram .chamber.poor,
+.heart-diagram .auricle.poor {
+  fill: var(--h-poor);
+}
+.heart-diagram .chamber.rich,
+.heart-diagram .auricle.rich {
+  fill: var(--h-rich);
+}
+.heart-diagram .auricle {
+  stroke: var(--h-muscle-edge);
+  stroke-width: 1.5;
+  filter: saturate(0.8);
+}
+.heart-diagram .septum {
+  fill: var(--h-muscle);
+  stroke: none;
+}
+.heart-diagram .vessel {
+  fill: none;
+  stroke-linecap: round;
+}
+.heart-diagram .vessel.poor {
+  stroke: var(--h-poor-vessel);
+}
+.heart-diagram .vessel.rich {
+  stroke: var(--h-rich-vessel);
+}
+.heart-diagram .valve {
+  fill: none;
+  stroke: var(--h-valve);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.heart-diagram .point {
+  fill: var(--h-muscle-edge);
+}
+.heart-diagram .coronary {
+  fill: none;
+  stroke: var(--h-coronary);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.heart-diagram .coronary.starved {
+  stroke: #9a8a87;
+}
+.heart-diagram .clot {
+  fill: #3b1210;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.heart-diagram .territory,
+.heart-diagram .region {
+  fill: transparent;
+  stroke: none;
+}
+.heart-diagram .pale {
+  fill: var(--h-pale);
+}
+.heart-diagram .base-line {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 6;
+}
+.heart-diagram .xray-chambers {
+  opacity: 0.75;
+}
+.heart-diagram.xray .surface,
+.heart-diagram.xray .muscle.outside {
+  fill-opacity: 0.35;
+}
+
+/* the slice */
+.heart-diagram .tissue {
+  stroke: var(--h-muscle-edge);
+  stroke-width: 1.2;
+}
+.heart-diagram .tissue-outline {
+  fill: transparent;
+}
+.heart-diagram .cavity {
+  fill: var(--surface-2, #f0eeeb);
+  stroke: var(--border-strong, #c9c3bc);
+  stroke-dasharray: 3 3;
+}
+.heart-diagram .septum-slice {
+  fill: transparent;
+}
+.heart-diagram .dead {
+  fill: var(--h-pale);
+  stroke: #d8c79d;
+  stroke-width: 1;
+}
+.heart-diagram .risk {
+  fill: none;
+  stroke: var(--text-muted, #6a625d);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.heart-diagram .layer {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 5;
+}
+.heart-diagram .orient,
+.heart-diagram .caption {
+  fill: var(--text-muted, #6a625d);
+  font-size: 13px;
+  font-family: var(--sans, system-ui);
+}
+.heart-diagram .caption {
+  fill: var(--text, #24201e);
+  font-weight: 600;
+}
+
+/* slicing */
+.heart-diagram .cuts line {
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+  transition: opacity 0.4s;
+}
+
+/* labels and pins */
+.heart-diagram .label path {
+  stroke: var(--text-muted, #6a625d);
+  stroke-width: 1;
+  fill: none;
+}
+.heart-diagram .label circle {
+  fill: var(--text, #24201e);
+}
+.heart-diagram .label text {
+  fill: var(--text, #24201e);
+  font: 500 12.5px var(--sans, system-ui);
+}
+.heart-diagram .label.strong text {
+  font-weight: 700;
+}
+.heart-diagram .pin circle {
+  fill: var(--surface, #fff);
+  stroke: var(--text, #24201e);
+  stroke-width: 2;
+}
+.heart-diagram .pin text {
+  fill: var(--text, #24201e);
+  font: 700 12px var(--sans, system-ui);
+}
+.heart-diagram .pin.mark-right circle {
+  stroke: var(--h-right);
+  fill: #dff5e8;
+}
+.heart-diagram .pin.mark-wrong circle {
+  stroke: var(--h-wrong);
+  fill: #fde4e2;
+}
+
+/* highlighting: a glowing outline that breathes */
+.heart-diagram .part.hl > *,
+.heart-diagram .part.focus > * {
+  stroke: var(--h-hl);
+  stroke-width: 4;
+  filter: url(#heart-glow);
+}
+.heart-diagram .part.hl > .vessel,
+.heart-diagram .part.focus > .vessel,
+.heart-diagram .part.hl > .coronary,
+.heart-diagram .part.focus > .coronary {
+  stroke: var(--h-hl);
+}
+.heart-diagram .part.hl > .territory,
+.heart-diagram .part.hl > .region,
+.heart-diagram .part.focus > .territory,
+.heart-diagram .part.focus > .region {
+  fill: rgb(244 180 0 / 0.28);
+  stroke-dasharray: 6 4;
+}
+.heart-diagram .part.hl > .layer,
+.heart-diagram .part.focus > .layer,
+.heart-diagram .part.hl > .base-line,
+.heart-diagram .part.focus > .base-line {
+  stroke: var(--h-hl);
+  stroke-width: 5;
+}
+.heart-diagram .part.hl {
+  animation: heart-breathe calc(1.6s / var(--speed, 1)) ease-in-out infinite;
+}
+.heart-diagram .part.focus {
+  animation: heart-breathe 0.8s ease-in-out infinite;
+}
+@keyframes heart-breathe {
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.heart-diagram .part.mark-right > * {
+  stroke: var(--h-right);
+  stroke-width: 4;
+}
+.heart-diagram .part.mark-wrong > * {
+  stroke: var(--h-wrong);
+  stroke-width: 4;
+}
+
+/* clickable parts (quizzes) */
+.heart-diagram .part.clickable {
+  cursor: pointer;
+}
+.heart-diagram .part.clickable:hover > *,
+.heart-diagram .part.clickable:focus-visible > * {
+  stroke: var(--focus, #a3213a);
+  stroke-width: 3.5;
+}
+.heart-diagram .part.clickable:focus {
+  outline: none;
+}
+.heart-diagram .part.clickable > .territory:hover,
+.heart-diagram .part.clickable > .region:hover {
+  fill: rgb(163 33 58 / 0.15);
+}
+
+/* heartbeat: the atria squeeze, then the ventricles */
+.heart-diagram.anim-heartbeat .heart {
+  transform-origin: 240px 260px;
+}
+.heart-diagram.anim-heartbeat .beat-atria {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: heart-atria calc(0.9s / var(--speed, 1)) ease-in-out infinite;
+}
+.heart-diagram.anim-heartbeat .beat-ventricles {
+  transform-box: fill-box;
+  transform-origin: 50% 40%;
+  animation: heart-ventricles calc(0.9s / var(--speed, 1)) ease-in-out infinite;
+}
+@keyframes heart-atria {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(0.9);
+  }
+  35% {
+    transform: scale(1);
+  }
+}
+@keyframes heart-ventricles {
+  0%,
+  25%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.92);
+  }
+  70% {
+    transform: scale(1);
+  }
+}
+
+/* blood flow: dashes moving along the paths */
+.heart-diagram .flow-path {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 3 14;
+  animation: heart-flow calc(1.4s / var(--speed, 1)) linear infinite;
+}
+.heart-diagram .flow-path.poor {
+  stroke: #1e3f8a;
+}
+.heart-diagram .flow-path.rich {
+  stroke: #ffffff;
+}
+.heart-diagram .flow-path.coronary-flow {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  stroke-dasharray: 2 10;
+}
+@keyframes heart-flow {
+  to {
+    stroke-dashoffset: -34;
+  }
+}

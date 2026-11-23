@@ -14,7 +14,7 @@ Node 22.21.0 (`../.nvmrc`) and pnpm 10.20.0 (`packageManager` in package.json) a
 
 ## Running it
 
-The app needs the engine. Start it in another terminal; it prints a link that opens the app already connected:
+Analyze needs the engine; Learn doesn't (open `http://localhost:5173/#/learn`). Start the engine in another terminal; it prints a link that opens the app already connected:
 
 ```bash
 cd ../engine && uv run python -m cardia_api --mock   # made-up numbers: no model files needed, good for UI work
@@ -29,7 +29,9 @@ With `--mock`, any picture of a pink or red shape on white paper works as a scan
 |---|---|
 | `src/App.tsx` | Connects to the engine, then shows the screen the route asks for |
 | `src/api/` | `client.ts` (every engine call, with the token), `connection.ts` (the engine link), `types.gen.ts` (generated from the API contract: `cd ../engine && uv run python -m cardia_api.openapi`; never edit by hand) |
-| `src/screens/` | Library, Import, Processing, Heart, Settings (PLAN.md §9 screens 1, 2, 3, 11) and Learn |
+| `src/screens/` | Library, Import, Processing, Heart, Settings (PLAN.md §9 screens 1, 2, 3, 11) |
+| `src/learn/` | Learn (screens 7, 8, 9): lesson format parser, course map and tracks, lesson player, quizzes, glossary, spaced review, progress (kept in the browser until cloud sync). Lessons come from `../content/` (see its README). Owner: Melove |
+| `src/heart/` | The heart for Learn: a 2D diagram driven by each lesson step's scene (view, highlights, labels, animations), and the 2D fallback for the 3D heart (milestone 6) |
 | `src/components/` | The app shell and shared parts (method panel, progress, notes) |
 | `src/lib/` | Routing (`#/library`, `#/hearts/<key>`…), file-name rules, dropped files and ZIPs, number formatting |
 | `src/test/` | The fake engine client used by screen tests |
