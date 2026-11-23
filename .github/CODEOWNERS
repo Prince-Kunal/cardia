@@ -13,6 +13,10 @@
 /engine/tests/test_method_a*.py               @MeloveGupta @Prince-Kunal
 /engine/models/kmeans_rf/                     @MeloveGupta @Prince-Kunal
 /engine/tests/golden/           @MeloveGupta @Prince-Kunal
+/engine/tests/test_golden*.py   @MeloveGupta @Prince-Kunal
+/engine/tests/test_api_golden*.py @MeloveGupta @Prince-Kunal
+/engine/training/*golden*.py    @MeloveGupta
+/reference/golden/              @MeloveGupta @Prince-Kunal
 /engine/cardia_api/export/      @MeloveGupta
 
 # Web app: shell, Analyze screens, 3D heart, languages
