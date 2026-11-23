@@ -91,4 +91,31 @@ In a TTC-stained slice, what does a pale, cream-coloured patch of muscle mean?
 > Only living cells can turn TTC red, so muscle that stays pale is dead.
 :::
 
+::scene{camera="ttc" highlight="infarct" labels="auto"}
+
+## The gold standard: cut it out and weigh it
+
+The most direct way to measure an infarct uses no pictures at all. After staining, someone cuts each slice apart with a fine blade, often under a magnifier: the **[pale, dead tissue](part:infarct)** goes on one side, the red, living tissue on the other. Both piles are weighed. Then:
+
+infarct % = weight of the pale tissue ÷ weight of all the tissue × 100
+
+This is the **[gravimetric](term:gravimetric)** method, from the Latin for weight. It is widely treated as the gold standard, because it measures the mass of dead muscle directly instead of working it out from areas in a picture.
+
+It has costs. It is slow and takes a steady hand. Where red fades into pale, deciding where to cut is still a judgement. And the slices end up cut into pieces, so nothing is left to look at again.
+
+Measuring areas on photographs or scans, by hand or with software like Cardia, keeps the slices' pictures for anyone to check, and when done carefully it usually agrees well with weighing. Showing that agreement is part of what an automatic method has to do.
+
+:::quiz{type="true-false" answer="true" id="m8-gravimetric"}
+In the gravimetric method, the pale and the red tissue are cut apart and each is weighed.
+> Yes: the infarct percentage is the pale tissue's weight divided by the weight of all the tissue.
+:::
+
+:::quiz{type="multiple-choice" id="m8-gold-cost"}
+Why do most labs measure areas on scans instead of weighing the tissue?
+- [x] Weighing is slow, and the cut-up slices can't be looked at again
+- [ ] Weighing is less accurate than any picture
+- [ ] Stained tissue cannot be weighed
+> Weighing measures dead mass directly, which is why it is the gold standard. Scans are faster and leave a record anyone can check.
+:::
+
 > TTC shows what is dead and what is alive. It does not show the [area at risk](term:area-at-risk), the whole territory that lost its blood supply. Some labs add a blue dye (Evans blue) for that.
