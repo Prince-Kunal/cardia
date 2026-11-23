@@ -1,5 +1,6 @@
-// Screen 11, Settings (PLAN.md §9): headline method, look, languages, watch folder, and what the
-// engine runs. Settings are kept by the engine, so every browser on this computer sees the same.
+// Screen 11, Settings (PLAN.md §9): headline method, look, watch folder, and what the engine runs.
+// Settings are kept by the engine, so every browser on this computer sees the same. The app is English
+// only (PLAN.md D10), so there is no language choice.
 
 import { type MouseEvent, type ReactNode, useState } from 'react';
 import type { AppSettings, WatchStatus } from '../api/types.gen';
@@ -12,9 +13,6 @@ import { scrollPageTo } from '../lib/scroll';
 import { useApp, useResource } from '../state';
 
 const WATCH_POLL = { ms: 3000, while: () => true };
-
-/** Languages the app can show today. The languages milestone adds the rest (PLAN.md §4). */
-const LANGUAGES = [{ code: 'en', name: 'English' }];
 
 function Section({ id, title, children, intro }: { id: string; title: string; intro?: string; children: ReactNode }) {
   return (
@@ -147,7 +145,6 @@ export function SettingsScreen() {
         <nav className="settings-nav" aria-label="Settings sections">
           <a href="#/settings" onClick={(e) => scrollTo(e, 'reports')}>Reports</a>
           <a href="#/settings" onClick={(e) => scrollTo(e, 'look')}>Look</a>
-          <a href="#/settings" onClick={(e) => scrollTo(e, 'language')}>Language</a>
           <a href="#/settings" onClick={(e) => scrollTo(e, 'watch')}>Watch folder</a>
           <a href="#/settings" onClick={(e) => scrollTo(e, 'engine')}>Engine</a>
         </nav>
@@ -211,39 +208,6 @@ export function SettingsScreen() {
               />
               Reduce motion (no animations, including the heart in Learn)
             </label>
-          </Section>
-
-          <Section
-            id="language"
-            title="Language"
-            intro="More languages are on the way, starting with Hindi. Reports can use a different language from the app; the Methods paragraph stays in English."
-          >
-            <div className="fields">
-              <label className="field">
-                <span>App language</span>
-                <select className="input" value={settings.language} onChange={(e) => void set({ language: e.target.value })}>
-                  {LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Report language</span>
-                <select
-                  className="input"
-                  value={settings.report_language}
-                  onChange={(e) => void set({ report_language: e.target.value })}
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
           </Section>
 
           <WatchFolder />
