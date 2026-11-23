@@ -8,11 +8,11 @@ import { Layout } from './components/Layout';
 import { ConnectScreen } from './screens/ConnectScreen';
 import { HeartScreen } from './screens/HeartScreen';
 import { ImportScreen } from './screens/ImportScreen';
-import { LearnScreen } from './screens/LearnScreen';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { ProcessingScreen } from './screens/ProcessingScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
-import { type Route, useRoute } from './lib/router';
+import { LearnApp } from './learn/LearnApp';
+import { LEARN_ROUTES, type Route, useRoute } from './lib/router';
 import { AppContext, type AppState } from './state';
 
 type Status =
@@ -40,7 +40,10 @@ function screen(route: Route) {
     case 'settings':
       return <SettingsScreen />;
     case 'learn':
-      return <LearnScreen />;
+    case 'lesson':
+    case 'glossary':
+    case 'review':
+      return <LearnApp route={route} />;
     default:
       return <LibraryScreen />;
   }
@@ -120,6 +123,14 @@ export default function App({ initial }: { initial?: Connection | null }) {
   }, [status, client, disconnect]);
 
   if (status.kind === 'needs-link' || status.kind === 'offline' || status.kind === 'connecting' || !state) {
+    // Learn needs no engine: show it while there is none.
+    if (LEARN_ROUTES.includes(route.name)) {
+      return (
+        <Layout route={route}>
+          <LearnApp route={route} />
+        </Layout>
+      );
+    }
     return (
       <ConnectScreen
         status={status.kind}

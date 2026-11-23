@@ -1,12 +1,13 @@
-import type { ReactNode } from 'react';
-import { type Route, href } from '../lib/router';
-import { useApp } from '../state';
+import { type ReactNode, useContext } from 'react';
+import { LEARN_ROUTES, type Route, href } from '../lib/router';
+import { AppContext } from '../state';
 
 const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart'];
 
+/** The app's frame. Learn can be shown without the engine, so the connected app may be missing. */
 export function Layout({ route, children }: { route: Route; children: ReactNode }) {
-  const { info } = useApp();
-  const learn = route.name === 'learn';
+  const app = useContext(AppContext);
+  const learn = LEARN_ROUTES.includes(route.name);
   const tab = (name: Route['name'], label: string) => (
     <a href={href({ name } as Route)} className="nav-link" aria-current={route.name === name ? 'page' : undefined}>
       {label}
@@ -45,9 +46,16 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
               </a>
             </>
           )}
-          {tab('settings', 'Settings')}
+          {learn && (
+            <>
+              {tab('learn', 'Course')}
+              {tab('glossary', 'Glossary')}
+              {tab('review', 'Review')}
+            </>
+          )}
+          {app && tab('settings', 'Settings')}
         </nav>
-        {info.mock && (
+        {app?.info.mock && !learn && (
           <span className="badge warn" title="The engine runs with --mock: every number is made up">
             Demo data
           </span>

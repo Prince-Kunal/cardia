@@ -79,6 +79,9 @@ export function ConnectScreen({ status, reason, onConnect, onRetry }: Props) {
           </>
         )}
         <p className="fine">Scans never leave this computer: the engine listens on 127.0.0.1 only.</p>
+        <p className="fine">
+          Here to learn? <a href="#/learn">Open the Learn course</a>. It works without the engine.
+        </p>
       </div>
     </main>
   );
