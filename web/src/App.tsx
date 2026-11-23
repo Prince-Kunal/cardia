@@ -11,6 +11,7 @@ import { ImportScreen } from './screens/ImportScreen';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { ProcessingScreen } from './screens/ProcessingScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { SliceScreen } from './screens/SliceScreen';
 import { LearnApp } from './learn/LearnApp';
 import { LEARN_ROUTES, type Route, useRoute } from './lib/router';
 import { AppContext, type AppState } from './state';
@@ -37,6 +38,8 @@ function screen(route: Route) {
       return <ProcessingScreen jobId={route.id} />;
     case 'heart':
       return <HeartScreen heartKey={route.key} />;
+    case 'slice':
+      return <SliceScreen key={route.id} sliceId={route.id} heartKey={route.heart} />;
     case 'settings':
       return <SettingsScreen />;
     case 'learn':

@@ -6,6 +6,8 @@ describe('router', () => {
     expect(parseRoute('#/import')).toEqual({ name: 'import' });
     expect(parseRoute('#/jobs/abc')).toEqual({ name: 'job', id: 'abc' });
     expect(parseRoute('#/hearts/k1')).toEqual({ name: 'heart', key: 'k1' });
+    expect(parseRoute('#/hearts/k1/slices/s1')).toEqual({ name: 'slice', id: 's1', heart: 'k1' });
+    expect(parseRoute('#/slices/s1')).toEqual({ name: 'slice', id: 's1' });
     expect(parseRoute('#/settings')).toEqual({ name: 'settings' });
     expect(parseRoute('#/learn')).toEqual({ name: 'learn' });
     expect(parseRoute('#/learn/5')).toEqual({ name: 'lesson', module: 5, step: 1 });
@@ -30,6 +32,8 @@ describe('router', () => {
       { name: 'import' },
       { name: 'job', id: 'j1' },
       { name: 'heart', key: 'h1' },
+      { name: 'slice', id: 's1', heart: 'h1' },
+      { name: 'slice', id: 's1' },
       { name: 'settings' },
       { name: 'learn' },
       { name: 'lesson', module: 8, step: 2 },

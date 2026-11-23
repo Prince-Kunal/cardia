@@ -2,7 +2,7 @@ import { type ReactNode, useContext } from 'react';
 import { LEARN_ROUTES, type Route, href } from '../lib/router';
 import { AppContext } from '../state';
 
-const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart'];
+const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart', 'slice'];
 
 /** The app's frame. Learn can be shown without the engine, so the connected app may be missing. */
 export function Layout({ route, children }: { route: Route; children: ReactNode }) {
