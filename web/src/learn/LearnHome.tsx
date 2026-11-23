@@ -180,8 +180,8 @@ export function LearnHome() {
 
       <p className="fine">
         Your progress is kept in this browser. Lessons are drafts until a cardiology or physiology teacher has checked them.
-        The heart is drawn in 2D for now; an interactive 3D heart is planned. The lab uses guinea pig hearts, which have the
-        same four chambers as the human heart shown here.
+        Each lesson shows the heart in 3D where your browser can draw it, with a switch to the flat 2D diagram. Both are
+        schematic, not to scale. The lab uses guinea pig hearts, which have the same four chambers as the human heart shown here.
       </p>
     </div>
   );
