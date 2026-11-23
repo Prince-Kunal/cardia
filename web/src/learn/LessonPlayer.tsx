@@ -2,7 +2,8 @@
 // Each step sets the heart's view; part: links point at the heart; quizzes sit in the text.
 
 import { useEffect, useRef, useState } from 'react';
-import { HeartDiagram } from '../heart/HeartDiagram';
+import { HeartView } from '../heart3d/HeartView';
+import { useHeartMode, webglAvailable } from '../heart3d/mode';
 import { LOOPING, VIEW_NAMES, viewOf } from '../heart/parts';
 import { href, navigate } from '../lib/router';
 import { useTitle } from '../lib/hooks';
@@ -124,6 +125,7 @@ function Player({ lesson, step, links }: { lesson: Lesson; step: number; links: 
   const [pointed, setPointed] = useState<string | null>(null);
   const [replay, setReplay] = useState(0);
   const [allLabels, setAllLabels] = useState(false);
+  const [heartMode, setHeartMode] = useHeartMode();
   const textRef = useRef<HTMLDivElement>(null);
   const first = useRef(true);
   useTitle(`${title} (${step}/${n})`);
@@ -192,10 +194,22 @@ function Player({ lesson, step, links }: { lesson: Lesson; step: number; links: 
 
         <div className="lesson-body">
           <figure className="lesson-heart card">
-            <HeartDiagram scene={scene} focus={pointed} replay={replay} />
+            <HeartView scene={scene} focus={pointed} replay={replay} mode={heartMode} />
             <figcaption className="row between">
-              <span className="fine">{VIEW_NAMES[viewOf(s.scene.camera)]} · schematic, not to scale</span>
+              <span className="fine">
+                {heartMode === '3d' && webglAvailable() ? '3D model' : VIEW_NAMES[viewOf(s.scene.camera)]} · schematic, not to scale
+              </span>
               <span className="row" style={{ gap: 6 }}>
+                {webglAvailable() && (
+                  <button
+                    type="button"
+                    className="button small"
+                    onClick={() => setHeartMode(heartMode === '3d' ? '2d' : '3d')}
+                    title={heartMode === '3d' ? 'Show the flat diagram' : 'Show the heart in 3D'}
+                  >
+                    {heartMode === '3d' ? '2D diagram' : '3D heart'}
+                  </button>
+                )}
                 {playsOnce && (
                   <button type="button" className="button small" onClick={() => setReplay((r) => r + 1)}>
                     Play again
