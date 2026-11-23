@@ -27,6 +27,11 @@ release/
 outputs/
 *.pkl
 
+# --- Agent skills: pinned in skills-lock.json and restored with `npx skills experimental_install` ---
+.agents/skills/design-taste-frontend/
+.claude/skills/design-taste-frontend/
+.taste-skill/
+
 # --- OS / editor / secrets ---
 .DS_Store
 .vscode/

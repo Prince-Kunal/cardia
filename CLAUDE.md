@@ -18,3 +18,4 @@ Three people work on this repo from different machines. Read [PLAN.md](PLAN.md) 
 - Engine: `cd engine && uv sync --locked`, then `uv run pytest` and `uv run ruff check .`
 - Engine API: `cd engine && uv run python -m cardia_api [--mock]`; after changing the API, `uv run python -m cardia_api.openapi` rewrites the contract
 - Data check: `python3 scripts/check_data.py`
+- Design skill for web work: `npx skills experimental_install -a claude-code -y` restores the taste skill pinned in `skills-lock.json` (not committed: 40 MB of demo photos). It is written for marketing sites; in Cardia follow only its system, motion and access rules (as `web/src/index.css` does), not its heroes, photographs, effects or gate. Lenis stays even though the skill bans smooth-scroll libraries (Prince's call, 2026-11-23).
