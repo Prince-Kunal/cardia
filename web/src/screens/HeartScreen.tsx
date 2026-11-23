@@ -4,7 +4,7 @@
 import { type FormEvent, type InputHTMLAttributes, useState } from 'react';
 import type { Heart, HeartSlice, HeartUpdate } from '../api/types.gen';
 import { EngineError } from '../api/client';
-import { ExportCard, MethodsText, PrintDetails, Quality, Strip } from '../components/HeartReport';
+import { Context, ExportCard, MethodsText, PrintDetails, Quality, Strip } from '../components/HeartReport';
 import { ErrorNote, MethodsPanel } from '../components/ui';
 import { DASH, METHOD_SHORT, QC_LABEL, date, mg, methodOrder, pct, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
@@ -498,6 +498,7 @@ export function HeartScreen({ heartKey }: { heartKey: string }) {
       {h.slices.length > 0 && <Strip heart={h} />}
       {h.slices.length > 0 && <Slices heart={h} onSaved={setCurrent} />}
       {h.slices.length > 0 && <Quality heart={h} />}
+      {h.slices.length > 0 && <Context heart={h} />}
       {h.slices.length > 0 && s && <MethodsText heart={h} />}
       {h.slices.length > 0 && <ExportCard heart={h} />}
       <PrintDetails heart={h} />
