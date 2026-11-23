@@ -6,6 +6,7 @@ import { HeartDiagram } from '../heart/HeartDiagram';
 import { LOOPING, VIEW_NAMES, viewOf } from '../heart/parts';
 import { href, navigate } from '../lib/router';
 import { useTitle } from '../lib/hooks';
+import { scrollPageTo } from '../lib/scroll';
 import { lessonFor } from './content';
 import { COURSE, modulesFor } from './course';
 import { type Lesson, quizzesOf } from './lesson';
@@ -132,7 +133,7 @@ function Player({ lesson, step, links }: { lesson: Lesson; step: number; links: 
     // Move to the top of the new step (not on first load, so a reload keeps the place).
     if (first.current) first.current = false;
     else {
-      window.scrollTo({ top: 0 });
+      scrollPageTo(0);
       textRef.current?.focus({ preventScroll: true });
     }
   }, [module, step, n]);

@@ -95,7 +95,7 @@ export function LearnHome() {
           <div className="stat-value">{days}</div>
           <div className="stat-label">{days === 1 ? 'day' : 'days'} in a row</div>
         </div>
-        <a className="stat stat-link" href="#/learn/review">
+        <a className="stat card-link" href="#/learn/review">
           <div className="stat-value">{due}</div>
           <div className="stat-label">to review</div>
         </a>
@@ -141,7 +141,7 @@ export function LearnHome() {
               <li key={m.module} className={`module ${st.kind}`}>
                 {lesson ? (
                   <a
-                    className="module-link"
+                    className="module-link card-link"
                     href={href({ name: 'lesson', module: m.module, step: st.kind === 'started' ? progress.lessons[m.module].step : 1 })}
                     aria-label={`Module ${m.module}: ${m.title}. ${st.label}`}
                   >
