@@ -35,4 +35,4 @@ With `--mock`, any picture of a pink or red shape on white paper works as a scan
 | `src/components/` | The app shell and shared parts (method panel, progress, notes) |
 | `src/lib/` | Routing (`#/library`, `#/hearts/<key>`…), file-name rules, dropped files and ZIPs, number formatting |
 | `src/test/` | The fake engine client used by screen tests |
-| `src/index.css` | Colours as tokens on `:root`, light and dark themes (`data-theme` from Settings), reduced motion |
+| `src/index.css` | One design system: colour, spacing, type and motion tokens on `:root`, light and dark themes (`data-theme` from Settings), reduced motion. The rules at its top follow the taste skill's system and motion rules (see `CLAUDE.md`) |
