@@ -47,6 +47,11 @@ The engine refuses requests whose `Origin` is not an allowed UI origin (403) and
 | Settings | `GET` / `PUT /api/v1/settings` | Headline method, theme, languages, reduced motion, watch folder. Kept by the engine, so every browser sees the same |
 | Watch folder | `GET /api/v1/watch` | Set `watch_folder` (absolute path) and `watch_enabled` in the settings. New scans saved there are imported within seconds as `source: "watch_folder"` jobs; files already there when the folder is chosen are not |
 | All results | `GET /api/v1/slices` | Every stored slice result, newest first. Jobs are kept only until the engine stops; results and the library stay on disk |
+| Methods paragraph | `GET /api/v1/hearts/{heart_key}/methods` | One English paragraph per method, the headline method first, with the pipeline version, model versions and SHA-256s, and the cut-offs. Demo (`--mock`) results get a warning instead. `409` when the slices come from different pipeline versions |
+| CSV | `GET /api/v1/hearts/{heart_key}/slices.csv`, `GET /api/v1/hearts.csv?q=&group=&tag=&favourite=` | One row per slice of a heart; one row per library heart. Decimal point `.` always, empty cell for no value; only the ranges reports show (now Method B's) |
+| ZIP bundle | `GET /api/v1/hearts/{heart_key}/export.zip` | The original scans, every slice's `result.json` and layer PNGs, `heart.json`, both CSVs, `methods.txt`, `settings.json` and `manifest.json` (versions, model hashes, and the SHA-256 of every file in the bundle) |
+
+Downloads need the token too, so fetch them with the header and save the blob (`URL.createObjectURL` and a temporary `<a download>`). Each sends `Content-Disposition` with a file name. The PDF report is the web app's report page printed (PLAN.md §6).
 
 A problem with one file fails that slice and leaves the rest of the job running. Each failed slice gets an `error.code`:
 
@@ -101,6 +106,7 @@ Edit `schemas.py` / `app.py`, then run `uv run python -m cardia_api.openapi` to 
 | `store.py` | The data folder: images by SHA-256 and one folder per slice |
 | `library.py` | The library in SQLite (`<data dir>/library.sqlite3`): hearts, their slices, details, trash, settings |
 | `hearts.py` | Heart records and heart numbers from stored results |
+| `export/` | CSV tables, the ZIP bundle and the Methods paragraph (owner: Melove) |
 | `watch.py` | The watch folder |
 | `mock.py` | Fake analysis for `--mock` |
 

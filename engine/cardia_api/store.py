@@ -70,5 +70,9 @@ class Store:
         ]
         return sorted(found, key=lambda r: r["analysed_at"], reverse=True)
 
+    def image_path(self, sha256: str) -> Path | None:
+        """The stored copy of an imported image, whatever its extension; None if it is gone."""
+        return next(iter(sorted(self.images.glob(f"{sha256}.*"))), None)
+
     def layer_path(self, slice_id: str, layer: str) -> Path:
         return self.slice_dir(slice_id) / f"{layer}.png"

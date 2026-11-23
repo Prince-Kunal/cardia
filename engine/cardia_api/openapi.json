@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -973,6 +973,331 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/hearts.csv": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export Hearts Csv",
+        "description": "One row per library heart (the same filters as GET /hearts; never the trash).",
+        "operationId": "exportHeartsCsv",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "group",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "favourite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Favourite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV, UTF-8, decimal point \".\"",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hearts/{heart_key}/slices.csv": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export Slices Csv",
+        "description": "One row per slice of a heart, apex to base. Only the ranges reports show are included.",
+        "operationId": "exportHeartSlicesCsv",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV, UTF-8, decimal point \".\"",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hearts/{heart_key}/methods": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Heart Methods",
+        "description": "The Methods paragraph for each method, the headline method (Settings) first. English.",
+        "operationId": "getHeartMethods",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MethodsParagraph"
+                  },
+                  "title": "Response Getheartmethods"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hearts/{heart_key}/export.zip": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export Zip",
+        "description": "Everything about a heart in one ZIP: original scans, results, image layers, CSVs, the Methods\nparagraph, settings, and a manifest with the SHA-256 of every file.",
+        "operationId": "exportHeartZip",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heart_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Heart Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The heart's bundle",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/settings": {
@@ -2578,6 +2903,41 @@
           "range_shown"
         ],
         "title": "MethodInfo"
+      },
+      "MethodsParagraph": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Method"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "e.g. \"Method A: K-Means + RF\""
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "English. For demo (--mock) results, a warning instead of a paragraph"
+          },
+          "mock": {
+            "type": "boolean",
+            "title": "Mock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "name",
+          "text",
+          "mock"
+        ],
+        "title": "MethodsParagraph",
+        "description": "A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes."
       },
       "ModelFile": {
         "properties": {
