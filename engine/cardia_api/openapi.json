@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -1300,6 +1300,153 @@
         }
       }
     },
+    "/api/v1/study-set": {
+      "get": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Study Set",
+        "description": "The hearts the pipeline was checked on, with each method's infarct %, as context for a report.\nCompare a heart with them only when its pipeline version and model files are the same.",
+        "operationId": "getStudySet",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySet"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/library/backup.zip": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Backup Library",
+        "description": "The whole library as one ZIP: every heart and its details, every slice result and image layer,\nevery original scan, and a manifest with the SHA-256 of each file. Restore it with POST\n/library/restore, here or on another computer.",
+        "operationId": "backupLibrary",
+        "responses": {
+          "200": {
+            "description": "The whole library in one file",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/library/restore": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Restore Library",
+        "description": "Add a backup's hearts to this library. Nothing here is overwritten: hearts already here are\nskipped, and a damaged backup is refused before anything changes.",
+        "operationId": "restoreLibrary",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_restoreLibrary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a Cardia backup, or a damaged one",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/settings": {
       "get": {
         "tags": [
@@ -1596,6 +1743,21 @@
           "files"
         ],
         "title": "Body_createJob"
+      },
+      "Body_restoreLibrary": {
+        "properties": {
+          "backup": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Backup",
+            "description": "A backup made by GET /library/backup.zip"
+          }
+        },
+        "type": "object",
+        "required": [
+          "backup"
+        ],
+        "title": "Body_restoreLibrary"
       },
       "EngineInfo": {
         "properties": {
@@ -3001,6 +3163,54 @@
         ],
         "title": "PctRange"
       },
+      "RestoreReport": {
+        "properties": {
+          "hearts_added": {
+            "type": "integer",
+            "title": "Hearts Added"
+          },
+          "hearts_skipped": {
+            "type": "integer",
+            "title": "Hearts Skipped",
+            "description": "Hearts already in this library (by key), or whose slices all are"
+          },
+          "slices_added": {
+            "type": "integer",
+            "title": "Slices Added"
+          },
+          "slice_results_copied": {
+            "type": "integer",
+            "title": "Slice Results Copied"
+          },
+          "images_copied": {
+            "type": "integer",
+            "title": "Images Copied"
+          },
+          "backup_created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hearts_added",
+          "hearts_skipped",
+          "slices_added",
+          "slice_results_copied",
+          "images_copied",
+          "backup_created_at"
+        ],
+        "title": "RestoreReport",
+        "description": "What a restore added. Restoring never overwrites: hearts already here are skipped."
+      },
       "SliceError": {
         "properties": {
           "code": {
@@ -3177,6 +3387,94 @@
           "layers"
         ],
         "title": "SliceResult"
+      },
+      "StudyHeart": {
+        "properties": {
+          "heart_id": {
+            "type": "string",
+            "title": "Heart Id"
+          },
+          "slices": {
+            "type": "integer",
+            "title": "Slices"
+          },
+          "total_weight_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Weight Mg"
+          },
+          "method_a_dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method A Dead Pct"
+          },
+          "method_b_dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method B Dead Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "heart_id",
+          "slices",
+          "total_weight_mg",
+          "method_a_dead_pct",
+          "method_b_dead_pct"
+        ],
+        "title": "StudyHeart"
+      },
+      "StudySet": {
+        "properties": {
+          "pipeline_version": {
+            "type": "string",
+            "title": "Pipeline Version"
+          },
+          "models_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models Manifest Sha256"
+          },
+          "hearts": {
+            "items": {
+              "$ref": "#/components/schemas/StudyHeart"
+            },
+            "type": "array",
+            "title": "Hearts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pipeline_version",
+          "models_manifest_sha256",
+          "hearts"
+        ],
+        "title": "StudySet",
+        "description": "The hearts the pipeline was checked on (PLAN.md §1d), as context for a report. Compare a heart with\nthem only when it was measured with the same pipeline version and model files."
       },
       "TissueResult": {
         "properties": {

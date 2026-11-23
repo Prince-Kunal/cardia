@@ -245,6 +245,70 @@ class Library:
         with self._tx() as db:
             return db.execute("DELETE FROM hearts WHERE deleted_at IS NOT NULL AND deleted_at < ?", (cutoff,)).rowcount
 
+    # backup and restore ------------------------------------------------------------------------
+
+    def count_hearts(self) -> int:
+        with self._lock:
+            (n,) = self._db.execute("SELECT COUNT(*) FROM hearts").fetchone()
+        return n
+
+    def snapshot(self, path: Path) -> None:
+        """Copy the library, consistent as of now, into a new SQLite file (for a backup)."""
+        with self._lock:
+            dst = sqlite3.connect(path)
+            try:
+                self._db.backup(dst)
+            finally:
+                dst.close()
+
+    def merge_from(self, path: Path, has_result=lambda slice_id: True) -> dict:
+        """Add another library's hearts (a restored backup). Never overwrites: a heart is added only if
+        its key is new, with its slices that are not filed in a heart here already and whose results
+        exist. Settings and the watch folder's memory are left alone."""
+        src = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        src.row_factory = sqlite3.Row
+        added = skipped = slices_added = 0
+        try:
+            try:
+                hearts = src.execute("SELECT * FROM hearts").fetchall()
+                members = src.execute("SELECT * FROM heart_slices ORDER BY heart_key, position").fetchall()
+            except sqlite3.DatabaseError as e:
+                raise ValueError(f"The backup's library could not be read: {e}") from None
+            by_heart: dict[str, list] = {}
+            for m in members:
+                by_heart.setdefault(m["heart_key"], []).append(m)
+            columns = ["heart_key", "label", *[c for c in DETAILS.values() if c != "label"]]
+            columns += ["created_at", "updated_at", "deleted_at"]
+            with self._tx() as db:
+                for h in hearts:
+                    if db.execute("SELECT 1 FROM hearts WHERE heart_key = ?", (h["heart_key"],)).fetchone():
+                        skipped += 1
+                        continue
+                    new = [
+                        m
+                        for m in by_heart.get(h["heart_key"], [])
+                        if has_result(m["slice_id"])
+                        and not db.execute("SELECT 1 FROM heart_slices WHERE slice_id = ?", (m["slice_id"],)).fetchone()
+                    ]
+                    if by_heart.get(h["heart_key"]) and not new:
+                        skipped += 1  # every slice of it is already in another heart here
+                        continue
+                    db.execute(
+                        f"INSERT INTO hearts ({', '.join(columns)}) VALUES ({', '.join('?' * len(columns))})",
+                        [h[c] for c in columns],
+                    )  # columns are this schema's own names; values bound
+                    for m in new:
+                        db.execute(
+                            "INSERT INTO heart_slices (slice_id, heart_key, position, typed_weight_mg, added_at) "
+                            "VALUES (?, ?, ?, ?, ?)",
+                            (m["slice_id"], m["heart_key"], m["position"], m["typed_weight_mg"], m["added_at"]),
+                        )
+                    added += 1
+                    slices_added += len(new)
+        finally:
+            src.close()
+        return {"hearts_added": added, "hearts_skipped": skipped, "slices_added": slices_added}
+
     # settings and the watch folder's memory ----------------------------------------------------
 
     def get_settings(self) -> dict:
