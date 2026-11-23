@@ -1,7 +1,7 @@
 // Generated from engine/cardia_api/openapi.json by `uv run python -m cardia_api.openapi`. Do not edit.
-// Cardia engine API 0.2.0.
+// Cardia engine API 0.3.0.
 
-export const API_VERSION = "0.2.0";
+export const API_VERSION = "0.3.0";
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettingsInput {
@@ -245,6 +245,16 @@ export interface MethodInfo {
   unsure_rule: string;
   /** Whether reports show this method's range (PLAN.md §2g) */
   range_shown: boolean;
+}
+
+/** A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes. */
+export interface MethodsParagraph {
+  method: "a" | "b";
+  /** e.g. "Method A: K-Means + RF" */
+  name: string;
+  /** English. For demo (--mock) results, a warning instead of a paragraph */
+  text: string;
+  mock: boolean;
 }
 
 export interface ModelFile {

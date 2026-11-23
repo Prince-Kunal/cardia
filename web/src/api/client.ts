@@ -10,6 +10,7 @@ import type {
   HeartUpdate,
   Job,
   Layer,
+  MethodsParagraph,
   SliceResult,
   WatchStatus,
 } from './types.gen';
@@ -165,4 +166,58 @@ export class EngineClient {
   watchStatus() {
     return this.json<WatchStatus>('GET', '/watch');
   }
+
+  /** The Methods paragraph for each method, the headline method first. */
+  heartMethods(key: string) {
+    return this.json<MethodsParagraph[]>('GET', `/hearts/${encodeURIComponent(key)}/methods`);
+  }
+
+  /** Fetch a file the engine offers for download (it needs the token, so a plain link can't). */
+  async download(path: string, fallbackName: string): Promise<{ blob: Blob; name: string }> {
+    const res = await this.send('GET', path);
+    return { blob: await res.blob(), name: fileNameOf(res.headers.get('Content-Disposition')) ?? fallbackName };
+  }
+
+  slicesCsv(key: string) {
+    return this.download(`/hearts/${encodeURIComponent(key)}/slices.csv`, 'cardia-heart-slices.csv');
+  }
+
+  heartZip(key: string) {
+    return this.download(`/hearts/${encodeURIComponent(key)}/export.zip`, 'cardia-heart.zip');
+  }
+
+  heartsCsv(query: Omit<HeartQuery, 'trash'> = {}) {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') params.set(k, String(v));
+    const qs = params.toString();
+    return this.download(`/hearts.csv${qs ? `?${qs}` : ''}`, 'cardia-hearts.csv');
+  }
+}
+
+/** The file name in a Content-Disposition header (plain or RFC 5987 encoded), or null. */
+export function fileNameOf(header: string | null): string | null {
+  if (!header) return null;
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch {
+      // fall through to the plain name
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain ? plain[1].trim() : null;
+}
+
+/** Hand a downloaded file to the browser's save flow. */
+export function saveFile({ blob, name }: { blob: Blob; name: string }): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  // Give the browser a moment to start the download before the URL goes.
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
