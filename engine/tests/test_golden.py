@@ -1,7 +1,7 @@
 """The engine reproduces the golden set (PLAN.md §7, tests/golden/README.md).
 
 On the platform that generated it: identical numbers and masks. On another platform: every slice within
-0.1 pp, IoU >= 0.99 on every mask, identical QC flags. Skips without reference/golden/ (team Drive).
+0.1 pp, IoU >= 0.99 on every mask, identical QC flags. Skips without reference/golden/.
 """
 
 import json
@@ -31,7 +31,7 @@ PX_COLUMNS = ["tissue_px", "holes_removed_px", "holes_uncertain_px", "filled_px"
 @pytest.fixture(scope="module")
 def golden():
     if not (GOLDEN / "per_slice.csv").exists():
-        pytest.skip("needs the golden set in reference/golden/ (team Drive, or: uv run python -m training.golden)")
+        pytest.skip("needs the golden set in reference/golden/ (or: uv run python -m training.golden)")
     return pd.read_csv(GOLDEN / "per_slice.csv", keep_default_na=False).set_index("file"), json.loads(
         (GOLDEN / "meta.json").read_text()
     )

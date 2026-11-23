@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cardia pre-commit checks: committer is a team member, no lab data, no large files.
+# Cardia pre-commit checks: committer is a team member, no pickled caches, no large files.
 set -euo pipefail
 
 # 1. Commit under your own team identity (see CONTRIBUTING.md, "Who we are").
@@ -23,12 +23,14 @@ if ! is_team "$author"; then
   exit 1
 fi
 
-# 2. Lab data never goes into git (the repo is public).
+# 2. No pickled caches (*.pkl): they are big and loading one runs code. Study data, model files and the
+#    golden set may be committed (decided 2026-11-23); models are listed with their SHA-256 in
+#    engine/models/manifest.json.
 staged="$(git diff --cached --name-only --diff-filter=ACMR)"
-lab="$(printf '%s\n' "$staged" | grep -iE '\.(tif|tiff|out|joblib|pkl)$|^data/|^reference/|^engine/annotations/' || true)"
-if [ -n "$lab" ]; then
-  echo "pre-commit: these files look like lab data or reference material and must not be committed:" >&2
-  printf '  %s\n' $lab >&2
+pickles="$(printf '%s\n' "$staged" | grep -iE '\.pkl$' || true)"
+if [ -n "$pickles" ]; then
+  echo "pre-commit: pickled caches must not be committed:" >&2
+  printf '  %s\n' $pickles >&2
   exit 1
 fi
 

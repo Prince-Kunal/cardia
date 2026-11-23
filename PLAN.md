@@ -177,10 +177,10 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
 
   Neither passes the §8 rule (≤ 3 false holes and no slice losing > 1% wrongly). The team chose the repo version: same holes found, half the false holes. Its one breach is a known limit: on 109IS151 a crease is removed as a hole (1.47% of the slice) while the real hole there is missed. More hole labels (§8, in parallel) are the fix. Choosing it changes Method A's tissue masks on the hole slices compared with the notebook, so the golden set uses this hole file. The notebook's version stays in `engine/training/notebook_holes.py`, where its held-out decisions reproduce the notebook's saved masks on all 30 slices.
 - **The hole file** (model version 1.0.0):
-  - `engine/models/holes/hole_model.joblib`: the fitted scaler + logistic regression. Derived from GVSU data, so it is shared through the team Drive, not git.
+  - `engine/models/holes/hole_model.joblib` (in git): the fitted scaler + logistic regression.
   - `engine/models/holes/hole_model.json` (in git): feature names in order; cut-off 0.8 and the uncertain band from 0.5; candidate settings (`CFG["holes"]`); SHA-256 of the training labels; the held-out results above; scikit-learn version, model version, and SHA-256 of the `.joblib`.
   - `engine/models/manifest.json` (in git) lists both with their SHA-256. The engine refuses a file that is missing, unlisted or changed, or that was saved with another scikit-learn version or other candidate settings.
-  - Trained by `engine/training/train_hole_model.py` from `engine/annotations/holes/hand_marked_holes.json` (the 10 outlines from notebook Step 21; traced on GVSU scans, so team Drive, not git). Training is deterministic: the same labels and data give a byte-identical `.joblib`. Later labels are added to the same file, with a new model version.
+  - Trained by `engine/training/train_hole_model.py` from `engine/annotations/holes/hand_marked_holes.json` (the 10 outlines from notebook Step 21, in git). Training is deterministic: the same labels and data give a byte-identical `.joblib`. Later labels are added to the same file, with a new model version.
   - The app only loads the file; it never retrains.
 
 ### 2e. Method A: K-Means + RF
@@ -195,7 +195,7 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
   - Centres (L\*, a\*, b\*): (49.8, 32.2, 19.9) red → alive; (66.8, 21.8, 18.1) pink → no label; (83.7, 7.2, 17.5) cream → dead. Group names are chosen by paleness = L\* − 1.5·a\*.
   - A pixel is labelled only if it is clearly closer to one centre (distance ratio < 0.8).
   - 2,000 pixels per class per slice → random forest: 150 trees, min_samples_leaf 10, max_features sqrt, class_weight balanced_subsample, random_state 42.
-- **Files (model 1.0.0):** `engine/models/kmeans_rf/kmeans_rf.joblib` is the forest from the notebook's `final_model_K_Means_RF.joblib` (SHA-256 0b29fbe7…), exported unchanged by `engine/training/export_method_a.py` (team Drive, not git). The export is byte-reproducible: unused padding bytes in the tree nodes are zeroed and strings interned, which otherwise made two exports of the same forest differ. `kmeans_rf.json` (in git) holds the feature names, cut 0.5, the source file's hash, the K-Means centres, scikit-learn version and SHA-256. The engine loads it through the manifest check and predicts with one thread, so p is bit-identical between runs.
+- **Files (model 1.0.0):** `engine/models/kmeans_rf/kmeans_rf.joblib` is the forest from the notebook's `final_model_K_Means_RF.joblib` (SHA-256 0b29fbe7…), exported unchanged by `engine/training/export_method_a.py` (in git). The export is byte-reproducible: unused padding bytes in the tree nodes are zeroed and strings interned, which otherwise made two exports of the same forest differ. `kmeans_rf.json` (in git) holds the feature names, cut 0.5, the source file's hash, the K-Means centres, scikit-learn version and SHA-256. The engine loads it through the manifest check and predicts with one thread, so p is bit-identical between runs.
 - **Port check (Phase 0, 2026-11-20):**
   - The notebook's file is read only through a guarded loader: known SHA-256, and only numpy / scikit-learn / scipy / joblib classes (the notebook's own `KMeansLabeller` gets a stand-in). A file that tries to run code is refused.
   - **Exact:** the engine's forest predicts exactly as the notebook's. On the notebook's front end and hole model it gives exactly what the notebook printed with its final model: 108IS132 13.56% (134,940 tissue px), 109IS104 7.72%, 207IS110 86.71% (tissue px, holes removed and unsure share also equal).
@@ -441,7 +441,7 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 | Range definitions (§2g), for both methods. *Done: both fail; show B's range only for now, revisit after the app is built (§2g).* | The range contains Ref-YHS on the time-control hearts and is ≤ 10 pp wide on ≥ 80% of slices ◇ |
 | "Methods disagree" threshold (§2g). *Done: no flag; A and B shown side by side (§2g).* | Set from the A–B differences on the 30 study slices ◇ |
 | Outline area vs slice weight, mean within-heart r | ≥ 0.95 ◇ (same bar as before) |
-| Golden set and README table. *Done 2026-11-23: `reference/golden/` (team Drive), hashes in `engine/tests/golden/golden.sha256`, `test_golden.py`.* | Written, with every threshold change and its reason |
+| Golden set and README table. *Done 2026-11-23: `reference/golden/` (in git), hashes in `engine/tests/golden/golden.sha256`, `test_golden.py`.* | Written, with every threshold change and its reason |
 
 **In parallel (one-time, training only, allowed by D6):**
 - label more hole candidates, aiming for several hundred, add them to `hand_marked_holes.json`, and retrain the hole file;
@@ -486,7 +486,7 @@ Pass rules marked ◇ are proposals; the team fixes them **before running**.
 | # | Milestone | Output | Owner | Est. |
 |---|---|---|---|---|
 | 0 | Phase 0 gate for both methods (+ hole labelling, tracings request) | `ttc_pipeline/` with Methods A and B, `models/` (hole file, RF, a\* cuts, manifest), one scorecard, golden set, README table | Prince (shared steps, holes, B, scorecard) + Melove (A, golden set) | 2–2.5 wk |
-| 1 | Engine API | Local FastAPI server: jobs with progress, results JSON + layer PNGs, local-only access; **OpenAPI contract published in week 1** so the web app can be built on mock data; golden parity in CI (macOS + Linux). *2026-11-23: contract 0.1.0 (`engine/cardia_api/openapi.json`), server, `--mock` mode; the API reproduces the golden set exactly on team machines. CI has no data yet (§13 item 14)* | Prince | 1 wk |
+| 1 | Engine API | Local FastAPI server: jobs with progress, results JSON + layer PNGs, local-only access; **OpenAPI contract published in week 1** so the web app can be built on mock data; golden parity in CI (macOS + Linux). *2026-11-23: contract 0.1.0 (`engine/cardia_api/openapi.json`), server, `--mock` mode; the API reproduces the golden set exactly; with the data in git, CI runs the golden tests on macOS and Linux (§13 item 14)* | Prince | 1 wk |
 | 2 | Web shell | Screens 1, 2, 3, 11; library (SQLite in the engine); watch folder; speed measured | Krrish | 2 wk |
 | 3 | Reports and export | Screens 4, 5, 6; PDF, CSV, ZIP; backup / restore | Krrish (screens) + Melove (export, Methods paragraph) | 1.5 wk |
 | 4 | Cloud sync | Screen 12; accounts, workspaces, sync engine, image opt-in | Prince | 2 wk |
@@ -533,6 +533,6 @@ About 18–20 weeks if done one after another, but three people working in paral
 9. **Which method to move forward with, A or B, and how to decide.** Proposed rule ◇: when Ref-2 tracings arrive, pick the method with the better Dice and heart MAE against Ref-2, with the YHS time-control check as a tie-breaker. Until then both run.
 10. **Default headline method** while both run: A (current default ◇) or B?
 11. **Which ◇ proposals to accept** (§1k, §1f, §3e, §4 rollout, §8 pass rules).
-12. **Public repo and derived files:** `cardia` is public. May the frozen models and golden masks (derived from GVSU scans) be committed, or does the repo become private? Until decided they are shared through the team Drive (CONTRIBUTING.md).
+12. **Public repo and derived files: decided 2026-11-23, they are committed.** The study scans and `.out` files (already public in the research repo), the frozen models, the hand-marked hole outlines, the notebook's saved masks and results, and the golden set are in git; the data is not secret. Left out: the notebook itself (22 MB) and its caches. Cloud sync of new lab data still follows §5.
 13. **Ranges, Method A's high reading on time-control hearts, and the A-or-B choice: revisit once the app is built** (decided 2026-11-23). Teammates are working on method improvements; the best-performing approach is then implemented. Until then the app shows A and B side by side and only B's range.
-14. **Golden parity in CI.** CI runs on GitHub's machines, which have no scans, models or golden set (the repo is public), so the golden tests skip there and run on team machines before a merge. Options: a self-hosted runner on a team Mac that has the data (macOS only); or fetch the data in CI from private storage with a secret, which needs item 12 and the GVSU data agreement (§5); or keep running them on team machines (current).
+14. **Golden parity in CI: decided 2026-11-23.** With the data in git (item 12), CI runs every parity and golden test on macOS and Linux, and checks out the public research repo for Method B's parity test.

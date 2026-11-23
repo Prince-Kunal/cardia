@@ -7,7 +7,7 @@ The local server the web app talks to (PLAN.md §6, milestone 1). It analyses sl
 ```bash
 cd engine
 uv run python -m cardia_api --mock      # fake analysis: no model files or lab data needed (for UI work)
-uv run python -m cardia_api             # the real engine (needs the model binaries from the team Drive)
+uv run python -m cardia_api             # the real engine
 ```
 
 It listens on `http://127.0.0.1:8765` and prints a link for the app:

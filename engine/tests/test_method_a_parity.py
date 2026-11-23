@@ -36,7 +36,7 @@ NOTEBOOK_PRINTED = {
 @pytest.fixture(scope="module")
 def notebook_model():
     if not SOURCE.exists():
-        pytest.skip("needs reference/results_local/final_model_K_Means_RF.joblib (ask Prince)")
+        pytest.skip("needs reference/results_local/final_model_K_Means_RF.joblib")
     model = load_notebook_model()
     model["rf"].n_jobs = 1
     return model

@@ -9,6 +9,6 @@
 ## Checklist
 
 - [ ] Commits are under my own team identity
-- [ ] No lab data, masks or reference material added (data/, reference/, *.tif, *.out)
+- [ ] Any lab data added is named in the description, with where it comes from; no `*.pkl` caches
 - [ ] Engine output unchanged, or the pipeline version is bumped and the change is listed in "What's new"
 - [ ] PLAN.md updated if a decision changed

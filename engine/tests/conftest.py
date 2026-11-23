@@ -1,20 +1,33 @@
 """Shared test fixtures.
 
 Parity tests need the GVSU study scans (`data/`), the notebook's saved results
-(`reference/results_local/`) and, for holes, the hand-marked outlines
-(`engine/annotations/holes/`). None of these is in git (the repo is public), so those tests
-skip with a message when the files are missing. CONTRIBUTING.md says how to get them.
+(`reference/results_local/`) and, for holes, the hand-marked outlines (`engine/annotations/holes/`),
+all in git. Method B's parity test also needs the research repo at `reference/research-repo`
+(CONTRIBUTING.md). Tests skip with a message when files are missing.
 """
 
+import json
 from pathlib import Path
 
 import pytest
 
+from training.golden import GOLDEN, platform_tag
 from training.holes import LABELS_PATH, build_candidates, load_labels, notebook_tissues
 from training.notebook_holes import notebook_candidates
 from training.study import REPO, StudySlice, front_end, study_scans
 
 REFERENCE_MASKS = REPO / "reference" / "results_local" / "masks"
+
+
+@pytest.fixture(scope="session")
+def on_reference_platform() -> bool:
+    """True on the platform the models and the golden set were made on (reference/golden/meta.json).
+
+    There, training and analysis must be bit-identical; on other platforms PLAN.md §7's tolerances apply,
+    because the linear algebra libraries differ in the last bits.
+    """
+    meta = GOLDEN / "meta.json"
+    return meta.exists() and json.loads(meta.read_text())["platform"] == platform_tag()
 
 
 @pytest.fixture(scope="session")
@@ -28,14 +41,14 @@ def scans() -> dict[str, Path]:
 @pytest.fixture(scope="session")
 def reference_masks() -> Path:
     if not REFERENCE_MASKS.is_dir():
-        pytest.skip("needs the notebook's saved masks in reference/results_local/masks (ask Prince)")
+        pytest.skip("needs the notebook's saved masks in reference/results_local/masks")
     return REFERENCE_MASKS
 
 
 @pytest.fixture(scope="session")
 def hole_labels() -> Path:
     if not LABELS_PATH.exists():
-        pytest.skip(f"needs the hand-marked hole outlines in {LABELS_PATH.relative_to(REPO)} (ask Prince)")
+        pytest.skip(f"needs the hand-marked hole outlines in {LABELS_PATH.relative_to(REPO)}")
     return LABELS_PATH
 
 

@@ -44,14 +44,22 @@ def test_shipped_recipe_held_out_matches_the_model_file(slices, labels, shipped)
     assert (summary["holes_found"], summary["false_holes"]) == (5, 2)
 
 
-def test_the_frozen_hole_model_is_reproducible(shipped, tmp_path):
-    """Retraining from the labels gives a byte-identical file to the one in the manifest."""
+def test_the_frozen_hole_model_is_reproducible(shipped, tmp_path, on_reference_platform):
+    """Retraining from the labels gives a byte-identical file to the one in the manifest; on another
+    platform, the same hole decisions with scores within 1e-6."""
     try:
         model = HoleModel.load()
     except ModelFileError as e:
         pytest.skip(f"no frozen hole model on this machine: {e}")
     fresh = fit_hole_model(shipped.table, FEATURES)
-    joblib.dump(fresh, tmp_path / "hole_model.joblib")
-    assert sha256_file(tmp_path / "hole_model.joblib") == read_manifest()["files"]["holes/hole_model.joblib"]["sha256"]
     X = shipped.table[FEATURES]
-    assert np.array_equal(model.score(X), fresh.predict_proba(X.values)[:, 1])
+    ours, theirs = model.score(X), fresh.predict_proba(X.values)[:, 1]
+    if on_reference_platform:
+        joblib.dump(fresh, tmp_path / "hole_model.joblib")
+        shipped_sha = read_manifest()["files"]["holes/hole_model.joblib"]["sha256"]
+        assert sha256_file(tmp_path / "hole_model.joblib") == shipped_sha
+        assert np.array_equal(ours, theirs)
+    else:
+        assert np.abs(ours - theirs).max() < 1e-6
+        for edge in (model.cut, model.uncertain_from):
+            assert np.array_equal(ours >= edge, theirs >= edge)

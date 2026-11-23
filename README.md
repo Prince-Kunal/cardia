@@ -9,19 +9,19 @@ Cardia measures infarct size on scanned TTC heart slices automatically, and teac
 
 | Path | What | In git |
 |---|---|---|
-| `engine/` | Python engine: `ttc_pipeline/` (analysis), `cardia_api/` (the local API the web app calls, contract in `openapi.json`), `training/` (one-time training and Phase 0 checks), `models/`, `tests/` | yes, except model binaries (`*.joblib`) and `annotations/` (team Drive) |
+| `engine/` | Python engine: `ttc_pipeline/` (analysis), `cardia_api/` (the local API the web app calls, contract in `openapi.json`), `training/` (one-time training and Phase 0 checks), `models/`, `annotations/`, `tests/` | yes |
 | `web/` | React + TypeScript web app (milestone 2) | yes |
 | `content/` | Learn lessons, glossary and quizzes, one folder per language | yes |
 | `scripts/` | `setup.sh`, `check_data.py`, `study-data.sha256` | yes |
-| `data/` | GVSU study scans and `.out` reference files (41 files, checked by SHA-256) | **never** |
-| `reference/` | Reference notebook, its saved results (`results_local/`), link to the research repo, the golden set (`golden/`) and Phase 0 outputs (`phase0/`) | **never** |
+| `data/` | GVSU study scans and `.out` reference files (41 files, checked by SHA-256) | yes |
+| `reference/` | The notebook's saved results (`results_local/`), the golden set (`golden/`) and Phase 0 outputs (`phase0/`); also, not in git, the notebook itself (team Drive) and a clone of the research repo (`research-repo/`) | yes, except the notebook, its caches and the research repo |
 
 ## Quick start
 
 ```bash
 scripts/setup.sh <your-github-username>
 cd engine && uv run python -m cardia_api --mock   # the engine API with fake analysis, for UI work
-cd engine && uv run python -m cardia_api          # the real engine (model binaries from the team Drive)
+cd engine && uv run python -m cardia_api          # the real engine
 ```
 
 The engine listens on 127.0.0.1 only and prints a link that opens the app with a fresh token. How the app uses it: [engine/cardia_api/README.md](engine/cardia_api/README.md).
@@ -30,7 +30,7 @@ The engine listens on 127.0.0.1 only and prints a link that opens the app with a
 
 * 30 slices from 8 hearts. All are RGB TIFFs, about 300–700 px per side, and tagged 1200 dpi (0.0212 mm per pixel).
 * References: Ref-0 is the professor's `*InfSize.out` for all 8 hearts. Ref-YHS (`*InfSizeYHS.out`) covers hearts 109, 119 and 129, 11 slices in total.
-* 10 hand-marked holes on 8 slices (from notebook Step 21), in `engine/annotations/holes/` (team Drive).
+* 10 hand-marked holes on 8 slices (from notebook Step 21), in `engine/annotations/holes/`.
 
 ## Phase 0 results (2026-11-23)
 
@@ -53,4 +53,4 @@ Both methods as the engine runs them, put through the same checks by `engine/tra
 * **What it means:** A agrees with the professor-based references, B with YHS, and they differ by 6–40 pp per heart. Expert tracings (Ref-2) are needed to say which is right (PLAN.md §13 items 9 and 13).
 * **Decisions (2026-11-23):** both methods are shown side by side with no "methods disagree" flag; only Method B's range is shown; Method A ships as is with its limits stated and a shadow warning. Ranges and the A-or-B choice are revisited once the app is built.
 * **Port checks:** the shared steps and Method B reproduce the notebook and the research repo exactly; Method A's frozen forest reproduces the notebook's printed results exactly (PLAN.md §2e).
-* **Golden set:** the 30 slices as the engine analyses them, in `reference/golden/` (team Drive), checked by `engine/tests/test_golden.py` against the hashes in `engine/tests/golden/golden.sha256`.
+* **Golden set:** the 30 slices as the engine analyses them, in `reference/golden/`, checked by `engine/tests/test_golden.py` against the hashes in `engine/tests/golden/golden.sha256`.

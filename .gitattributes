@@ -20,3 +20,8 @@
 *.joblib binary
 *.pkl binary
 *.npz binary
+
+# Study data and reference outputs are checked by SHA-256 (scripts/study-data.sha256,
+# engine/tests/golden/golden.sha256), so git must store them byte for byte (the .out files use CRLF).
+data/** -text
+reference/** -text

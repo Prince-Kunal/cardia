@@ -2,7 +2,7 @@
 
 The engine loads a model file only if `models/manifest.json` lists it and its SHA-256 matches, so
 the same input always gives the same number and every report can name the exact model used.
-Model binaries are derived from GVSU data and are not in git; they come from the team Drive.
+All model files are in git, next to the manifest.
 """
 
 import hashlib
@@ -44,7 +44,7 @@ def verified_path(rel, models_dir=MODELS_DIR) -> Path:
         raise ModelFileError(f"models/{rel} is not listed in models/{MANIFEST}")
     path = Path(models_dir) / rel
     if not path.exists():
-        raise ModelFileError(f"models/{rel} is missing. Get it from the team Drive (CONTRIBUTING.md).")
+        raise ModelFileError(f"models/{rel} is missing. It is in git: git checkout -- engine/models/{rel}")
     actual = sha256_file(path)
     if actual != entry["sha256"]:
         raise ModelFileError(

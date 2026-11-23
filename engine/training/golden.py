@@ -2,8 +2,8 @@
 
 The 30 study slices through the engine exactly as the app runs them: shared front end and hole model,
 Method A with the frozen forest, Method B with its own front end and the shipped cuts. Writes
-reference/golden/ (derived from GVSU scans: team Drive, never git) and the list of its files' SHA-256
-in engine/tests/golden/golden.sha256 (in git), so a copy can be checked.
+reference/golden/ and the list of its files' SHA-256 in engine/tests/golden/golden.sha256, so a copy can be
+checked.
 
     cd engine && uv run python -m training.golden
 """

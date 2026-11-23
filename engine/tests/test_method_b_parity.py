@@ -30,7 +30,9 @@ def yhs(scans):
 def repo_outputs():
     files = REPO_OUTPUTS / "measurements.csv", REPO_OUTPUTS / "final" / "per_slice.csv"
     if not all(f.exists() for f in files):
-        pytest.skip("needs the research repo's outputs in reference/research-repo/outputs (ask Prince)")
+        pytest.skip(
+            "needs reference/research-repo/outputs: git clone https://github.com/Prince-Kunal/infarct-algorithms"
+        )
     return [pd.read_csv(f) for f in files]
 
 
@@ -64,7 +66,7 @@ def test_recipe_reproduces_the_repo_cuts(repo_run, repo_outputs):
     assert round(cal.mae_vs_yhs, 1) == 2.4
 
 
-def test_the_shipped_cut_file_is_what_the_recipe_gives(scans, yhs):
+def test_the_shipped_cut_file_is_what_the_recipe_gives(scans, yhs, on_reference_platform):
     try:
         hole_model = HoleModel.load()
     except ModelFileError as e:
@@ -72,10 +74,16 @@ def test_the_shipped_cut_file_is_what_the_recipe_gives(scans, yhs):
     shared, original = engine_calibrations(scans, yhs, hole_model)
     info = json.loads((MODELS_DIR / A_CUT_JSON).read_text())
     assert not shared.passes, "the shared front end failed the 2.9 pp rule, so Method B keeps its own"
-    assert (info["conservative"], info["liberal"]) == (original.conservative, original.liberal) == (11.75, 18.6)
-    assert info["calibration"]["time_control_loho_cuts"] == original.loho_cuts
-    assert info["calibration"]["time_control_mae_vs_yhs_pp"] == round(original.mae_vs_yhs, 3)
-    assert info["shared_front_end_trial"]["time_control_mae_vs_yhs_pp"] == round(shared.mae_vs_yhs, 3)
+    assert (info["conservative"], info["liberal"]) == (11.75, 18.6)
+    assert info["calibration"]["time_control_loho_cuts"] == original.loho_cuts  # a grid: the same everywhere
+    if on_reference_platform:
+        assert (original.conservative, original.liberal) == (11.75, 18.6)
+        assert info["calibration"]["time_control_mae_vs_yhs_pp"] == round(original.mae_vs_yhs, 3)
+        assert info["shared_front_end_trial"]["time_control_mae_vs_yhs_pp"] == round(shared.mae_vs_yhs, 3)
+    else:  # the liberal cut is a GMM valley; another platform's linear algebra moves it by ~0.01 (Linux: 18.587)
+        assert original.conservative == 11.75 and abs(original.liberal_exact - 18.6) <= 0.05
+        assert abs(info["calibration"]["time_control_mae_vs_yhs_pp"] - original.mae_vs_yhs) < 0.01
+        assert abs(info["shared_front_end_trial"]["time_control_mae_vs_yhs_pp"] - shared.mae_vs_yhs) < 0.01
 
 
 def test_method_b_on_a_scan_is_bit_identical_twice(scans):

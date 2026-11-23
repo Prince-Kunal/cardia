@@ -1,14 +1,12 @@
-# --- Lab data: GVSU scans and .out reference files. Not ours to publish; never commit. ---
-data/
-*.tif
-*.tiff
-*.out
-
-# --- Reference material: notebook, its saved results, link to the research repo ---
-reference/
-
-# --- Model binaries: derived from GVSU data, shared via the team Drive until the team decides (CONTRIBUTING.md) ---
-engine/models/**/*.joblib
+# --- Lab data and reference material ---
+# The study scans, .out files, frozen models, hole outlines, golden set and the notebook's saved masks
+# are committed (decided 2026-11-23: not secret; the scans are already public in the research repo).
+# Left out: the notebook itself (22 MB), its caches and figures, and the link to the research repo.
+reference/*.ipynb
+reference/research-repo
+reference/results_local/*.pkl
+reference/results_local/figures/
+reference/results_local/new_photos/
 
 # --- Python ---
 .venv/
@@ -27,7 +25,6 @@ release/
 
 # --- Generated results ---
 outputs/
-results*/
 *.pkl
 
 # --- OS / editor / secrets ---
@@ -38,6 +35,3 @@ results*/
 .env.*
 .claude/settings.local.json
 *.log
-
-# --- Hand-marked hole outlines: traced on GVSU scans, shared via the team Drive like the models ---
-engine/annotations/
