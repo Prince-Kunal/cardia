@@ -3,144 +3,27 @@
 // heart will (camera, highlighted and hidden parts, labels, animation, speed), so it is both the first
 // version of the heart and the 2D fallback the plan asks for (PLAN.md §3f).
 //
-// Schematic, not to scale. Right and left are the heart's own, so its right side is on the left of the
-// picture, as in every anatomy book.
+// Schematic, not to scale, but anatomical: the shapes are in geometry.ts. Right and left are the
+// heart's own, so its right side is on the left of the picture, as in every anatomy book.
 
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useState } from 'react';
 import type { Scene } from '../learn/lesson';
+import {
+  ANTERIOR,
+  FLOW,
+  LABELS,
+  OUTLINE,
+  type Pt,
+  SECTION,
+  SLICE,
+  type Vessel,
+  infarctPath,
+  pointAt,
+  smooth,
+  tube,
+} from './geometry';
 import { type Anim, LOOPING, PART_NAMES, VIEW_NAMES, VIEW_PARTS, type View, partName, viewOf } from './parts';
 import './heart.css';
-
-// ---------------------------------------------------------------------------------------------
-// Geometry, in heart coordinates (x 78–378, y 14–395). The heart is drawn OX to the right in a
-// 640 × 440 picture, leaving columns for labels on both sides.
-
-const OUTLINE =
-  'M 120 118 C 92 135 78 190 92 245 C 106 300 170 360 250 395 C 300 360 336 300 334 235 C 332 175 318 130 292 112 C 262 92 230 100 205 110 C 180 100 145 102 120 118 Z';
-
-const SECTION = {
-  ra: 'M 104 165 C 104 138 126 124 150 126 C 172 129 184 146 182 170 C 180 196 164 210 142 210 C 120 210 104 192 104 165 Z',
-  la: 'M 222 152 C 224 130 246 120 270 122 C 296 125 312 140 310 162 C 308 184 290 196 266 195 C 242 194 220 176 222 152 Z',
-  rv: 'M 112 240 C 120 226 150 222 178 228 C 192 232 200 244 200 262 C 200 296 206 325 222 352 C 186 340 140 304 122 276 C 112 262 108 250 112 240 Z',
-  lv: 'M 224 236 C 238 222 276 218 300 228 C 318 238 322 262 316 292 C 308 330 282 360 254 378 C 238 352 226 320 222 290 C 219 268 216 248 224 236 Z',
-  septum:
-    'M 200 240 C 201 290 206 325 224 354 L 246 372 C 236 348 226 320 222 290 C 219 268 218 250 224 236 C 216 232 206 234 200 240 Z',
-  tricuspid: 'M 116 218 Q 130 232 145 219 Q 160 232 176 220',
-  mitral: 'M 232 210 Q 248 224 264 211 Q 280 224 296 212',
-  'pulmonary-valve': 'M 178 212 Q 188 221 198 212',
-  'aortic-valve': 'M 212 214 Q 222 223 234 214',
-  svc: 'M 124 14 L 126 140',
-  ivc: 'M 100 392 C 100 330 104 262 122 205',
-  aorta: 'M 224 224 C 220 180 200 132 204 90 C 208 54 250 38 282 50 C 308 60 318 86 318 134',
-  trunk: 'M 188 226 C 186 192 168 152 172 114',
-  trunkLeft: 'M 173 116 C 152 100 122 94 90 98',
-  trunkRight: 'M 175 112 C 204 96 256 92 304 102',
-  veins: ['M 376 134 L 306 146', 'M 378 178 L 308 170'],
-};
-
-// Blood's path through the heart, for the flow animation: oxygen-poor (right side) and oxygen-rich (left).
-const FLOW = {
-  poor: [
-    'M 124 20 L 126 150 C 130 190 140 215 145 235 C 150 270 170 300 190 280 C 196 250 190 220 186 190 C 182 160 174 130 172 112 C 150 100 120 96 92 98',
-    'M 100 390 C 100 330 104 262 122 205 C 135 225 145 240 160 270',
-    'M 172 112 C 204 96 256 92 302 102',
-  ],
-  rich: [
-    'M 372 136 L 300 150 C 270 160 262 190 265 230 C 270 280 280 320 262 340 C 245 320 232 280 226 240 C 222 200 204 140 204 92 C 208 54 250 38 282 50 C 308 60 318 86 318 134',
-    'M 374 178 L 300 172 C 280 180 270 200 268 230',
-  ],
-};
-
-const ANTERIOR = {
-  rv: 'M 100 220 C 120 200 170 190 215 196 C 222 250 232 320 252 392 C 200 370 140 330 110 285 C 98 262 96 238 100 220 Z',
-  lv: 'M 215 196 C 260 190 310 200 332 225 C 336 300 300 360 252 392 C 232 320 222 250 215 196 Z',
-  ra: 'M 92 150 C 96 128 120 118 140 124 C 152 140 146 172 124 186 C 104 190 92 174 92 150 Z',
-  la: 'M 266 150 C 272 132 298 128 314 140 C 320 158 306 172 286 174 C 272 172 262 162 266 150 Z',
-  svc: 'M 132 14 L 134 132',
-  aorta: 'M 190 176 C 182 132 176 100 186 76 C 198 46 250 34 284 46 C 310 56 320 84 320 134',
-  trunk: 'M 222 204 C 222 166 232 132 250 104',
-  trunkLeft: 'M 250 106 C 262 92 288 88 314 96',
-  trunkRight: 'M 248 106 C 236 96 216 94 198 98',
-  lad: 'M 236 168 C 230 210 222 262 236 322 C 242 352 248 374 252 392',
-  ladDistal: 'M 230 214 C 222 262 236 322 236 322 C 242 352 248 374 252 392',
-  lcx: 'M 240 166 C 272 170 306 182 330 214',
-  rca: 'M 190 160 C 158 172 126 198 112 236 C 102 262 108 296 138 332',
-  leftMain: 'M 200 158 C 214 160 228 164 240 166',
-  ladTerritory: 'M 213 198 C 232 194 262 196 288 210 C 292 262 286 330 252 392 C 238 360 226 300 210 250 Z',
-  ladCore: 'M 226 240 C 240 236 258 240 274 248 C 276 290 270 340 252 384 C 244 350 234 300 226 240 Z',
-  lcxTerritory: 'M 290 212 C 310 214 326 222 332 232 C 336 280 318 330 290 360 C 284 320 290 262 290 212 Z',
-  cuts: [360, 322, 284, 246],
-};
-
-const SLICE = {
-  lvWall:
-    'M 380 222 A 118 118 0 1 0 144 222 A 118 118 0 1 0 380 222 Z M 324 218 A 60 60 0 1 1 204 218 A 60 60 0 1 1 324 218 Z',
-  lvCavity: 'M 324 218 A 60 60 0 1 1 204 218 A 60 60 0 1 1 324 218 Z',
-  lvOuter: 'M 380 222 A 118 118 0 1 0 144 222 A 118 118 0 1 0 380 222 Z',
-  rvWall:
-    'M 194 125 C 140 104 84 150 84 222 C 84 294 140 340 194 319 L 179 305 C 140 316 102 278 102 222 C 102 166 140 128 179 139 Z',
-  rvCavity: 'M 179 139 C 140 128 102 166 102 222 C 102 278 140 316 179 305 A 118 118 0 0 1 179 139 Z',
-  rvOuter: 'M 194 125 C 140 104 84 150 84 222 C 84 294 140 340 194 319',
-  septum: 'M 194.3 125.3 A 118 118 0 0 0 194.3 318.7 L 229.6 267.1 A 60 60 0 0 1 229.6 168.9 Z',
-  // The front wall of the left ventricle, endocardium to epicardium (the LAD's territory in this slice).
-  anterior: 'M 212 188 A 60 60 0 0 1 302.6 172 L 337.8 131.6 A 118 118 0 0 0 159.8 163 Z',
-  inner: { cx: 264, cy: 218, r: 60 },
-  outer: { cx: 262, cy: 222, r: 118 },
-};
-
-/** Each part's label: where it points (heart coordinates), which side of the picture, and its row. */
-type LabelSpot = { at: [number, number]; side: 'l' | 'r'; y: number };
-const LABELS: Record<View, Record<string, LabelSpot>> = {
-  section: {
-    svc: { at: [125, 50], side: 'l', y: 40 },
-    'pulmonary-trunk': { at: [176, 128], side: 'l', y: 92 },
-    ra: { at: [138, 168], side: 'l', y: 150 },
-    tricuspid: { at: [130, 224], side: 'l', y: 198 },
-    'pulmonary-valve': { at: [188, 214], side: 'l', y: 226 },
-    rv: { at: [156, 276], side: 'l', y: 278 },
-    ivc: { at: [101, 360], side: 'l', y: 372 },
-    aorta: { at: [262, 42], side: 'r', y: 30 },
-    'pulmonary-veins': { at: [350, 139], side: 'r', y: 108 },
-    la: { at: [272, 158], side: 'r', y: 158 },
-    mitral: { at: [282, 216], side: 'r', y: 204 },
-    'aortic-valve': { at: [222, 216], side: 'r', y: 232 },
-    lv: { at: [272, 290], side: 'r', y: 284 },
-    septum: { at: [212, 310], side: 'r', y: 316 },
-    myocardium: { at: [322, 300], side: 'r', y: 348 },
-    apex: { at: [250, 392], side: 'r', y: 404 },
-  },
-  anterior: {
-    svc: { at: [133, 50], side: 'l', y: 40 },
-    ra: { at: [112, 160], side: 'l', y: 140 },
-    base: { at: [150, 194], side: 'l', y: 192 },
-    rca: { at: [110, 250], side: 'l', y: 240 },
-    rv: { at: [160, 280], side: 'l', y: 288 },
-    'rca-territory': { at: [150, 320], side: 'l', y: 336 },
-    aorta: { at: [262, 40], side: 'r', y: 30 },
-    'pulmonary-trunk': { at: [244, 130], side: 'r', y: 80 },
-    la: { at: [296, 152], side: 'r', y: 130 },
-    lcx: { at: [300, 180], side: 'r', y: 176 },
-    lad: { at: [228, 262], side: 'r', y: 220 },
-    'lad-territory': { at: [262, 290], side: 'r', y: 260 },
-    'lv-anterior-wall': { at: [262, 290], side: 'r', y: 260 },
-    'lcx-territory': { at: [312, 280], side: 'r', y: 298 },
-    lv: { at: [296, 240], side: 'r', y: 334 },
-    epicardium: { at: [331, 300], side: 'r', y: 368 },
-    apex: { at: [252, 392], side: 'r', y: 404 },
-  },
-  slice: {
-    rv: { at: [92, 222], side: 'l', y: 180 },
-    'rv-cavity': { at: [130, 222], side: 'l', y: 236 },
-    septum: { at: [186, 222], side: 'l', y: 292 },
-    'lv-anterior-wall': { at: [262, 132], side: 'r', y: 60 },
-    infarct: { at: [262, 150], side: 'r', y: 110 },
-    epicardium: { at: [372, 180], side: 'r', y: 160 },
-    'lv-cavity': { at: [264, 218], side: 'r', y: 206 },
-    endocardium: { at: [318, 240], side: 'r', y: 246 },
-    lv: { at: [362, 262], side: 'r', y: 290 },
-    myocardium: { at: [330, 322], side: 'r', y: 336 },
-  },
-};
 
 /** Parts with the same place as another part; "labels: all" leaves them out. */
 const ALIASES = new Set(['lv-anterior-wall']);
@@ -152,8 +35,8 @@ const WIDTH = 640;
 // ---------------------------------------------------------------------------------------------
 // Colours for the slice (TTC: living tissue turns brick red, dead tissue stays pale).
 
-const UNSTAINED = [226, 205, 196];
-const STAINED = [168, 50, 44];
+const UNSTAINED = [222, 196, 186];
+const STAINED = [164, 46, 40];
 
 function mix(a: number[], b: number[], t: number): string {
   const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -229,6 +112,10 @@ export interface HeartDiagramProps {
   replay?: number;
 }
 
+/** Draws one part. `layer` draws more of an already drawn part elsewhere in the stack (behind or in
+ *  front of other parts): it highlights and answers clicks like the part, but is not a second button. */
+type PartFn = (id: string, node: ReactNode, layer?: boolean) => ReactNode;
+
 export function HeartDiagram({ scene, onPartClick, pins, focus, marks, replay = 0 }: HeartDiagramProps) {
   const view = viewOf(scene.camera);
   const anim = (scene.anim as Anim | null) ?? null;
@@ -237,11 +124,9 @@ export function HeartDiagram({ scene, onPartClick, pins, focus, marks, replay = 
   const hidden = new Set(scene.hide);
   const highlighted = new Set(scene.highlight);
   const interactive = !!onPartClick;
-  const svgRef = useRef<SVGSVGElement>(null);
 
-  const cls = (id: string, base = '') =>
+  const cls = (id: string) =>
     [
-      base,
       'part',
       highlighted.has(id) ? 'hl' : '',
       focus === id ? 'focus' : '',
@@ -251,24 +136,27 @@ export function HeartDiagram({ scene, onPartClick, pins, focus, marks, replay = 
       .filter(Boolean)
       .join(' ');
 
-  const part = (id: string, node: ReactNode) => {
+  const part: PartFn = (id, node, layer = false) => {
     if (hidden.has(id)) return null;
-    const handlers = interactive
-      ? {
-          role: 'button',
-          tabIndex: 0,
-          'aria-label': partName(id),
-          onClick: () => onPartClick?.(id),
-          onKeyDown: (e: KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onPartClick?.(id);
-            }
-          },
-        }
-      : {};
+    const handlers =
+      interactive && !layer
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': partName(id),
+            onClick: () => onPartClick?.(id),
+            onKeyDown: (e: KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onPartClick?.(id);
+              }
+            },
+          }
+        : interactive
+          ? { 'aria-hidden': true, onClick: () => onPartClick?.(id) }
+          : {};
     return (
-      <g key={id} className={cls(id)} data-part={id} {...handlers}>
+      <g key={layer ? `${id}-layer` : id} className={cls(id)} data-part={id} {...handlers}>
         {node}
       </g>
     );
@@ -294,25 +182,13 @@ export function HeartDiagram({ scene, onPartClick, pins, focus, marks, replay = 
 
   return (
     <svg
-      ref={svgRef}
       className={`heart-diagram view-${view} ${anim ? `anim-${anim}` : ''} ${scene.xray ? 'xray' : ''}`}
       viewBox={`0 0 ${WIDTH} 440`}
       role={interactive ? 'group' : 'img'}
       aria-label={label}
       style={{ ['--speed' as string]: String(scene.speed) }}
     >
-      <defs>
-        <filter id="heart-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <clipPath id="heart-outline-clip">
-          <path d={OUTLINE} />
-        </clipPath>
-      </defs>
+      <Defs speed={scene.speed} still={reducedMotion()} />
       <g transform={`translate(${OX} 0)`}>
         {view === 'section' && <SectionView part={part} anim={anim} />}
         {view === 'anterior' && <AnteriorView part={part} anim={anim} t={t} xray={scene.xray} />}
@@ -368,45 +244,199 @@ function textWidth(id: string): number {
   return shortName(id).length * 7;
 }
 
-type PartFn = (id: string, node: ReactNode) => ReactNode;
+// ---------------------------------------------------------------------------------------------
+// Shared paints and filters. Every diagram on a page draws the same definitions under the same ids,
+// so whichever the browser finds first is right.
+
+/** An outline in one colour round whatever the filter is on, for highlights and quiz marks. With
+ *  `pulse` (seconds) the outline breathes; the part itself never fades, so nothing under it shows. */
+function OutlineFilter({ id, colour, width, pulse }: { id: string; colour: string; width: number; pulse?: number }) {
+  return (
+    <filter id={id} x="-25%" y="-25%" width="150%" height="150%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius={width} result="grown" />
+      <feFlood style={{ floodColor: colour }}>
+        {pulse && <animate attributeName="flood-opacity" values="1;0.4;1" dur={`${pulse}s`} repeatCount="indefinite" />}
+      </feFlood>
+      <feComposite in2="grown" operator="in" result="ring" />
+      <feGaussianBlur in="ring" stdDeviation={width * 0.9} result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="ring" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  );
+}
+
+function Defs({ speed, still }: { speed: number; still: boolean }) {
+  return (
+    <defs>
+      <OutlineFilter id="ch-hl" colour="var(--h-hl)" width={2.2} pulse={still ? undefined : 1.6 / speed} />
+      <OutlineFilter id="ch-focus" colour="var(--h-hl)" width={2.2} pulse={still ? undefined : 0.8} />
+      <OutlineFilter id="ch-right" colour="var(--h-right)" width={2.2} />
+      <OutlineFilter id="ch-wrong" colour="var(--h-wrong)" width={2.2} />
+      <OutlineFilter id="ch-hover" colour="var(--focus, #a3213a)" width={1.6} />
+      <filter id="ch-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3" result="b" />
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+      {/* Muscle fibres on a cut surface: stretched noise, multiplied in. */}
+      <filter id="ch-fibres" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.09" numOctaves={3} seed={4} result="noise" />
+        <feColorMatrix in="noise" type="matrix" values="0.5 0 0 0 0.66  0.5 0 0 0 0.66  0.5 0 0 0 0.66  0 0 0 0 1" result="shade" />
+        <feBlend in="SourceGraphic" in2="shade" mode="multiply" result="textured" />
+        <feComposite in="textured" in2="SourceGraphic" operator="in" />
+      </filter>
+      {/* A stained slice's mottling. */}
+      <filter id="ch-mottle" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves={3} seed={11} result="noise" />
+        <feColorMatrix in="noise" type="matrix" values="0.26 0 0 0 0.84  0.26 0 0 0 0.84  0.26 0 0 0 0.84  0 0 0 0 1" result="shade" />
+        <feBlend in="SourceGraphic" in2="shade" mode="multiply" result="textured" />
+        <feComposite in="textured" in2="SourceGraphic" operator="in" />
+      </filter>
+      <filter id="ch-soft" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="2.2" />
+      </filter>
+      {/* Gradients in heart coordinates, so neighbouring shapes share one light. */}
+      <radialGradient id="ch-muscle" gradientUnits="userSpaceOnUse" cx="200" cy="220" r="210">
+        <stop offset="0" stopColor="#d4746a" />
+        <stop offset="0.7" stopColor="#bd5850" />
+        <stop offset="1" stopColor="#9c3d37" />
+      </radialGradient>
+      <radialGradient id="ch-surface" gradientUnits="userSpaceOnUse" cx="196" cy="206" r="220">
+        <stop offset="0" stopColor="#d97a6f" />
+        <stop offset="0.6" stopColor="#c45f56" />
+        <stop offset="1" stopColor="#9a3e38" />
+      </radialGradient>
+      <radialGradient id="ch-atrium" gradientUnits="userSpaceOnUse" cx="140" cy="160" r="120">
+        <stop offset="0" stopColor="#b9707e" />
+        <stop offset="1" stopColor="#8a4a5c" />
+      </radialGradient>
+      <radialGradient id="ch-auricle-left" cx="0.4" cy="0.35" r="0.7">
+        <stop offset="0" stopColor="#cf7570" />
+        <stop offset="1" stopColor="#9b4644" />
+      </radialGradient>
+      {/* Light from the upper left on the outside: a soft sheen and darker edges. */}
+      <radialGradient id="ch-shade" cx="0.4" cy="0.36" r="0.68">
+        <stop offset="0" stopColor="#fff" stopOpacity="0.16" />
+        <stop offset="0.45" stopColor="#fff" stopOpacity="0" />
+        <stop offset="0.8" stopColor="#4a120e" stopOpacity="0.08" />
+        <stop offset="1" stopColor="#4a120e" stopOpacity="0.32" />
+      </radialGradient>
+      <radialGradient id="ch-poor" cx="0.5" cy="0.45" r="0.6">
+        <stop offset="0" stopColor="#b6caef" />
+        <stop offset="1" stopColor="#8ea6d8" />
+      </radialGradient>
+      <radialGradient id="ch-rich" cx="0.5" cy="0.45" r="0.6">
+        <stop offset="0" stopColor="#f7bcb4" />
+        <stop offset="1" stopColor="#e48c84" />
+      </radialGradient>
+      <clipPath id="ch-outline-clip">
+        <path d={OUTLINE} />
+      </clipPath>
+    </defs>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Vessels
+
+/** A vessel cut open (the section): every wall first, then the blood, so branches join without seams. */
+function OpenVessels({ vessels, kind }: { vessels: Vessel[]; kind: 'poor' | 'rich' }) {
+  return (
+    <>
+      {vessels.map((v) => (
+        <path key={`w${v.d}`} className={`vessel wall ${kind}`} d={v.d} strokeWidth={v.wall} />
+      ))}
+      {vessels.map((v) => (
+        <path key={`l${v.d}`} className={`vessel lumen ${kind}`} d={v.d} strokeWidth={v.lumen} />
+      ))}
+    </>
+  );
+}
+
+/** A vessel from outside: a dark edge, its body, and a light stripe where the light catches it. */
+function OutsideVessels({ vessels, kind }: { vessels: Vessel[]; kind: 'poor' | 'rich' }) {
+  return (
+    <>
+      {vessels.map((v) => (
+        <path key={`e${v.d}`} className={`vessel edge ${kind}`} d={v.d} strokeWidth={v.wall + 3} />
+      ))}
+      {vessels.map((v) => (
+        <path key={`b${v.d}`} className={`vessel body ${kind}`} d={v.d} strokeWidth={v.wall} />
+      ))}
+      {vessels.map((v) => (
+        <path key={`s${v.d}`} className={`vessel shine ${kind}`} d={v.d} strokeWidth={v.wall * 0.3} transform="translate(-2 -1)" />
+      ))}
+    </>
+  );
+}
+
+/** A coronary artery or vein: a tapered tube with a light line along it. */
+function Coronary({ points, w0, w1, kind = 'artery' }: { points: Pt[]; w0: number; w1: number; kind?: 'artery' | 'vein' }) {
+  return (
+    <>
+      <path className={`coronary ${kind}`} d={tube(points, w0, w1)} />
+      <path className={`coronary-shine ${kind}`} d={smooth(points)} strokeWidth={Math.max(0.6, w1 * 0.35)} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cut open from the front
 
 function SectionView({ part, anim }: { part: PartFn; anim: Anim | null }) {
   return (
     <g className="heart">
+      {part('aorta', <OpenVessels vessels={[SECTION.descendingAorta]} kind="rich" />, true)}
       {part('myocardium', <path className="muscle" d={OUTLINE} />)}
-      {part(
-        'pulmonary-trunk',
-        <>
-          <path className="vessel poor" d={SECTION.trunkLeft} strokeWidth={16} />
-          <path className="vessel poor" d={SECTION.trunkRight} strokeWidth={16} />
-          <path className="vessel poor" d={SECTION.trunk} strokeWidth={22} />
-        </>,
-      )}
-      {part('aorta', <path className="vessel rich" d={SECTION.aorta} strokeWidth={26} />)}
-      {part('svc', <path className="vessel poor" d={SECTION.svc} strokeWidth={22} />)}
-      {part('ivc', <path className="vessel poor" d={SECTION.ivc} strokeWidth={22} />)}
-      {part(
-        'pulmonary-veins',
-        <>
-          {SECTION.veins.map((d) => (
-            <path key={d} className="vessel rich" d={d} strokeWidth={12} />
-          ))}
-        </>,
-      )}
+      <g className="detail" aria-hidden="true">
+        {SECTION.grooves.map((g) => (
+          <g key={g.fat}>
+            <path className="fat" d={g.fat} />
+            <circle className="cut-artery" cx={g.artery[0]} cy={g.artery[1]} r={4} />
+            <circle className="cut-vein" cx={g.vein[0]} cy={g.vein[1]} r={3.2} />
+          </g>
+        ))}
+      </g>
       <g className="beat-atria">
         {part('ra', <path className="chamber poor" d={SECTION.ra} />)}
         {part('la', <path className="chamber rich" d={SECTION.la} />)}
+        <ellipse className="detail sinus" aria-hidden="true" {...SECTION.coronarySinus} />
       </g>
       <g className="beat-ventricles">
         {part('rv', <path className="chamber poor" d={SECTION.rv} />)}
         {part('lv', <path className="chamber rich" d={SECTION.lv} />)}
-        {part('septum', <path className="septum" d={SECTION.septum} />)}
+        {part('septum', <path className="muscle septum" d={SECTION.septum} />)}
+        <g className="detail" aria-hidden="true">
+          <path className="papillary" d={SECTION.moderator} />
+          {SECTION.papillary.map((d) => (
+            <path key={d} className="papillary" d={d} />
+          ))}
+          {SECTION.chordae.map((d) => (
+            <path key={d} className="chorda" d={d} />
+          ))}
+        </g>
       </g>
-      {part('tricuspid', <path className="valve" d={SECTION.tricuspid} />)}
-      {part('mitral', <path className="valve" d={SECTION.mitral} />)}
-      {part('pulmonary-valve', <path className="valve" d={SECTION['pulmonary-valve']} />)}
-      {part('aortic-valve', <path className="valve" d={SECTION['aortic-valve']} />)}
-      {part('apex', <circle className="point" cx={250} cy={392} r={5} />)}
+      {part('pulmonary-trunk', <OpenVessels vessels={[SECTION.trunk, ...SECTION.trunkBranches]} kind="poor" />)}
+      {part('svc', <OpenVessels vessels={[SECTION.svc]} kind="poor" />)}
+      {part('ivc', <OpenVessels vessels={[SECTION.ivc]} kind="poor" />)}
+      {part('aorta', <OpenVessels vessels={[SECTION.aorta, ...SECTION.aortaBranches]} kind="rich" />)}
+      {part('pulmonary-veins', <OpenVessels vessels={SECTION.veins} kind="rich" />)}
+      {(['tricuspid', 'mitral', 'pulmonary-valve', 'aortic-valve'] as const).map((id) =>
+        part(
+          id,
+          <>
+            {SECTION[id].map((d) => (
+              <path key={d} className="valve" d={d} />
+            ))}
+          </>,
+        ),
+      )}
+      {part('apex', <circle className="point" cx={SECTION.apex[0]} cy={SECTION.apex[1]} r={5} />)}
       {anim === 'flow' && (
         <g className="flow" aria-hidden="true">
           {FLOW.poor.map((d) => (
@@ -421,16 +451,40 @@ function SectionView({ part, anim }: { part: PartFn; anim: Anim | null }) {
   );
 }
 
+// ---------------------------------------------------------------------------------------------
+// The outside, from the front
+
+const LAD_BLOCK = 0.16;
+
 function AnteriorView({ part, anim, t, xray }: { part: PartFn; anim: Anim | null; t: number; xray: boolean }) {
+  const a = ANTERIOR.arteries;
   const occluded = anim === 'occlusion' || (anim === 'reperfusion' && t < 0.25);
   const paleRisk =
     anim === 'occlusion' ? clamp((t - 0.12) / 0.88) : anim === 'reperfusion' ? 1 - clamp((t - 0.25) / 0.6) : 0;
   const paleCore = anim === 'reperfusion' ? 1 : anim === 'occlusion' ? clamp((t - 0.12) / 0.88) : 0;
+  const clot = pointAt(a.lad, LAD_BLOCK);
   return (
     <g className="heart">
-      {part('svc', <path className="vessel poor" d={ANTERIOR.svc} strokeWidth={22} />)}
-      {part('aorta', <path className="vessel rich" d={ANTERIOR.aorta} strokeWidth={28} />)}
+      {part('svc', <OutsideVessels vessels={[ANTERIOR.svc]} kind="poor" />)}
+      {part('pulmonary-trunk', <OutsideVessels vessels={[ANTERIOR.trunkBranches[1]]} kind="poor" />, true)}
+      {part('aorta', <OutsideVessels vessels={[ANTERIOR.aorta, ...ANTERIOR.aortaBranches]} kind="rich" />)}
       {part('epicardium', <path className="muscle outside" d={OUTLINE} />)}
+      {part('ra', <path className="surface atrium" d={ANTERIOR.ra} />)}
+      <g className="beat-ventricles">
+        {part('rv', <path className="surface" d={ANTERIOR.rv} />)}
+        {part('lv', <path className="surface" d={ANTERIOR.lv} />)}
+        <path className="detail shade" d={OUTLINE} aria-hidden="true" />
+        {part('rca-territory', <path className="territory" d={ANTERIOR.rv} />)}
+        {part('lcx-territory', <path className="territory" d={ANTERIOR.lcxTerritory} />)}
+        {part('lad-territory', <path className="territory" d={ANTERIOR.ladTerritory} />)}
+        {part('lv-anterior-wall', <path className="territory" d={ANTERIOR.ladTerritory} />)}
+        {(anim === 'occlusion' || anim === 'reperfusion') && (
+          <g aria-hidden="true">
+            <path className="pale" d={ANTERIOR.ladTerritory} style={{ opacity: 0.85 * paleRisk }} />
+            <path className="pale" d={ANTERIOR.ladCore} style={{ opacity: 0.92 * paleCore }} />
+          </g>
+        )}
+      </g>
       {xray && (
         <g className="xray-chambers" aria-hidden="true">
           {(['ra', 'la', 'rv', 'lv'] as const).map((id) => (
@@ -438,60 +492,96 @@ function AnteriorView({ part, anim, t, xray }: { part: PartFn; anim: Anim | null
           ))}
         </g>
       )}
-      <g className="beat-ventricles">
-        {part('rv', <path className="surface" d={ANTERIOR.rv} />)}
-        {part('lv', <path className="surface" d={ANTERIOR.lv} />)}
-        {part('rca-territory', <path className="territory" d={ANTERIOR.rv} />)}
-        {part('lcx-territory', <path className="territory" d={ANTERIOR.lcxTerritory} />)}
-        {part('lad-territory', <path className="territory" d={ANTERIOR.ladTerritory} />)}
-        {part('lv-anterior-wall', <path className="territory" d={ANTERIOR.ladTerritory} />)}
-        {(anim === 'occlusion' || anim === 'reperfusion') && (
-          <g aria-hidden="true">
-            <path className="pale" d={ANTERIOR.ladTerritory} style={{ opacity: 0.88 * paleRisk }} />
-            <path className="pale" d={ANTERIOR.ladCore} style={{ opacity: 0.92 * paleCore }} />
-          </g>
-        )}
-      </g>
-      {part('ra', <path className="auricle poor" d={ANTERIOR.ra} />)}
-      {part('la', <path className="auricle rich" d={ANTERIOR.la} />)}
+      {/* The pulmonary trunk rises out of the right ventricle, in front of the aorta. */}
+      {part('pulmonary-trunk', <OutsideVessels vessels={[ANTERIOR.trunk, ANTERIOR.trunkBranches[0]]} kind="poor" />)}
+      {part('rv', <path className="surface conus" d={ANTERIOR.conus} />, true)}
       {part(
-        'pulmonary-trunk',
+        'ra',
         <>
-          <path className="vessel poor" d={ANTERIOR.trunkRight} strokeWidth={16} />
-          <path className="vessel poor" d={ANTERIOR.trunkLeft} strokeWidth={16} />
-          <path className="vessel poor" d={ANTERIOR.trunk} strokeWidth={24} />
+          <path className="auricle right" d={ANTERIOR.rightAuricle} />
+          {ANTERIOR.auricleFolds.slice(0, 3).map((d) => (
+            <path key={d} className="detail fold" d={d} />
+          ))}
+        </>,
+        true,
+      )}
+      {part(
+        'la',
+        <>
+          <path className="auricle left" d={ANTERIOR.leftAuricle} />
+          {ANTERIOR.auricleFolds.slice(3).map((d) => (
+            <path key={d} className="detail fold" d={d} />
+          ))}
         </>,
       )}
-      <path className="coronary" d={ANTERIOR.leftMain} />
-      {part('rca', <path className="coronary" d={ANTERIOR.rca} />)}
-      {part('lcx', <path className="coronary" d={ANTERIOR.lcx} />)}
+      <g className="detail" aria-hidden="true">
+        <g clipPath="url(#ch-outline-clip)">
+          {ANTERIOR.fat.map((p) => (
+            <path key={p.join()} className="groove-fat" d={smooth(p)} />
+          ))}
+        </g>
+        {ANTERIOR.cardiacVeins.map((p, i) => (
+          <Coronary key={p.join()} points={p} w0={i < 2 ? 3.4 : 2.4} w1={i < 2 ? 2.2 : 1.2} kind="vein" />
+        ))}
+        <Coronary points={a.leftMain} w0={6} w1={5.6} />
+      </g>
+      {part(
+        'rca',
+        <>
+          <Coronary points={a.rca} w0={5.4} w1={4.4} />
+          <Coronary points={a.acuteMarginal} w0={3.4} w1={1.5} />
+          {a.rvBranches.map((p) => (
+            <Coronary key={p.join()} points={p} w0={2.4} w1={1.1} />
+          ))}
+        </>,
+      )}
+      {part(
+        'lcx',
+        <>
+          <Coronary points={a.lcx} w0={5} w1={3.8} />
+          <Coronary points={a.marginal} w0={3.2} w1={1.5} />
+        </>,
+      )}
       {part(
         'lad',
         <>
-          <path className="coronary" d={ANTERIOR.lad} />
-          {occluded && <path className="coronary starved" d={ANTERIOR.ladDistal} />}
+          <Coronary points={a.lad} w0={5.6} w1={2.2} />
+          {a.diagonals.map((p) => (
+            <Coronary key={p.join()} points={p} w0={3.4} w1={1.4} />
+          ))}
+          {occluded && (
+            <g className="starved">
+              <path className="coronary" d={tube(a.lad, 5.6, 2.2, LAD_BLOCK + 0.02)} />
+              {a.diagonals.map((p) => (
+                <path key={p.join()} className="coronary" d={tube(p, 3.4, 1.4)} />
+              ))}
+            </g>
+          )}
         </>,
       )}
       {(anim === 'coronary-flow' || anim === 'reperfusion') && !occluded && (
         <g className="flow" aria-hidden="true">
-          {[ANTERIOR.leftMain, ANTERIOR.lad, ANTERIOR.lcx, ANTERIOR.rca].map((d) => (
-            <path key={d} className="flow-path coronary-flow" d={d} />
+          {[a.leftMain, a.lad, a.lcx, a.rca, ...a.diagonals, a.marginal, a.acuteMarginal].map((p) => (
+            <path key={p.join()} className="flow-path coronary-flow" d={smooth(p)} />
           ))}
         </g>
       )}
-      {occluded && <circle className="clot" cx={232} cy={204} r={7} aria-hidden="true" />}
-      {part('apex', <circle className="point" cx={252} cy={392} r={5} />)}
-      {part('base', <path className="base-line" d="M 100 202 C 150 190 270 188 332 222" />)}
+      {occluded && <circle className="clot" cx={clot[0]} cy={clot[1]} r={6.5} aria-hidden="true" />}
+      {part('apex', <circle className="point" cx={ANTERIOR.apex[0]} cy={ANTERIOR.apex[1]} r={5} />)}
+      {part('base', <path className="base-line" d={ANTERIOR.baseLine} />)}
       {anim === 'slicing' && (
-        <g className="cuts" clipPath="url(#heart-outline-clip)" aria-hidden="true">
+        <g className="cuts" clipPath="url(#ch-outline-clip)" aria-hidden="true">
           {ANTERIOR.cuts.map((y, i) => (
-            <line key={y} x1={60} x2={400} y1={y} y2={y - 8} style={{ opacity: t * 5 > i + 0.5 ? 1 : 0 }} />
+            <line key={y} x1={60} x2={400} y1={y} y2={y - 10} style={{ opacity: t * 5 > i + 0.5 ? 1 : 0 }} />
           ))}
         </g>
       )}
     </g>
   );
 }
+
+// ---------------------------------------------------------------------------------------------
+// One slice across the ventricles
 
 function SliceView({
   part,
@@ -511,47 +601,76 @@ function SliceView({
 }) {
   // TTC colours living muscle; before it acts, the slice is a dull pink-grey.
   const stain = anim === 'ttc' ? ease(t) : 1;
-  const living = mix(UNSTAINED, STAINED, stain);
+  const living = { fill: mix(UNSTAINED, STAINED, stain) };
   const showInfarct =
     !hidden.has('infarct') &&
     (stained || highlighted.has('infarct') || anim === 'wavefront' || anim === 'ttc' || anim === 'reperfusion' || anim === 'occlusion');
   // The dead zone grows from the inner wall outward (the wavefront); reperfusion stops it part way.
   const reach =
-    anim === 'wavefront' || anim === 'occlusion'
-      ? 62 + 58 * ease(t)
-      : anim === 'reperfusion'
-        ? 62 + 30 * ease(t)
-        : 120;
+    anim === 'wavefront' || anim === 'occlusion' ? ease(t) : anim === 'reperfusion' ? 0.45 * ease(t) : 1;
+  const wall = `${SLICE.lvOuter} ${SLICE.lvInner}`;
   return (
     <g className="heart slice">
-      <defs>
-        <clipPath id="infarct-reach">
-          <circle cx={SLICE.inner.cx} cy={SLICE.inner.cy} r={reach} />
-        </clipPath>
-      </defs>
+      <g className="detail" aria-hidden="true">
+        {SLICE.grooves.map((g) => (
+          <path key={g.fat} className="fat" d={g.fat} />
+        ))}
+      </g>
+      {part('rv', <path className="tissue" d={SLICE.rvBody} style={living} />)}
+      {part('lv', <path className="tissue" d={wall} fillRule="evenodd" style={living} />)}
+      {part('septum', <path className="tissue joined" d={SLICE.septum} style={living} />)}
+      {part('myocardium', <path className="tissue-outline" d={wall} fillRule="evenodd" />)}
       {part('rv-cavity', <path className="cavity" d={SLICE.rvCavity} />)}
-      {part('lv-cavity', <path className="cavity" d={SLICE.lvCavity} />)}
-      {part('rv', <path className="tissue" d={SLICE.rvWall} style={{ fill: living }} />)}
-      {part('lv', <path className="tissue" d={SLICE.lvWall} fillRule="evenodd" style={{ fill: living }} />)}
-      {part('myocardium', <path className="tissue-outline" d={SLICE.lvWall} fillRule="evenodd" />)}
-      {part('septum', <path className="septum-slice" d={SLICE.septum} />)}
-      {(anim === 'wavefront' || anim === 'occlusion' || anim === 'reperfusion') && (
-        <path className="risk" d={SLICE.anterior} aria-hidden="true" />
+      {part('lv-cavity', <path className="cavity" d={SLICE.lvInner} />)}
+      {part(
+        'lv',
+        <>
+          {SLICE.papillary.map((m) => (
+            <ellipse
+              key={m.cx}
+              className="tissue"
+              cx={m.cx}
+              cy={m.cy}
+              rx={m.rx}
+              ry={m.ry}
+              transform={`rotate(${m.angle} ${m.cx} ${m.cy})`}
+              style={living}
+            />
+          ))}
+        </>,
+        true,
       )}
-      {showInfarct && part('infarct', <path className="dead" d={SLICE.anterior} clipPath="url(#infarct-reach)" />)}
-      {part('lv-anterior-wall', <path className="region" d={SLICE.anterior} />)}
-      {part('endocardium', <circle className="layer" cx={SLICE.inner.cx} cy={SLICE.inner.cy} r={SLICE.inner.r} />)}
+      {(anim === 'wavefront' || anim === 'occlusion' || anim === 'reperfusion') && (
+        <path className="risk" d={SLICE.frontWall} aria-hidden="true" />
+      )}
+      {showInfarct && part('infarct', <path className="dead" d={infarctPath(reach)} />)}
+      {part('lv-anterior-wall', <path className="region" d={SLICE.frontWall} />)}
+      <g className="detail" aria-hidden="true">
+        {SLICE.grooves.map((g) => (
+          <g key={g.fat}>
+            <circle className="cut-artery" cx={g.artery[0]} cy={g.artery[1]} r={4.2} />
+            <circle className="cut-vein" cx={g.vein[0]} cy={g.vein[1]} r={3.4} />
+          </g>
+        ))}
+      </g>
+      {part(
+        'endocardium',
+        <>
+          <path className="layer" d={SLICE.lvInner} />
+          <path className="layer" d={SLICE.rvCavity} />
+        </>,
+      )}
       {part(
         'epicardium',
         <>
-          <circle className="layer" cx={SLICE.outer.cx} cy={SLICE.outer.cy} r={SLICE.outer.r} />
+          <path className="layer" d={SLICE.lvOuter} />
           <path className="layer" d={SLICE.rvOuter} />
         </>,
       )}
-      <text className="orient" x={262} y={92} textAnchor="middle" aria-hidden="true">
+      <text className="orient" x={SLICE.center.x} y={80} textAnchor="middle" aria-hidden="true">
         front
       </text>
-      <text className="orient" x={262} y={360} textAnchor="middle" aria-hidden="true">
+      <text className="orient" x={SLICE.center.x} y={372} textAnchor="middle" aria-hidden="true">
         back
       </text>
     </g>

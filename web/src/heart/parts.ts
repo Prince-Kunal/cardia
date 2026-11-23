@@ -1,6 +1,6 @@
 // The parts of the heart lessons can point at, and the views that show them. Part ids are the mesh
 // names the 3D model will use (PLAN.md §3f), so lessons written for the 2D diagram keep working with
-// the 3D heart. Names are English for now; the languages milestone moves them into translation files.
+// the 3D heart. Names are English, like the rest of the app (PLAN.md D10).
 
 export type View = 'section' | 'anterior' | 'slice';
 
