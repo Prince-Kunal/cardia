@@ -5,8 +5,7 @@ import json
 from ttc_pipeline.models import MANIFEST, MODELS_DIR, read_manifest, sha256_file
 
 DESCRIPTION = (
-    "Every model file the engine loads, with its SHA-256. The engine refuses a file that is missing or differs. "
-    "Files with in_git false come from the team Drive."
+    "Every model file the engine loads, with its SHA-256. The engine refuses a file that is missing or differs."
 )
 
 
@@ -16,7 +15,7 @@ def write_json(path, obj):
 
 
 def update_manifest(entries, models_dir=MODELS_DIR):
-    """`entries`: {path relative to models/: {"model_version": ..., "in_git": ...}}; the SHA-256 is filled in."""
+    """`entries`: {path relative to models/: {"model_version": ...}}; the SHA-256 is filled in."""
     files = read_manifest(models_dir)["files"]
     for rel, meta in entries.items():
         files[rel] = {"sha256": sha256_file(models_dir / rel), **meta}

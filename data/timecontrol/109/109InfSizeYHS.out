@@ -1,0 +1,6 @@
+Filename	SliceWeight	InfarctedArea	ViableArea	%Infarct	InfarctWt
+109IS104mg.tif	104	2702	90389	2.902536	3.018638
+109IS151mg.tif	151	1162	150113	0.768137	1.159888
+109IS59mg.tif	59	476	66250	0.713365	0.420885
+
+Final Infarct Size = 1.464780

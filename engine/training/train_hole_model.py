@@ -1,8 +1,7 @@
 """Train the shared hole model and write models/holes/hole_model.{joblib,json} and the manifest entries.
 
 One-time and offline (PLAN.md D5): run it only when the labels, the candidate recipe or its settings
-change, and bump MODEL_VERSION when you do. The .joblib is derived from GVSU data and stays out of
-git (team Drive); the .json and models/manifest.json are committed.
+change, and bump MODEL_VERSION when you do. All three files are committed.
 
     cd engine && uv run python -m training.train_hole_model
 """
@@ -69,7 +68,7 @@ def main(models_dir=MODELS_DIR):
 
     update_manifest(
         {
-            HOLE_MODEL_JOBLIB: {"model_version": MODEL_VERSION, "in_git": False},
+            HOLE_MODEL_JOBLIB: {"model_version": MODEL_VERSION},
             HOLE_MODEL_JSON: {"model_version": MODEL_VERSION},
         },
         models_dir,

@@ -1,6 +1,7 @@
-# Engine checks on macOS and Linux (PLAN.md §7). The GVSU scans and the notebook's results are
-# not in the repo, so the parity tests skip here and run on team machines that have data/.
-# It runs on every PR (no path filter) because branch protection on main requires it.
+# Engine checks on macOS and Linux (PLAN.md §7): lint, unit tests, and every parity and golden test.
+# The study data, models and golden set are in git; Method B's parity test also reads the research
+# repo's outputs, checked out at a fixed commit. Runs on every PR (no path filter) because branch
+# protection on main requires it.
 name: engine
 
 on:
@@ -18,11 +19,20 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: engine
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: Prince-Kunal/infarct-algorithms
+          ref: 1bf7efa337afab7a75540db392fd1cc90f736538
+          path: reference/research-repo
+          sparse-checkout: outputs
+      - run: python3 scripts/check_data.py
+        working-directory: .
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true

@@ -1,0 +1,12 @@
+{
+  "pipeline_version": "0.3.0",
+  "models": {
+    "hole_model": "1.0.0",
+    "kmeans_rf": "1.0.0",
+    "a_cut": "1.0.0"
+  },
+  "models_manifest_sha256": "afa26398d134e062545a7f686c4c7a56746cd8b8ddfa7e0fc64ef01cda7b76cf",
+  "platform": "Darwin-arm64",
+  "python": "3.14.4",
+  "numpy": "2.5.5"
+}

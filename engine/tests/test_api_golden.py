@@ -31,7 +31,7 @@ COLUMNS = {  # golden column -> (result section, key)
 
 def test_the_api_reproduces_the_golden_set(scans, tmp_path):
     if not (GOLDEN / "per_slice.csv").exists():
-        pytest.skip("needs the golden set in reference/golden/ (team Drive)")
+        pytest.skip("needs the golden set in reference/golden/")
     table = pd.read_csv(GOLDEN / "per_slice.csv", keep_default_na=False).set_index("file")
     exact = json.loads((GOLDEN / "meta.json").read_text())["platform"] == platform_tag()
     settings = Settings(data_dir=tmp_path, token=TOKEN, allowed_hosts=("testserver",))

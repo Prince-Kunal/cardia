@@ -2,7 +2,7 @@
 
 Reads the notebook's `final_model_K_Means_RF.joblib` through the guarded loader (known SHA-256,
 allow-listed classes only), keeps the random forest (the K-Means labeller is training-only), and writes
-models/kmeans_rf/kmeans_rf.joblib (team Drive, not git) and kmeans_rf.json + the manifest entries (git).
+models/kmeans_rf/kmeans_rf.joblib, kmeans_rf.json and their manifest entries.
 The forest is exported as it is, never retrained: retraining on another machine changes it slightly.
 
     cd engine && uv run python -m training.export_method_a
@@ -109,7 +109,7 @@ def main(models_dir=MODELS_DIR, source=SOURCE):
     }
     write_json(models_dir / RF_JSON, info)
     update_manifest(
-        {RF_JOBLIB: {"model_version": MODEL_VERSION, "in_git": False}, RF_JSON: {"model_version": MODEL_VERSION}},
+        {RF_JOBLIB: {"model_version": MODEL_VERSION}, RF_JSON: {"model_version": MODEL_VERSION}},
         models_dir,
     )
     print(f"Wrote {RF_JOBLIB} (sha256 {info['joblib_sha256'][:12]}…) and {RF_JSON} from {source.name}")

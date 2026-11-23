@@ -33,6 +33,6 @@ Masks per slice (PNG, 0/255): `tissue`, `holes_removed`, `a_dead`, `b_tissue`, `
 
 ## Storage
 
-The masks and `per_slice.csv` are derived from GVSU scans. Until the team settles PLAN.md §13 item 12 (public repo), they live in `reference/golden/` (team Drive) and are not committed. `golden.sha256` in this folder (in git) lists every golden file's SHA-256; `test_golden.py` checks the copy against it and skips with a message when the set is missing. To regenerate it: `cd engine && uv run python -m training.golden`.
+The set is committed in `reference/golden/` (decided 2026-11-23, PLAN.md §13 item 12). `golden.sha256` in this folder lists every golden file's SHA-256, and `test_golden.py` checks the set against it. CI runs the golden tests on macOS and Linux. To regenerate it: `cd engine && uv run python -m training.golden`.
 
 Any intended change to engine output bumps the pipeline version, regenerates this set, and is listed in "What's new".

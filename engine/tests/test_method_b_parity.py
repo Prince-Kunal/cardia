@@ -30,7 +30,9 @@ def yhs(scans):
 def repo_outputs():
     files = REPO_OUTPUTS / "measurements.csv", REPO_OUTPUTS / "final" / "per_slice.csv"
     if not all(f.exists() for f in files):
-        pytest.skip("needs the research repo's outputs in reference/research-repo/outputs (ask Prince)")
+        pytest.skip(
+            "needs reference/research-repo/outputs: git clone https://github.com/Prince-Kunal/infarct-algorithms"
+        )
     return [pd.read_csv(f) for f in files]
 
 

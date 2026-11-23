@@ -39,8 +39,8 @@ scripts/setup.sh <your-github-username>   # sets your commit identity for this r
 Then:
 
 1. **Tools.** `setup.sh` reports anything missing. You need uv (any recent version; it installs Python 3.14.4 itself), Node 22.21.0 (`.nvmrc`, via nvm or fnm) and pnpm 10.20.0 (`corepack enable`).
-2. **Study data.** Copy the GVSU study set (the 4 infarct hearts from the OneDrive share and the 4 time-control hearts) anywhere inside `data/`. Any folder layout works. `python3 scripts/check_data.py` must report `41/41 study files present and identical`. If a file is missing or changed, ask Prince for the original rather than "fixing" it.
-3. **Reference material and models.** For engine work, ask Prince for `reference/` (the notebook and the notebook's saved results), `engine/annotations/` (hand-marked hole outlines) and the model binaries in `engine/models/` (e.g. `holes/hole_model.joblib`). Also ask for `reference/golden/` (the golden set). None of these is committed. With the data and outlines in place, `cd engine && uv run python -m training.train_hole_model` rebuilds the hole model byte for byte, and `uv run python -m training.export_method_a` rebuilds Method A's forest file from the notebook's `final_model_K_Means_RF.joblib` in `reference/`.
+2. **Study data.** The GVSU study set (30 scans and 11 `.out` files from 8 hearts) is in `data/`, in git. `python3 scripts/check_data.py` must report `41/41 study files present and identical`. Never edit these files; if one changes, restore it with `git checkout -- data/`.
+3. **Reference material and models.** The notebook's saved results (`reference/results_local/`), the golden set (`reference/golden/`), the hand-marked hole outlines (`engine/annotations/`) and the model files (`engine/models/`) are in git. Two things are not: the notebook itself (22 MB, team Drive) and the research repo, which Method B's parity test reads: `git clone https://github.com/Prince-Kunal/infarct-algorithms reference/research-repo`. With the data and outlines in place, `cd engine && uv run python -m training.train_hole_model` rebuilds the hole model byte for byte, and `uv run python -m training.export_method_a` rebuilds Method A's forest file from the notebook's `final_model_K_Means_RF.joblib` in `reference/`.
 4. **VS Code.** Select `engine/.venv/bin/python` as the interpreter (Python: Select Interpreter).
 
 Re-run `scripts/setup.sh` whenever something seems off. It must print only `ok` lines.
@@ -87,10 +87,10 @@ Example: `feat(engine): port lighting correction from notebook Part D`
 
 ## Rules
 
-* **No lab data in git.** No scans, `.out` files, or masks and images derived from the GVSU slices. The repo is public, so once a file is pushed, assume it is out there. The pre-commit hook blocks the obvious cases.
+* **Lab data in git (decided 2026-11-23).** The study set, models, hole outlines, notebook results and golden set are committed; the data is not secret. Add new lab data only in a PR that says what it is and where it comes from. No pickled caches (`*.pkl`), which the pre-commit hook blocks.
 * **No AI attribution in history.** No `Co-Authored-By: Claude` and no "Generated with Claude Code" lines in commits or PRs. `.claude/settings.json` turns this off for Claude Code, and `.githooks/commit-msg` strips such lines from every commit.
 * **Engine output is sacred.** Porting code must not change any number (PLAN.md §7). An intended change bumps the pipeline version and regenerates the golden set, and the PR says why.
 
 ## Models and large files
 
-The frozen models (`final_model_K_Means_RF.joblib`, the hole model), the hand-marked hole outlines and the golden masks are derived from GVSU data. Until the team decides whether they may sit in a public repo, they stay out of git and are shared through the team Drive, each with its SHA-256 in `engine/models/manifest.json`. The pre-commit hook rejects files over 5 MB.
+The frozen models are in git, each with its SHA-256 in `engine/models/manifest.json`; the engine refuses a file whose hash doesn't match. The pre-commit hook rejects files over 5 MB, so the notebook (22 MB) and its caches stay on the team Drive.

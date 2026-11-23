@@ -1,0 +1,70 @@
+baseline,changed to,measure,mean change,95% CI (by heart),Wilcoxon p,verdict
+K-Means only,K-Means + RF,Dice vs Ref-1,0.049064574605228124,"[0.028, 0.071]",0.000283263623714447,helps
+K-Means only,K-Means + RF,|error| vs Ref-1 (points),0.3337871513045047,"[-2.479, 3.406]",0.583757072687149,no detectable effect
+K-Means only,K-Means + RF,|error| vs Ref-0 (points),0.4607560738581115,"[-2.104, 2.856]",0.6554384250193834,no detectable effect
+DBSCAN only,DBSCAN + RF,Dice vs Ref-1,0.007691427265437264,"[-0.008, 0.023]",0.3598779272288084,no detectable effect
+DBSCAN only,DBSCAN + RF,|error| vs Ref-1 (points),-0.8886154855692493,"[-1.672, -0.037]",0.07672121562063694,too small to matter
+DBSCAN only,DBSCAN + RF,|error| vs Ref-0 (points),-0.8917186959360196,"[-1.662, -0.091]",0.10039735585451126,too small to matter
+K-Means + RF,K-Means + RF + DINOv3,Dice vs Ref-1,-0.0044578299797560245,"[-0.008, -0.000]",0.09194962680339813,too small to matter
+K-Means + RF,K-Means + RF + DINOv3,|error| vs Ref-1 (points),-0.014271357569583198,"[-0.561, 0.472]",0.9676735773682594,no detectable effect
+K-Means + RF,K-Means + RF + DINOv3,|error| vs Ref-0 (points),0.27929702428070596,"[-0.351, 0.848]",0.6120056137442589,no detectable effect
+DBSCAN + RF,DBSCAN + RF + DINOv3,Dice vs Ref-1,0.006736524379533994,"[-0.006, 0.022]",0.054921628907322884,no detectable effect
+DBSCAN + RF,DBSCAN + RF + DINOv3,|error| vs Ref-1 (points),-0.6325523802840582,"[-1.636, 0.188]",0.07324407435953617,no detectable effect
+DBSCAN + RF,DBSCAN + RF + DINOv3,|error| vs Ref-0 (points),-0.5172130092966325,"[-1.425, 0.177]",0.07324407435953617,no detectable effect
+K-Means + RF,K-Means + RF + SAM,Dice vs Ref-1,-0.00037208490142195033,"[-0.001, 0.001]",0.338741784915328,no detectable effect
+K-Means + RF,K-Means + RF + SAM,|error| vs Ref-1 (points),0.027306457320049955,"[-0.115, 0.182]",0.5561132747679949,no detectable effect
+K-Means + RF,K-Means + RF + SAM,|error| vs Ref-0 (points),-0.04265996007920701,"[-0.170, 0.081]",0.6408254038542509,no detectable effect
+DBSCAN + RF,DBSCAN + RF + SAM,Dice vs Ref-1,0.0058091309283615075,"[-0.001, 0.017]",0.11417667381465435,no detectable effect
+DBSCAN + RF,DBSCAN + RF + SAM,|error| vs Ref-1 (points),-0.24597118877739008,"[-0.980, 0.285]",0.8393927440047264,no detectable effect
+DBSCAN + RF,DBSCAN + RF + SAM,|error| vs Ref-0 (points),-0.2548029378050796,"[-0.961, 0.239]",0.46454504504799843,no detectable effect
+K-Means + RF,K-Means + RF + DINOv3 + SAM,Dice vs Ref-1,0.001339812523055961,"[-0.002, 0.006]",0.9838335812091827,no detectable effect
+K-Means + RF,K-Means + RF + DINOv3 + SAM,|error| vs Ref-1 (points),-0.1357550198748939,"[-0.373, 0.061]",0.7765688337385654,no detectable effect
+K-Means + RF,K-Means + RF + DINOv3 + SAM,|error| vs Ref-0 (points),-0.040830766003643326,"[-0.254, 0.170]",0.935398668050766,no detectable effect
+DBSCAN + RF,DBSCAN + RF + DINOv3 + SAM,Dice vs Ref-1,0.007291444286874191,"[-0.001, 0.020]",0.10943205840885639,no detectable effect
+DBSCAN + RF,DBSCAN + RF + DINOv3 + SAM,|error| vs Ref-1 (points),-0.3944144637841818,"[-1.178, 0.086]",0.11907656863331795,no detectable effect
+DBSCAN + RF,DBSCAN + RF + DINOv3 + SAM,|error| vs Ref-0 (points),-0.3686131239895921,"[-1.168, 0.142]",0.3284698575735092,no detectable effect
+K-Means + RF,DBSCAN + RF,Dice vs Ref-1,-0.23181758490246765,"[-0.287, -0.178]",6.146728992462158e-08,hurts
+K-Means + RF,DBSCAN + RF,|error| vs Ref-1 (points),10.323944211623367,"[2.166, 17.369]",0.0003800932317972183,hurts
+K-Means + RF,DBSCAN + RF,|error| vs Ref-0 (points),4.28309640709947,"[-1.312, 9.954]",0.09194962680339813,no detectable effect
+Professor rule (as given),K-Means + RF,Dice vs Ref-1,0.03785809515503799,"[-0.061, 0.138]",0.1641840822994709,no detectable effect
+Professor rule (as given),K-Means + RF,|error| vs Ref-1 (points),-7.947048234299981,"[-18.210, 2.371]",0.0061949919909238815,no detectable effect
+Professor rule (as given),K-Means + RF,|error| vs Ref-0 (points),-1.567511341108615,"[-6.326, 3.754]",0.049710121005773544,no detectable effect
+Colour threshold (Otsu on a*),K-Means + RF,Dice vs Ref-1,0.1859711365880867,"[0.139, 0.236]",1.862645149230957e-09,helps
+Colour threshold (Otsu on a*),K-Means + RF,|error| vs Ref-1 (points),-2.39762866669906,"[-7.390, 2.515]",0.09610157273709774,no detectable effect
+Colour threshold (Otsu on a*),K-Means + RF,|error| vs Ref-0 (points),-1.2356008629607895,"[-6.177, 3.299]",0.308520769700408,no detectable effect
+K-Means + RF,GMM + RF,Dice vs Ref-1,-0.014774901417027699,"[-0.029, -0.003]",0.0032229889184236526,hurts
+K-Means + RF,GMM + RF,|error| vs Ref-1 (points),1.1669825183982754,"[-0.369, 3.265]",0.03272089920938015,no detectable effect
+K-Means + RF,GMM + RF,|error| vs Ref-0 (points),1.543135714265809,"[-0.058, 3.541]",0.0021877754479646683,no detectable effect
+DBSCAN + RF,Tuned DBSCAN + RF,Dice vs Ref-1,0.16375234362037422,"[0.113, 0.217]",2.0489096641540527e-07,helps
+DBSCAN + RF,Tuned DBSCAN + RF,|error| vs Ref-1 (points),-9.847968697479887,"[-14.438, -4.274]",1.3966113328933716e-05,helps
+DBSCAN + RF,Tuned DBSCAN + RF,|error| vs Ref-0 (points),-4.300307686612133,"[-8.518, -0.125]",0.06989291124045849,helps
+K-Means + RF,Tuned DBSCAN + RF,Dice vs Ref-1,-0.06806524128209347,"[-0.097, -0.041]",2.348795533180237e-06,hurts
+K-Means + RF,Tuned DBSCAN + RF,|error| vs Ref-1 (points),0.47597551414348305,"[-2.351, 3.207]",0.4399667661637068,no detectable effect
+K-Means + RF,Tuned DBSCAN + RF,|error| vs Ref-0 (points),-0.017211279512662377,"[-3.115, 3.080]",0.7765688337385654,no detectable effect
+Stain line,Stain line + RF,Dice vs Ref-1,-0.04115352843452815,"[-0.062, -0.024]",1.4193356037139893e-06,hurts
+Stain line,Stain line + RF,|error| vs Ref-1 (points),-0.051818941458608235,"[-2.792, 3.269]",0.6120056137442589,no detectable effect
+Stain line,Stain line + RF,|error| vs Ref-0 (points),-0.9328095610650079,"[-4.007, 2.583]",0.19807579927146435,no detectable effect
+K-Means + RF,Stain line + RF,Dice vs Ref-1,-0.14515689962525746,"[-0.186, -0.106]",9.313225746154785e-09,hurts
+K-Means + RF,Stain line + RF,|error| vs Ref-1 (points),1.6664121527096647,"[-2.437, 5.851]",0.03098480962216854,no detectable effect
+K-Means + RF,Stain line + RF,|error| vs Ref-0 (points),1.6638710965595467,"[-2.046, 5.221]",0.06666470877826214,no detectable effect
+Stain line + RF,Stain line + RF (shade-proof),Dice vs Ref-1,0.039588601228065325,"[0.025, 0.057]",3.1478703022003174e-07,helps
+Stain line + RF,Stain line + RF (shade-proof),|error| vs Ref-1 (points),-0.4398815541091904,"[-3.290, 1.964]",0.9676735773682594,no detectable effect
+Stain line + RF,Stain line + RF (shade-proof),|error| vs Ref-0 (points),0.3430034623844603,"[-2.790, 3.087]",0.4161298982799053,no detectable effect
+K-Means + RF,K-Means + RF (shade-proof),Dice vs Ref-1,-0.1623202593421001,"[-0.211, -0.117]",3.725290298461914e-09,hurts
+K-Means + RF,K-Means + RF (shade-proof),|error| vs Ref-1 (points),2.4390471251280363,"[-2.959, 7.561]",0.13473508320748806,no detectable effect
+K-Means + RF,K-Means + RF (shade-proof),|error| vs Ref-0 (points),0.3856649911684754,"[-4.621, 5.833]",0.5561132747679949,no detectable effect
+K-Means + RF,K-Means + RF + rim fix,Dice vs Ref-1,-0.008982706157117742,"[-0.022, -0.002]",5.587935447692871e-09,too small to matter
+K-Means + RF,K-Means + RF + rim fix,|error| vs Ref-1 (points),0.040270670293768844,"[-0.014, 0.096]",0.17719271034002304,no detectable effect
+K-Means + RF,K-Means + RF + rim fix,|error| vs Ref-0 (points),0.12732652177853315,"[-0.004, 0.337]",0.140283040702343,no detectable effect
+K-Means + RF,K-Means + RF (shade-trained),Dice vs Ref-1,-0.03722386391154013,"[-0.053, -0.023]",0.0003800932317972183,hurts
+K-Means + RF,K-Means + RF (shade-trained),|error| vs Ref-1 (points),1.4421333438299901,"[-0.861, 3.682]",0.09194962680339813,no detectable effect
+K-Means + RF,K-Means + RF (shade-trained),|error| vs Ref-0 (points),2.7097351849947873,"[-0.656, 5.474]",0.01283373311161995,no detectable effect
+DBSCAN + RF,DBSCAN + RF (grid + random search),Dice vs Ref-1,0.0545033398855112,"[-0.018, 0.142]",0.0426517054438591,no detectable effect
+DBSCAN + RF,DBSCAN + RF (grid + random search),|error| vs Ref-1 (points),-3.4191151709254504,"[-7.098, -0.684]",0.00466480478644371,helps
+DBSCAN + RF,DBSCAN + RF (grid + random search),|error| vs Ref-0 (points),-2.141633253371689,"[-4.598, -0.227]",0.12413446232676506,helps
+Tuned DBSCAN + RF,DBSCAN + RF (grid + random search),Dice vs Ref-1,-0.10924900373486295,"[-0.195, -0.018]",0.0007978975772857666,hurts
+Tuned DBSCAN + RF,DBSCAN + RF (grid + random search),|error| vs Ref-1 (points),6.428853526554436,"[1.718, 11.301]",0.0027663204818964005,hurts
+Tuned DBSCAN + RF,DBSCAN + RF (grid + random search),|error| vs Ref-0 (points),2.1586744332404435,"[-2.173, 6.371]",0.25343610532581806,no detectable effect
+K-Means + RF,DBSCAN + RF (grid + random search),Dice vs Ref-1,-0.17731424501695642,"[-0.250, -0.108]",3.725290298461914e-09,hurts
+K-Means + RF,DBSCAN + RF (grid + random search),|error| vs Ref-1 (points),6.904829040697917,"[0.073, 13.489]",0.0012321043759584427,hurts
+K-Means + RF,DBSCAN + RF (grid + random search),|error| vs Ref-0 (points),2.1414631537277815,"[-2.715, 7.472]",0.19092952087521553,no detectable effect
