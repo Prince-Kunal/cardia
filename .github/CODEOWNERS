@@ -19,8 +19,10 @@
 /reference/golden/              @MeloveGupta @Prince-Kunal
 /engine/cardia_api/export/      @MeloveGupta
 
-# Web app: shell, Analyze screens, 3D heart, languages
+# Web app: shell, Analyze screens, 3D heart
 /web/                           @krrishverma1805-web
+# Generated from the engine's API contract (cardia_api.openapi), so it changes with the engine
+/web/src/api/types.gen.ts       @Prince-Kunal
 
 # Learn: lesson player, quizzes, lesson content
 /web/src/learn/                 @MeloveGupta
