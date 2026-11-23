@@ -5,6 +5,7 @@
 // first and replaces it with a route. Hash routes work the same in the browser and, later, in Electron.
 
 import { useSyncExternalStore } from 'react';
+import { markForwardNavigation } from './scroll';
 
 export type Route =
   | { name: 'library' }
@@ -74,6 +75,7 @@ export function href(route: Route): string {
 }
 
 export function navigate(route: Route): void {
+  markForwardNavigation();
   window.location.hash = href(route);
 }
 

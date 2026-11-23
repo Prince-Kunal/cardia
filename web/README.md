@@ -33,6 +33,6 @@ With `--mock`, any picture of a pink or red shape on white paper works as a scan
 | `src/learn/` | Learn (screens 7, 8, 9): lesson format parser, course map and tracks, lesson player, quizzes, glossary, spaced review, progress (kept in the browser until cloud sync). Lessons come from `../content/` (see its README). Owner: Melove |
 | `src/heart/` | The heart for Learn: a 2D diagram driven by each lesson step's scene (view, highlights, labels, animations), and the 2D fallback for the 3D heart (milestone 6) |
 | `src/components/` | The app shell and shared parts (method panel, progress, notes) |
-| `src/lib/` | Routing (`#/library`, `#/hearts/<key>`…), file-name rules, dropped files and ZIPs, number formatting |
+| `src/lib/` | Routing (`#/library`, `#/hearts/<key>`…), scrolling (`scroll.ts`: Lenis smooth scrolling, off under reduced motion; a page reached by a link starts at the top), file-name rules, dropped files and ZIPs, number formatting |
 | `src/test/` | The fake engine client used by screen tests |
 | `src/index.css` | One design system: colour, spacing, type and motion tokens on `:root`, light and dark themes (`data-theme` from Settings), reduced motion. The rules at its top follow the taste skill's system and motion rules (see `CLAUDE.md`) |

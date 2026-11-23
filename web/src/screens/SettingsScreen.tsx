@@ -8,6 +8,7 @@ import { ErrorNote } from '../components/ui';
 import { dateTime, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { href } from '../lib/router';
+import { scrollPageTo } from '../lib/scroll';
 import { useApp, useResource } from '../state';
 
 const WATCH_POLL = { ms: 3000, while: () => true };
@@ -319,5 +320,6 @@ function sentence(text: string): string {
 /** In-page links without touching the hash, which holds the route. */
 function scrollTo(e: MouseEvent, id: string) {
   e.preventDefault();
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const section = document.getElementById(id);
+  if (section) scrollPageTo(section, { smooth: true });
 }
