@@ -135,12 +135,19 @@ export function Context({ heart }: { heart: Heart }) {
   const set = study.data;
   const same =
     !!set && !s.mock && s.pipeline_version === set.pipeline_version && s.models_manifest_sha256 === set.models_manifest_sha256;
+  // A heart that is one of the study hearts (same ID, same results) is compared with the others only.
+  const close = (x: number | null, y: number | null) => x !== null && y !== null && Math.abs(x - y) < 0.01;
+  const itself = same
+    ? set.hearts.find((h) => h.heart_id === heart.label && close(h.method_a_dead_pct, s.method_a.dead_pct) && close(h.method_b_dead_pct, s.method_b.dead_pct))
+    : undefined;
+  const others = set ? set.hearts.filter((h) => h !== itself) : [];
   return (
     <section className="card stack" aria-labelledby="context-title">
       <div className="card-head" style={{ marginBottom: 0 }}>
         <h2 id="context-title">Context</h2>
         <span className="fine">
-          {set ? `The ${set.hearts.length} study hearts, measured the same way.` : ''} Context, not a diagnosis.
+          {set ? `The ${set.hearts.length} study hearts, measured the same way.` : ''}
+          {itself ? ' This heart is one of them, so it is compared with the others.' : ''} Context, not a diagnosis.
         </span>
       </div>
       <ErrorNote error={study.error} />
@@ -155,7 +162,7 @@ export function Context({ heart }: { heart: Heart }) {
       {set && same && (
         <>
           {methodOrder(settings.headline_method).map((m) => (
-            <ContextRow key={m} method={m} value={m === 'a' ? s.method_a.dead_pct : s.method_b.dead_pct} hearts={set.hearts} />
+            <ContextRow key={m} method={m} value={m === 'a' ? s.method_a.dead_pct : s.method_b.dead_pct} hearts={others} />
           ))}
           <StudyTable set={set} />
         </>
@@ -193,7 +200,7 @@ function ContextRow({ method, value, hearts }: { method: MethodKey; value: numbe
         <span className="fine">
           {value === null
             ? 'No value for this heart.'
-            : `This heart ${pct(value)}: higher than ${below} of ${values.length} study hearts${median !== null ? ` (median ${pct(median)})` : ''}.`}
+            : `This heart ${pct(value)}: higher than ${below} of ${values.length} ${values.length === 1 ? 'study heart' : 'study hearts'}${median !== null ? ` (median ${pct(median)})` : ''}.`}
         </span>
       </div>
       <div className="context-plot" onPointerLeave={() => setTip(null)}>

@@ -1,5 +1,5 @@
 // A small hash router: #/library, #/import, #/jobs/<id>, #/hearts/<key>, #/hearts/<key>/slices/<id> (or
-// #/slices/<id> outside a heart), #/settings, #/sync (cloud sync), and Learn:
+// #/slices/<id> outside a heart), #/settings, #/sync (cloud sync), #/help, and Learn:
 // #/learn (the course), #/learn/<module>[/<step>|/done] (a lesson), #/learn/glossary[/<term>], #/learn/review.
 // The hash also carries the engine link the first time (#engine=…&token=…); connection.ts reads that
 // first and replaces it with a route. Hash routes work the same in the browser and, later, in Electron.
@@ -15,6 +15,7 @@ export type Route =
   | { name: 'slice'; id: string; heart?: string }
   | { name: 'settings' }
   | { name: 'sync' }
+  | { name: 'help' }
   | { name: 'learn' }
   | { name: 'lesson'; module: number; step: number | 'done' }
   | { name: 'glossary'; term?: string }
@@ -22,6 +23,8 @@ export type Route =
 
 /** The routes that belong to Learn, which works without the engine. */
 export const LEARN_ROUTES: Route['name'][] = ['learn', 'lesson', 'glossary', 'review'];
+/** Everything that works without the engine: Learn and Help. */
+export const OFFLINE_ROUTES: Route['name'][] = [...LEARN_ROUTES, 'help'];
 
 function learnRoute(parts: string[]): Route {
   const [first, second] = parts;
@@ -51,6 +54,8 @@ export function parseRoute(hash: string): Route {
       return { name: 'settings' };
     case 'sync':
       return { name: 'sync' };
+    case 'help':
+      return { name: 'help' };
     case 'learn':
       return learnRoute(parts.slice(1));
     default:

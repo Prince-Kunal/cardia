@@ -13,9 +13,10 @@ import { ProcessingScreen } from './screens/ProcessingScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { SliceScreen } from './screens/SliceScreen';
 import { SyncScreen } from './screens/SyncScreen';
+import { HelpScreen } from './screens/HelpScreen';
 import { connectProgress } from './learn/progress';
 import { LearnApp } from './learn/LearnApp';
-import { LEARN_ROUTES, type Route, useRoute } from './lib/router';
+import { OFFLINE_ROUTES, type Route, useRoute } from './lib/router';
 import { AppContext, type AppState } from './state';
 
 type Status =
@@ -46,6 +47,8 @@ function screen(route: Route) {
       return <SettingsScreen />;
     case 'sync':
       return <SyncScreen />;
+    case 'help':
+      return <HelpScreen />;
     case 'learn':
     case 'lesson':
     case 'glossary':
@@ -140,13 +143,9 @@ export default function App({ initial }: { initial?: Connection | null }) {
   }, [status, client, disconnect]);
 
   if (status.kind === 'needs-link' || status.kind === 'offline' || status.kind === 'connecting' || !state) {
-    // Learn needs no engine: show it while there is none.
-    if (LEARN_ROUTES.includes(route.name)) {
-      return (
-        <Layout route={route}>
-          <LearnApp route={route} />
-        </Layout>
-      );
+    // Learn and Help need no engine: show them while there is none.
+    if (OFFLINE_ROUTES.includes(route.name)) {
+      return <Layout route={route}>{route.name === 'help' ? <HelpScreen /> : <LearnApp route={route} />}</Layout>;
     }
     return (
       <ConnectScreen
