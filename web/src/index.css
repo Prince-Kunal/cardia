@@ -672,7 +672,8 @@ p:not(.note) {
   color: var(--text-faint);
 }
 .input:focus,
-.input:focus-visible {
+.input:focus-visible,
+.input:focus-within /* a date field focuses its day, month or year inside */ {
   outline: none;
   border-color: var(--focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 30%, transparent);
@@ -763,6 +764,11 @@ select.input {
 
 /* ---------- small parts ---------- */
 
+.button .badge {
+  background: transparent;
+  border-color: currentColor;
+  color: inherit;
+}
 .badge {
   display: inline-flex;
   align-items: center;
