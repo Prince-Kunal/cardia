@@ -1,7 +1,7 @@
 // Generated from engine/cardia_api/openapi.json by `uv run python -m cardia_api.openapi`. Do not edit.
-// Cardia engine API 0.5.0.
+// Cardia engine API 0.6.0.
 
-export const API_VERSION = "0.5.0";
+export const API_VERSION = "0.6.0";
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettingsInput {
@@ -29,6 +29,20 @@ export interface AppSettings {
   /** Absolute path of the folder to watch for new scans */
   watch_folder: string | null;
   watch_enabled: boolean;
+}
+
+/** The demo heart for the walkthrough (PLAN.md §1h): real scans of one study heart, bundled with the engine. Fetch each scan from GET /demo/{name} and import it like any other. */
+export interface DemoHeart {
+  heart_id: string;
+  /** The study group: infarct or timecontrol */
+  group: string;
+  scans: DemoScan[];
+}
+
+export interface DemoScan {
+  /** The file name, which gives the heart ID and the slice weight */
+  name: string;
+  size_bytes: number;
 }
 
 export interface EngineInfo {

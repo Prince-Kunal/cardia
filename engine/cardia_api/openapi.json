@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -1347,6 +1347,118 @@
         ]
       }
     },
+    "/api/v1/demo": {
+      "get": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Demo Heart",
+        "description": "The demo heart: one study heart's real scans, bundled so the walkthrough works with no data of\nyour own. 404 in a build without the data folder.",
+        "operationId": "getDemoHeart",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoHeart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/demo/{name}": {
+      "get": {
+        "tags": [
+          "hearts"
+        ],
+        "summary": "Demo Scan",
+        "description": "One scan of the demo heart, byte for byte as it is in the study set.",
+        "operationId": "getDemoScan",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+\\.tif$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The scan, unchanged",
+            "content": {
+              "image/tiff": {}
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/backup.zip": {
       "get": {
         "tags": [
@@ -2212,6 +2324,53 @@
           "backup"
         ],
         "title": "Body_restoreLibrary"
+      },
+      "DemoHeart": {
+        "properties": {
+          "heart_id": {
+            "type": "string",
+            "title": "Heart Id"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group",
+            "description": "The study group: infarct or timecontrol"
+          },
+          "scans": {
+            "items": {
+              "$ref": "#/components/schemas/DemoScan"
+            },
+            "type": "array",
+            "title": "Scans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "heart_id",
+          "group",
+          "scans"
+        ],
+        "title": "DemoHeart",
+        "description": "The demo heart for the walkthrough (PLAN.md §1h): real scans of one study heart, bundled with the\nengine. Fetch each scan from GET /demo/{name} and import it like any other."
+      },
+      "DemoScan": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The file name, which gives the heart ID and the slice weight"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "size_bytes"
+        ],
+        "title": "DemoScan"
       },
       "EngineInfo": {
         "properties": {

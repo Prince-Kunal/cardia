@@ -355,6 +355,20 @@ class StudySet(Model):
     hearts: list[StudyHeart]
 
 
+class DemoScan(Model):
+    name: str = Field(description="The file name, which gives the heart ID and the slice weight")
+    size_bytes: int
+
+
+class DemoHeart(Model):
+    """The demo heart for the walkthrough (PLAN.md §1h): real scans of one study heart, bundled with the
+    engine. Fetch each scan from GET /demo/{name} and import it like any other."""
+
+    heart_id: str
+    group: str = Field(description="The study group: infarct or timecontrol")
+    scans: list[DemoScan]
+
+
 class RestoreReport(Model):
     """What a restore added. Restoring never overwrites: hearts already here are skipped."""
 
