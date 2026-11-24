@@ -160,21 +160,34 @@
 .lesson-steps {
   display: flex;
   align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
 }
+/* A 24px target (WCAG 2.2, 2.5.8) around a 12px dot. */
 .step-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+.step-dot::before {
+  content: '';
+  box-sizing: border-box;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
+  transition: transform var(--m-in) var(--ease), border-color var(--m-in) var(--ease);
 }
-.step-dot.seen {
+.step-dot:hover::before {
+  border-color: var(--accent);
+}
+.step-dot.seen::before {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
-.step-dot.current {
+.step-dot.current::before {
   background: var(--accent);
   border-color: var(--accent);
   transform: scale(1.25);
