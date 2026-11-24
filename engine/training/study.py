@@ -1,5 +1,6 @@
 """The 30 GVSU study slices through the shared front end (lighting correction and tissue mask)."""
 
+import fnmatch
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,3 +43,15 @@ def front_end(path) -> StudySlice:
 def study_slices(data=DATA) -> list[StudySlice]:
     """All study slices in study order (by heart, then file name), as in the notebook."""
     return [front_end(p) for p in study_scans(data).values()]
+
+
+def read_out(pattern, data=DATA):
+    """{file name: column 4 (infarct %)} from the lab's .out tables under data/ (symlinks followed)."""
+    rows = {}
+    paths = [Path(d) / f for d, _, files in os.walk(data, followlinks=True) for f in files]
+    for p in sorted(q for q in paths if fnmatch.fnmatch(q.name, pattern)):
+        for line in p.read_text(errors="ignore").splitlines():
+            x = line.strip().split("\t")
+            if x[0].lower().endswith(".tif") and len(x) >= 5:
+                rows[x[0]] = float(x[4])
+    return rows

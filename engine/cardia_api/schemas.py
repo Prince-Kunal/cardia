@@ -32,9 +32,9 @@ class Layer(StrEnum):
     a_dead = "a_dead"
     a_unsure = "a_unsure"
     a_probability = "a_probability"
-    b_tissue = "b_tissue"
     b_dead = "b_dead"
     b_borderline = "b_borderline"
+    b_stain_missing = "b_stain_missing"
 
 
 class Health(Model):
@@ -50,8 +50,11 @@ class ModelFile(Model):
     sha256: str
 
 
+MethodKey = Literal["a", "b"]
+
+
 class MethodInfo(Model):
-    key: Literal["a", "b"]
+    key: MethodKey
     name: str = Field(description='Label to show, e.g. "Method A: K-Means + RF"')
     dead_rule: str
     unsure_rule: str = Field(description="Method A: unsure tissue; Method B: borderline tissue")
@@ -93,7 +96,9 @@ class TissueResult(Model):
 class PctRange(Model):
     low_pct: float | None
     high_pct: float | None
-    shown: bool = Field(description="Show this range in reports. For now only Method B's is shown (PLAN.md §2g)")
+    shown: bool = Field(
+        description="Show this range in reports. Method B shows its range; Method A's is hidden (PLAN.md §2g)"
+    )
 
 
 class MethodAResult(Model):
@@ -106,12 +111,12 @@ class MethodAResult(Model):
 
 
 class MethodBResult(Model):
-    tissue_px: int = Field(description="Method B's own outline, real holes removed")
-    tissue_mm2: float | None
-    dead_pct: float | None = Field(description="Dead share of Method B's tissue: a* below the conservative cut")
+    dead_pct: float | None = Field(
+        description="Dead share of the shared tissue: less than half the red stain of living muscle, leaning cream"
+    )
     dead_px: int
     dead_mg: float | None
-    borderline_pct: float | None = Field(description="a* between the conservative and the liberal cut")
+    borderline_pct: float | None = Field(description="Between 40% and 60% of the living stain")
     borderline_px: int
     range: PctRange
 
@@ -133,7 +138,11 @@ class SliceResult(Model):
     mock: bool
     tissue: TissueResult
     method_a: MethodAResult
-    method_b: MethodBResult
+    method_b: MethodBResult | None = Field(
+        default=None,
+        description="Method B, the stain ratio (pipeline 0.5.0 on); null for results stored by an earlier pipeline, "
+        "whose Method B was the retired a* cut",
+    )
     qc_flags: list[QcFlag]
     layers: list[Layer]
 
@@ -221,7 +230,9 @@ class HeartSummary(Model):
     models_manifest_sha256: str | None
     mock: bool
     method_a: HeartMethodA
-    method_b: HeartMethodB
+    method_b: HeartMethodB | None = Field(
+        default=None, description="Null when any slice was analysed before pipeline 0.5.0 (the retired a* cut)"
+    )
 
 
 class UploadMeta(Model):
@@ -239,7 +250,7 @@ class HeartSlice(Model):
     weight_mg: float | None = Field(description="The typed weight, else the file name's")
     weight_source: Literal["typed", "file_name"] | None
     method_a_dead_pct: float | None
-    method_b_dead_pct: float | None
+    method_b_dead_pct: float | None = None
     qc_flags: list[QcFlag]
 
 
@@ -273,8 +284,8 @@ class Heart(HeartDetails):
 class MethodsParagraph(Model):
     """A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes."""
 
-    method: Literal["a", "b"]
-    name: str = Field(description='e.g. "Method A: K-Means + RF"')
+    method: MethodKey
+    name: str = Field(description='e.g. "Method B: stain ratio"')
     text: str = Field(description="English. For demo (--mock) results, a warning instead of a paragraph")
     mock: bool
 
@@ -314,7 +325,9 @@ class AppSettings(Model):
     """Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same."""
 
     model_config = ConfigDict(extra="forbid")
-    headline_method: Literal["a", "b"] = Field(default="a", description="The method reports lead with (PLAN.md §2g)")
+    headline_method: MethodKey = Field(
+        default="b", description="The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0"
+    )
     theme: Literal["system", "light", "dark"] = "system"
     language: str = Field(default="en", pattern=r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$", description="App language")
     report_language: str = Field(default="en", pattern=r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$")

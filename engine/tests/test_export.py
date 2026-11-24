@@ -13,7 +13,7 @@ from apiutil import AUTH, make_client, scan, upload, wait
 from cardia_api.catalog import RANGE_SHOWN
 from cardia_api.export import methods_paragraphs, safe_name
 from cardia_api.export.tables import HEART_COLUMNS, SLICE_COLUMNS
-from ttc_pipeline.method_b import ACuts
+from ttc_pipeline.method_b import StainRatioModel
 
 
 @pytest.fixture(scope="module")
@@ -77,27 +77,39 @@ def test_methods_for_demo_results_say_so(client, heart):
     r = client.get(f"/api/v1/hearts/{heart['heart_key']}/methods", headers=AUTH)
     assert r.status_code == 200, r.text
     paragraphs = r.json()
-    assert [p["method"] for p in paragraphs] == ["a", "b"]  # headline (default A) first
+    assert [p["method"] for p in paragraphs] == ["b", "a"]  # headline (default B) first
     assert all(p["mock"] and "demo mode" in p["text"] for p in paragraphs)
 
 
 def test_methods_text_names_versions_and_cut_offs(heart):
     """On results that look real: the paragraph carries the pipeline version, model hashes and cut-offs."""
-    cuts = ACuts(11.75, 18.6, {"model_version": "1.0.0"})
+    cut = {"fraction_of_living_stain": 0.5, "s": 0.3094, "tint": 35.48}
+    stain = StainRatioModel.from_info(
+        {
+            "model_version": "1.0.0",
+            "sigma": 2.0,
+            "edge_px": 17,
+            "cuts": {"low": cut | {"s": 0.2692}, "dead": cut, "high": cut | {"s": 0.3495}},
+        }
+    )
     models = [
         {"file": "kmeans_rf/kmeans_rf.joblib", "version": "1.0.0", "sha256": "1b4acf612822" + "0" * 52},
         {"file": "holes/hole_model.joblib", "version": "1.0.0", "sha256": "6a6e6b37fc09" + "0" * 52},
-        {"file": "a_cut/a_cut.json", "version": "1.0.0", "sha256": "249ae33cc3eb" + "0" * 52},
+        {"file": "stain_ratio/stain_ratio.json", "version": "1.0.0", "sha256": "5ca1ab1e0000" + "0" * 52},
     ]
     results = [{"mock": False, "models": models}] * 3
-    summary = {"pipeline_version": "0.3.0", "weighting": "tissue_area"}
-    a, b = methods_paragraphs(results, summary, "206", cuts, headline="b")[::-1]
+    summary = {"pipeline_version": "0.5.0", "weighting": "tissue_area", "method_b": {"dead_pct": 50.0}}
+    a, b = methods_paragraphs(results, summary, "206", stain, headline="a")
     assert (a["method"], b["method"]) == ("a", "b")
-    assert "pipeline 0.3.0" in a["text"] and "3 short-axis slices" in a["text"]
+    assert "0.309" in b["text"] and "35.5" in b["text"] and "17 px" in b["text"] and "5ca1ab1e0000" in b["text"]
+    assert "half the red stain" in b["text"] and "40%" in b["text"] and "60%" in b["text"]
+    assert ("reported range" in b["text"]) == RANGE_SHOWN["b"]
+    # Slices analysed before pipeline 0.5.0 (the retired a* cut) get no Method B paragraph.
+    old = methods_paragraphs(results, {**summary, "method_b": None}, "206", stain, headline="b")
+    assert [p["method"] for p in old] == ["a"]
+    assert "pipeline 0.5.0" in a["text"] and "3 short-axis slices" in a["text"]
     assert "1b4acf612822" in a["text"] and "6a6e6b37fc09" in a["text"]
     assert "weighted by tissue area" in a["text"]
-    assert "11.75" in b["text"] and "18.6" in b["text"] and "249ae33cc3eb" in b["text"]
-    assert ("reported range" in b["text"]) == RANGE_SHOWN["b"]
     assert ("reported range" in a["text"]) == RANGE_SHOWN["a"]
     assert not any(word in (a["text"] + b["text"]).lower() for word in ("claude", "ai-generated"))
 
@@ -133,6 +145,7 @@ def test_zip_bundle(client, heart):
         original = next(f for f in first["files"] if "/original." in f)
         assert hashlib.sha256(z.read(root + original)).hexdigest() == first["image_sha256"]
         assert any(f.endswith("/layers/b_dead.png") for f in first["files"])
+        assert any(f.endswith("/layers/b_stain_missing.png") for f in first["files"])
         assert "DEMO DATA" in z.read(root + "README.txt").decode()
 
 

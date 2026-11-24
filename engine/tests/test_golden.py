@@ -25,7 +25,7 @@ PCT_COLUMNS = [
     "b_high_pct",
     "b_borderline_pct",
 ]
-PX_COLUMNS = ["tissue_px", "holes_removed_px", "holes_uncertain_px", "filled_px", "b_tissue_px"]
+PX_COLUMNS = ["tissue_px", "holes_removed_px", "holes_uncertain_px", "filled_px"]
 
 
 @pytest.fixture(scope="module")

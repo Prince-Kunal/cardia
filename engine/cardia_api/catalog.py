@@ -1,29 +1,32 @@
 """What the engine tells the UI about its methods and image layers."""
 
 from ttc_pipeline.method_a import UNSURE, UNSURE_FLAG_PCT
-from ttc_pipeline.method_b import ACuts
+from ttc_pipeline.method_b import StainRatioModel
 
 from .schemas import Layer, LayerInfo, MethodInfo
 
-# PLAN.md §2g (decided 2026-11-23): only Method B's range is shown for now; Method A's is computed but hidden.
+# PLAN.md §2g (decided 2026-11-23): Method A's range is computed but hidden. Method B's range (2026-11-24) is
+# shown: where the line falls if "half the living stain" were 40% or 60% of it.
 RANGE_SHOWN = {"a": False, "b": True}
+METHOD_NAMES = {"a": "Method A: K-Means + RF", "b": "Method B: stain ratio"}
 
 
-def methods(cuts: ACuts) -> list[MethodInfo]:
+def methods(stain: StainRatioModel) -> list[MethodInfo]:
     return [
         MethodInfo(
+            key="b",
+            name=METHOD_NAMES["b"],
+            dead_rule=f"less than half the red stain of living muscle, leaning cream: stain log(R/G) < {stain.s_cut:.3g} "
+            f"and tint < {stain.tint_cut:.3g}° (light absorbed, shadow-proof)",
+            unsure_rule=f"borderline: between 40% and 60% of the living stain (stain {stain.s_low:.3g} to {stain.s_high:.3g})",
+            range_shown=RANGE_SHOWN["b"],
+        ),
+        MethodInfo(
             key="a",
-            name="Method A: K-Means + RF",
+            name=METHOD_NAMES["a"],
             dead_rule="probability of dead p ≥ 0.5 (frozen random forest on 22 pixel features)",
             unsure_rule=f"unsure: {UNSURE[0]} < p < {UNSURE[1]}; more than {UNSURE_FLAG_PCT:g}% unsure flags the slice",
             range_shown=RANGE_SHOWN["a"],
-        ),
-        MethodInfo(
-            key="b",
-            name="Method B: a* cut",
-            dead_rule=f"smoothed redness a* < {cuts.conservative:g}",
-            unsure_rule=f"borderline: {cuts.conservative:g} ≤ a* < {cuts.liberal:g}",
-            range_shown=RANGE_SHOWN["b"],
         ),
     ]
 
@@ -34,7 +37,7 @@ LAYERS = [
         key=Layer.corrected,
         kind="photo",
         title="Lighting corrected",
-        description="After the paper-based lighting correction; Method A reads this image",
+        description="After the paper-based lighting correction; Method A reads this image (Method B reads it unclipped)",
     ),
     LayerInfo(key=Layer.tissue, kind="mask", title="Tissue", description="Shared tissue outline, real holes removed"),
     LayerInfo(
@@ -64,16 +67,22 @@ LAYERS = [
         description="Probability of dead for every tissue pixel",
     ),
     LayerInfo(
-        key=Layer.b_tissue,
+        key=Layer.b_dead,
         kind="mask",
-        title="Method B tissue",
-        description="Method B's own outline, real holes removed",
+        title="Method B dead",
+        description="Less than half the red stain of living muscle, leaning cream",
     ),
-    LayerInfo(key=Layer.b_dead, kind="mask", title="Method B dead", description="a* below the conservative cut"),
     LayerInfo(
         key=Layer.b_borderline,
         kind="mask",
         title="Method B borderline",
-        description="a* between the conservative and the liberal cut",
+        description="Between 40% and 60% of the living stain",
+    ),
+    LayerInfo(
+        key=Layer.b_stain_missing,
+        kind="heatmap",
+        title="Method B stain missing",
+        description="Share of the living stain missing at each tissue pixel: dark = as red as living muscle, "
+        "yellow = unstained",
     ),
 ]

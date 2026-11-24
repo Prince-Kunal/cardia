@@ -1,16 +1,15 @@
 """Heart numbers from slice numbers (PLAN.md §2g).
 
 Heart % = the slices' percentages weighted by slice weight. If any slice has no weight, every slice is
-weighted by its tissue area instead (each method by its own tissue), and the heart is flagged. Dead
-mass = % x weight, so it is known only when every weight is. A slice with no tissue for a method
-(percentages NaN) is left out of that method's numbers.
+weighted by its tissue area instead, and the heart is flagged. Dead mass = % x weight, so it is known
+only when every weight is. A slice with no tissue (percentages NaN) is left out of the numbers.
 """
 
 import math
 from dataclasses import dataclass
 
 A_COLUMNS = ("a_dead_pct", "a_unsure_pct", "a_low_pct", "a_high_pct")
-B_COLUMNS = ("b_dead_pct", "b_borderline_pct", "b_low_pct", "b_high_pct")
+B_COLUMNS = ("b_dead_pct", "b_borderline_pct", "b_low_pct", "b_high_pct")  # both methods read the shared tissue
 
 
 @dataclass(frozen=True)
@@ -30,26 +29,21 @@ def _weighted(values, weights) -> float | None:
 
 
 def heart_numbers(slices: list[dict]) -> HeartNumbers:
-    """`slices`: one dict per slice with `weight_mg` (None if unknown), `tissue_px`, `b_tissue_px` and the
-    percentage columns of `SliceAnalysis.numbers()`."""
+    """`slices`: one dict per slice with `weight_mg` (None if unknown), `tissue_px` and the percentage columns
+    of `SliceAnalysis.numbers()`."""
     if not slices:
         raise ValueError("a heart needs at least one slice")
     weights = [s["weight_mg"] for s in slices]
     by_weight = all(w is not None for w in weights)
-    if by_weight:
-        wa = wb = [float(w) for w in weights]
-    else:
-        wa = [float(s["tissue_px"]) for s in slices]
-        wb = [float(s["b_tissue_px"]) for s in slices]
-    pct = {c: _weighted([s[c] for s in slices], wa) for c in A_COLUMNS}
-    pct |= {c: _weighted([s[c] for s in slices], wb) for c in B_COLUMNS}
+    w = [float(x) for x in weights] if by_weight else [float(s["tissue_px"]) for s in slices]
+    pct = {c: _weighted([s[c] for s in slices], w) for c in A_COLUMNS + B_COLUMNS}
     total = sum(weights) if by_weight else None
 
     def dead_mg(col):
         if not by_weight:
             return None
-        known = [(s[col], w) for s, w in zip(slices, weights, strict=True) if not math.isnan(s[col])]
-        return sum(v / 100.0 * w for v, w in known) if known else None
+        known = [(s[col], m) for s, m in zip(slices, weights, strict=True) if not math.isnan(s[col])]
+        return sum(v / 100.0 * m for v, m in known) if known else None
 
     return HeartNumbers(
         weighting="slice_weight" if by_weight else "tissue_area",

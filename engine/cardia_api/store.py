@@ -6,6 +6,7 @@
     <data_dir>/engine.json                    while running: URL, token and PID, readable only by this user
 
 Slice folders never change once written: a slice_id names one image, file name, pipeline and model set.
+Results written by an older pipeline are read through `upgrade`, which hides what has been retired.
 The library (SQLite, milestone 2) will index this folder.
 """
 
@@ -15,7 +16,25 @@ import os
 import uuid
 from pathlib import Path
 
+from .schemas import Layer
+
 CHUNK = 1 << 20
+
+
+def upgrade(result: dict) -> dict:
+    """A stored result as the current contract shows it.
+
+    Pipelines before 0.5.0 stored the retired a* cut under "method_b" (recognisable by its own "tissue_px") and,
+    in 0.4.0, Method C. Neither is shown: "method_b" becomes null, Method C and their layers are dropped. The
+    files stay on disk untouched; re-importing the scan analyses it with the current pipeline."""
+    r = dict(result)
+    r.pop("method_c", None)
+    old_b = isinstance(r.get("method_b"), dict) and "tissue_px" in r["method_b"]
+    if old_b:
+        r["method_b"] = None
+    known = {layer.value for layer in Layer}
+    r["layers"] = [k for k in r.get("layers", []) if k in known and not (old_b and k.startswith("b_"))]
+    return r
 
 
 class FileTooLarge(Exception):
@@ -62,11 +81,13 @@ class Store:
 
     def read_result(self, slice_id: str) -> dict | None:
         path = self.slice_dir(slice_id) / "result.json"
-        return json.loads(path.read_text()) if path.exists() else None
+        return upgrade(json.loads(path.read_text())) if path.exists() else None
 
     def list_results(self) -> list[dict]:
         found = [
-            json.loads(p.read_text()) for p in self.slices.glob("*/result.json") if not p.parent.name.startswith(".")
+            upgrade(json.loads(p.read_text()))
+            for p in self.slices.glob("*/result.json")
+            if not p.parent.name.startswith(".")
         ]
         return sorted(found, key=lambda r: r["analysed_at"], reverse=True)
 

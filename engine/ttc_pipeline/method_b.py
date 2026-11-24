@@ -1,16 +1,33 @@
-"""Method B "a* cut" (research repo `ttc/segment.py`, `ttc/infarct.py`, `ttc/pipeline.py`; PLAN.md §2f).
+"""Method B "stain ratio" (2026-11-24; replaces the earlier a* cut and the short-lived Method C "stain hue").
 
-Phase 0 tried Method B on the shared front end: its cut re-derived there was 3.80 pp from the YHS
-values on the time-control slices, above the 2.9 pp limit. So, as PLAN.md §2f decides, Method B
-keeps its original front end (white balance, chroma + GrabCut outline, lumen excluded) and takes
-the real holes from the shared hole model.
+TTC turns living muscle brick red (formazan); dead muscle keeps the cream of unstained tissue, and tissue in
+between keeps part of the red. Method B asks of each pixel: does it hold less than half the red stain of
+living muscle?
 
-One change from the research repo: GrabCut is seeded for every slice. It draws on OpenCV's
-process-wide random generator, so without a seed a slice's outline depended on what ran before it
-(one slice measured twice in a row: 209,932 then 210,087 px).
+Colour is read as light absorbed: optical density OD = -log10(light that comes back / the paper's), per
+channel. Stain adds to OD in proportion to how much of it there is (Beer-Lambert), and a shadow adds the same
+OD to all three channels, so Method B uses two numbers that a shadow cannot change:
 
-Dead = smoothed a* < the conservative cut; borderline = between the conservative and the liberal
-cut. Both cuts come from `models/a_cut/a_cut.json`.
+* stain   s = OD_green - OD_red (= log10 red / green): formazan absorbs green and hardly any red;
+* tint    theta = atan2(s, OD_blue - OD_red), degrees: unstained tissue absorbs blue (cream, theta near 25),
+  stained tissue leans red (theta near 40).
+
+Two reference colours come from the 30 study photos (median OD of clearly unstained pixels and of clearly
+stained pixels). The colour of tissue holding a fraction f of the living stain is unstained + f x (stained -
+unstained) in OD. Dead = s and theta both below the f = 0.5 colour: half the stain, and leaning cream. The
+tint condition keeps out pale pixels that lean red (whitish-pink surface, fibrous or glossy tissue): about as
+common on normal hearts as on infarct hearts.
+
+Range: low end f = 0.4, high end f = 0.6 (where the line falls if "half" were 40% or 60% of the living
+stain). Borderline = in the high end and not the low end.
+
+The colour comes from the paper flat field in linear light without clipping (`flat_field_linear`), averaged
+over tissue-only neighbourhoods (sigma 2 px). The outer edge of every slice reads pale whatever its state (the
+tissue thins and the paper shows through): pixels within `edge_px` of the slice outline take the colour of
+the nearest pixel further in.
+
+Every number comes from the 30 study photos without any label or reference
+(`training/calibrate_method_b.py`, `models/stain_ratio/stain_ratio.json`).
 """
 
 import json
@@ -19,119 +36,109 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 from scipy import ndimage as ndi
-from skimage import color, filters, measure, morphology
 
-from .holes import Holes
+from .lighting import flat_field_linear
+from .method_a import masked_blur
 from .models import MODELS_DIR, verified_path
 
-A_CUT_JSON = "a_cut/a_cut.json"
-GRABCUT_SEED = 0  # OpenCV's start-of-process generator state
+STAIN_RATIO_JSON = "stain_ratio/stain_ratio.json"
+OD_FLOOR = 1e-3  # linear light below this (OD above 3) is treated as OD 3
 
 
-def white_balance(rgb, border_frac=0.06):
-    """Scale channels so the paper (bright, low-saturation pixels at the image border) is neutral."""
-    img = rgb.astype(np.float32)
-    h, w = img.shape[:2]
-    b = max(4, int(min(h, w) * border_frac))
-    frame = np.zeros((h, w), bool)
-    frame[:b], frame[-b:], frame[:, :b], frame[:, -b:] = True, True, True, True
-    mx, mn = img.max(2), img.min(2)
-    sat = (mx - mn) / np.maximum(mx, 1)
-    cand = frame & (mx >= np.percentile(mx[frame], 50)) & (sat <= np.percentile(sat[frame], 50))
-    if cand.sum() < 50:  # fall back to brightest neutral pixels anywhere
-        cand = (mx >= np.percentile(mx, 90)) & (sat <= np.percentile(sat, 30))
-    paper = np.median(img[cand], axis=0)
-    out = np.clip(img * (paper.mean() / np.maximum(paper, 1)) * (245.0 / max(paper.mean(), 1)), 0, 255)
-    return out.astype(np.uint8), paper
+def edge_distance(tissue, holes_removed):
+    """Distance in px from the slice's outline (holes inside the slice are not outline)."""
+    return cv2.distanceTransform((tissue | holes_removed).astype(np.uint8), cv2.DIST_L2, 5)
 
 
-def lab_features(rgb_wb):
-    lab = color.rgb2lab(rgb_wb)  # true CIELAB units
-    L, a, b = lab[..., 0], lab[..., 1], lab[..., 2]
-    C = np.hypot(a, b)
-    hue = np.degrees(np.arctan2(b, a))
-    return L, a, b, C, hue
+def optical_density(rgb, paper, tissue, sigma):
+    """OD per pixel and channel (H x W x 3), each channel averaged over tissue-only neighbourhoods."""
+    lin = flat_field_linear(rgb, paper)
+    lin = np.stack([masked_blur(lin[..., c], tissue, sigma) for c in range(3)], -1)
+    return -np.log10(np.clip(lin, OD_FLOOR, None))
 
 
-def _keep_main_components(mask, min_frac=0.15):
-    lab = measure.label(mask, connectivity=2)
-    if lab.max() == 0:
-        return mask
-    sizes = np.bincount(lab.ravel())
-    sizes[0] = 0
-    keep = np.flatnonzero(sizes >= min_frac * sizes.max())
-    return np.isin(lab, keep)
+def fill_edge(od, tissue, holes_removed, edge_px):
+    """Pixels within `edge_px` of the slice outline take the OD of the nearest pixel further in."""
+    if edge_px <= 0:
+        return od
+    core = tissue & (edge_distance(tissue, holes_removed) > edge_px)
+    if not core.any():
+        return od
+    iy, ix = ndi.distance_transform_edt(~core, return_indices=True)[1]
+    return od[iy, ix]
 
 
-def original_tissue_mask(rgb, use_grabcut=True, chroma_bounds=(6.0, 14.0), seed=GRABCUT_SEED):
-    """Method B's outline: dict(tissue, lumen, chroma_cut, wb). `tissue` excludes lumen.
-
-    `seed=None` leaves OpenCV's generator as it is, as the research repo did (used only to reproduce it).
-    """
-    wb, _ = white_balance(rgb)
-    C = lab_features(wb)[3]  # chroma
-    Cs = cv2.GaussianBlur(C.astype(np.float32), (0, 0), 1.0)
-    cut = float(np.clip(filters.threshold_otsu(Cs), *chroma_bounds))
-    m = Cs > cut
-    m = morphology.opening(m, morphology.disk(2))
-    m = _keep_main_components(m)
-    if use_grabcut and m.any():
-        gc = np.full(m.shape, cv2.GC_PR_BGD, np.uint8)
-        gc[morphology.dilation(m, morphology.disk(12)) == 0] = cv2.GC_BGD
-        gc[m] = cv2.GC_PR_FGD
-        gc[morphology.erosion(m, morphology.disk(6))] = cv2.GC_FGD
-        bgd, fgd = np.zeros((1, 65)), np.zeros((1, 65))
-        if seed is not None:
-            cv2.setRNGSeed(seed)
-        cv2.grabCut(cv2.cvtColor(wb, cv2.COLOR_RGB2BGR), gc, None, bgd, fgd, 4, cv2.GC_INIT_WITH_MASK)
-        g = (gc == cv2.GC_FGD) | (gc == cv2.GC_PR_FGD)
-        g &= Cs > 0.6 * cut  # GrabCut may grab grid lines/shadow: veto clearly neutral pixels
-        m = _keep_main_components(morphology.opening(g, morphology.disk(1)))
-    m = morphology.closing(m, morphology.disk(3))
-    filled = ndi.binary_fill_holes(m)
-    holes = filled & ~m
-    hl = measure.label(holes)
-    sizes = np.bincount(hl.ravel())
-    sizes[0] = 0
-    small = np.isin(hl, np.flatnonzero((sizes > 0) & (sizes < 150)))
-    tissue = m | small
-    hull = morphology.convex_hull_image(tissue)
-    interior = morphology.erosion(hull, morphology.disk(8))
-    lumen = (filled & ~tissue) | (interior & ~tissue)
-    return {"tissue": tissue, "lumen": lumen, "chroma_cut": cut, "wb": wb}
+def stain_and_tint(od):
+    """(s, theta in degrees) from OD (... x 3)."""
+    s = od[..., 1] - od[..., 0]
+    return s, np.degrees(np.arctan2(s, od[..., 2] - od[..., 0]))
 
 
-def smoothed_a(rgb, sigma=1.5):
-    """Redness a* per pixel, blurred to suppress sensor grain."""
-    _, a, _, _, _ = lab_features(rgb)
-    return cv2.GaussianBlur(a.astype(np.float32), (0, 0), sigma)
+def stain_maps(rgb, paper, tissue, holes_removed, sigma, edge_px):
+    """(stain s, tint theta in degrees) per pixel, NaN outside the tissue, with the slice edge filled in."""
+    s, t = stain_and_tint(fill_edge(optical_density(rgb, paper, tissue, sigma), tissue, holes_removed, edge_px))
+    s_out = np.full(tissue.shape, np.nan, np.float32)
+    t_out = np.full(tissue.shape, np.nan, np.float32)
+    s_out[tissue] = s[tissue]
+    t_out[tissue] = t[tissue]
+    return s_out, t_out
 
 
 @dataclass(frozen=True)
-class ACuts:
-    conservative: float  # dead = a* < this (the headline)
-    liberal: float  # a* < this is the top of the range; between the two is borderline
-    info: dict  # the contents of a_cut.json
+class StainRatioModel:
+    s_cut: float  # stain of tissue with half the living stain
+    tint_cut: float  # its tint (degrees)
+    s_low: float  # 40% of the living stain: range, low end
+    tint_low: float
+    s_high: float  # 60% of the living stain: range, high end
+    tint_high: float
+    sigma: float  # neighbourhood for the colour (px)
+    edge_px: float  # slice-edge band that takes the colour from further in (px)
+    info: dict  # the contents of stain_ratio.json
 
     @property
     def version(self) -> str:
         return self.info["model_version"]
 
+    def stain_missing(self, stain):
+        """Share of the living stain missing, 0 (as red as living muscle) to 1 (unstained), clipped; NaN stays NaN.
+
+        From s alone, along the line between the two reference colours (it ignores the tint)."""
+        cal = self.info["calibration"]
+        s_u = stain_and_tint(np.array(cal["unstained_od"]))[0]
+        s_s = stain_and_tint(np.array(cal["stained_od"]))[0]
+        return np.clip((s_s - stain) / (s_s - s_u), 0.0, 1.0)
+
     @classmethod
-    def load(cls, models_dir=MODELS_DIR) -> ACuts:
-        info = json.loads(verified_path(A_CUT_JSON, models_dir).read_text())
-        return cls(float(info["conservative"]), float(info["liberal"]), info)
+    def from_info(cls, info: dict) -> StainRatioModel:
+        c = info["cuts"]
+        return cls(
+            float(c["dead"]["s"]),
+            float(c["dead"]["tint"]),
+            float(c["low"]["s"]),
+            float(c["low"]["tint"]),
+            float(c["high"]["s"]),
+            float(c["high"]["tint"]),
+            float(info["sigma"]),
+            float(info["edge_px"]),
+            info,
+        )
+
+    @classmethod
+    def load(cls, models_dir=MODELS_DIR) -> StainRatioModel:
+        return cls.from_info(json.loads(verified_path(STAIN_RATIO_JSON, models_dir).read_text()))
 
 
 @dataclass(frozen=True)
 class MethodB:
-    tissue: np.ndarray  # Method B's own outline, real holes removed
-    dead: np.ndarray  # a* < conservative cut, inside the tissue
-    borderline: np.ndarray  # conservative <= a* < liberal, inside the tissue
-    dead_pct: float  # dead / tissue
+    stain: np.ndarray  # s per pixel (NaN outside the tissue)
+    tint: np.ndarray  # theta per pixel, degrees (NaN outside the tissue)
+    dead: np.ndarray  # s < s_cut and theta < tint_cut
+    borderline: np.ndarray  # in the range's high end but not its low end
+    dead_pct: float
     borderline_pct: float
-    low_pct: float  # conservative cut, uncertain holes counted as holes
-    high_pct: float  # liberal cut, uncertain holes counted as tissue
+    low_pct: float  # the 40% rule; uncertain holes counted as holes
+    high_pct: float  # the 60% rule; uncertain holes counted as tissue
 
 
 def _pct(part, whole):
@@ -139,28 +146,24 @@ def _pct(part, whole):
     return 100.0 * float((part & whole).sum()) / n if n else float("nan")
 
 
-def method_b_tissue(rgb, holes: Holes):
-    """Method B's outline with the shared hole model's removed holes taken out; and its white-balanced photo."""
-    seg = original_tissue_mask(rgb)
-    return seg["tissue"] & ~holes.removed, seg["wb"]
-
-
-def summarise_b(a, tissue, uncertain_holes, conservative, liberal) -> MethodB:
-    """Method B's slice numbers from the smoothed a* image and the cuts."""
-    dead = tissue & (a < conservative)
-    lib = tissue & (a < liberal)
+def summarise_b(stain, tint, tissue, uncertain_holes, model: StainRatioModel) -> MethodB:
+    with np.errstate(invalid="ignore"):
+        dead = tissue & (stain < model.s_cut) & (tint < model.tint_cut)
+        low = tissue & (stain < model.s_low) & (tint < model.tint_low)
+        high = tissue & (stain < model.s_high) & (tint < model.tint_high)
     return MethodB(
-        tissue=tissue,
+        stain=stain,
+        tint=tint,
         dead=dead,
-        borderline=lib & ~dead,
+        borderline=high & ~low,
         dead_pct=_pct(dead, tissue),
-        borderline_pct=_pct(lib & ~dead, tissue),
-        low_pct=_pct(dead, tissue & ~uncertain_holes),
-        high_pct=_pct(lib, tissue),
+        borderline_pct=_pct(high & ~low, tissue),
+        low_pct=_pct(low, tissue & ~uncertain_holes),
+        high_pct=_pct(high, tissue),
     )
 
 
-def method_b(rgb, holes: Holes, cuts: ACuts) -> MethodB:
-    """Method B on one photo. `holes` comes from the shared front end (`run_front_end`)."""
-    tissue, wb = method_b_tissue(rgb, holes)
-    return summarise_b(smoothed_a(wb), tissue, holes.uncertain & tissue, cuts.conservative, cuts.liberal)
+def method_b(rgb, paper, tissue, holes_removed, uncertain_holes, model: StainRatioModel) -> MethodB:
+    """Method B on one photo (RGB uint8) with the shared front end's paper, tissue and hole masks."""
+    s, t = stain_maps(rgb, paper, tissue, holes_removed, model.sigma, model.edge_px)
+    return summarise_b(s, t, tissue, uncertain_holes, model)

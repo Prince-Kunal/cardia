@@ -1,11 +1,11 @@
 // Generated from engine/cardia_api/openapi.json by `uv run python -m cardia_api.openapi`. Do not edit.
-// Cardia engine API 0.6.0.
+// Cardia engine API 0.7.0.
 
-export const API_VERSION = "0.6.0";
+export const API_VERSION = "0.7.0";
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettingsInput {
-  /** The method reports lead with (PLAN.md §2g) */
+  /** The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0 */
   headline_method?: "a" | "b";
   theme?: "system" | "light" | "dark";
   /** App language */
@@ -19,7 +19,7 @@ export interface AppSettingsInput {
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettings {
-  /** The method reports lead with (PLAN.md §2g) */
+  /** The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0 */
   headline_method: "a" | "b";
   theme: "system" | "light" | "dark";
   /** App language */
@@ -146,7 +146,8 @@ export interface HeartSummary {
   models_manifest_sha256: string | null;
   mock: boolean;
   method_a: HeartMethodA;
-  method_b: HeartMethodB;
+  /** Null when any slice was analysed before pipeline 0.5.0 (the retired a* cut) */
+  method_b: HeartMethodB | null;
 }
 
 export interface HeartSummaryRequest {
@@ -213,7 +214,7 @@ export interface JobSlice {
   seconds: number | null;
 }
 
-export type Layer = "original" | "corrected" | "tissue" | "holes_removed" | "holes_uncertain" | "filled" | "a_dead" | "a_unsure" | "a_probability" | "b_tissue" | "b_dead" | "b_borderline";
+export type Layer = "original" | "corrected" | "tissue" | "holes_removed" | "holes_uncertain" | "filled" | "a_dead" | "a_unsure" | "a_probability" | "b_dead" | "b_borderline" | "b_stain_missing";
 
 export interface LayerInfo {
   key: Layer;
@@ -249,14 +250,11 @@ export interface MethodAResult {
 }
 
 export interface MethodBResult {
-  /** Method B's own outline, real holes removed */
-  tissue_px: number;
-  tissue_mm2: number | null;
-  /** Dead share of Method B's tissue: a* below the conservative cut */
+  /** Dead share of the shared tissue: less than half the red stain of living muscle, leaning cream */
   dead_pct: number | null;
   dead_px: number;
   dead_mg: number | null;
-  /** a* between the conservative and the liberal cut */
+  /** Between 40% and 60% of the living stain */
   borderline_pct: number | null;
   borderline_px: number;
   range: PctRange;
@@ -276,7 +274,7 @@ export interface MethodInfo {
 /** A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes. */
 export interface MethodsParagraph {
   method: "a" | "b";
-  /** e.g. "Method A: K-Means + RF" */
+  /** e.g. "Method B: stain ratio" */
   name: string;
   /** English. For demo (--mock) results, a warning instead of a paragraph */
   text: string;
@@ -293,7 +291,7 @@ export interface ModelFile {
 export interface PctRange {
   low_pct: number | null;
   high_pct: number | null;
-  /** Show this range in reports. For now only Method B's is shown (PLAN.md §2g) */
+  /** Show this range in reports. Method B shows its range; Method A's is hidden (PLAN.md §2g) */
   shown: boolean;
 }
 
@@ -334,7 +332,8 @@ export interface SliceResult {
   mock: boolean;
   tissue: TissueResult;
   method_a: MethodAResult;
-  method_b: MethodBResult;
+  /** Method B, the stain ratio (pipeline 0.5.0 on); null for results stored by an earlier pipeline, whose Method B was the retired a* cut */
+  method_b: MethodBResult | null;
   qc_flags: ("unvalidated_input" | "many_unsure" | "holes_removed" | "uncertain_holes")[];
   layers: Layer[];
 }

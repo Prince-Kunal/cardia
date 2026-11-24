@@ -7,11 +7,9 @@ the stored results and the model files, never from this text.
 """
 
 from ttc_pipeline.method_a import UNSURE, UNSURE_FLAG_PCT
-from ttc_pipeline.method_b import ACuts
+from ttc_pipeline.method_b import StainRatioModel
 
-from ..catalog import RANGE_SHOWN
-
-METHOD_NAMES = {"a": "Method A: K-Means + RF", "b": "Method B: a* cut"}
+from ..catalog import METHOD_NAMES, RANGE_SHOWN
 
 
 def _models(results: list[dict]) -> dict[str, dict]:
@@ -81,33 +79,42 @@ def paragraph_a(results: list[dict], summary: dict, label: str) -> str:
     return " ".join(text)
 
 
-def paragraph_b(results: list[dict], summary: dict, label: str, cuts: ACuts) -> str:
+def paragraph_b(results: list[dict], summary: dict, label: str, stain: StainRatioModel) -> str:
     models = _models(results)
-    holes = _model_ref(models, "holes/hole_model.joblib", "the hole model")
-    cut_file = _model_ref(models, "a_cut/a_cut.json", "cut-off file")
+    stain_file = _model_ref(models, "stain_ratio/stain_ratio.json", "cut-off file")
     text = [
         _slices_sentence(len(results), label, summary),
+        _shared_front_end(models),
         (
-            f"Infarct was identified with Method B (a* cut). Each scan was white-balanced, and the tissue outline "
-            f"was found from chroma and GrabCut (seeded for every slice, so results are reproducible), with the "
-            f"chamber excluded and the holes found by {holes} removed. Redness was measured as the CIE L*a*b* a* "
-            f"value of each pixel after Gaussian smoothing (σ = 1.5 px). Pixels with a* below {cuts.conservative:g} "
-            f"were counted as infarct; this cut-off was chosen as the one that best matched earlier reference "
-            f"measurements of time-control hearts. Pixels with a* from {cuts.conservative:g} up to "
-            f"{cuts.liberal:g} were reported as borderline; the upper cut-off is the valley between the two "
-            f"components of a Gaussian mixture fitted to pooled a* values ({cut_file})."
+            f"Infarct was then identified with Method B (stain ratio): a pixel was counted as infarct when it held "
+            f"less than half the red stain of living muscle and its colour leaned towards the cream of unstained "
+            f"tissue. Each scan's lighting correction was kept in linear light without clipping, with the paper as "
+            f"reference white; each channel was averaged over tissue-only Gaussian neighbourhoods (σ = {stain.sigma:g} "
+            f"px) and converted to optical density (OD = −log10 of the light returned). Stain was measured as "
+            f"OD(green) − OD(red) and tint as the angle atan2(OD(green) − OD(red), OD(blue) − OD(red)); both are "
+            f"unchanged by shadows, which add the same optical density to every channel. Pixels within "
+            f"{stain.edge_px:g} px of the slice outline, where tissue thins and the paper shows through, took the "
+            f"colour of the nearest pixel further in. Two reference colours, of unstained and of fully stained "
+            f"tissue, were taken from 30 slices of 8 guinea pig hearts without reference measurements or labels "
+            f"({stain_file}); the colour of tissue holding half the living stain lies midway between them in "
+            f"optical density, at a stain of {stain.s_cut:.3g} and a tint of {stain.tint_cut:.3g}°. Pixels below both "
+            f"were counted as infarct. Pixels holding between 40% and 60% of the living stain were reported as "
+            f"borderline."
         ),
     ]
     if RANGE_SHOWN["b"]:
         text.append(
-            "The reported range runs from the infarct alone, with uncertain holes removed, to the infarct plus "
-            "borderline tissue, with uncertain holes kept as tissue."
+            "The reported range runs from the same rule at 40% of the living stain, with uncertain holes removed, "
+            "to the rule at 60%, with uncertain holes kept as tissue."
         )
     return " ".join(text)
 
 
-def methods_paragraphs(results: list[dict], summary: dict, label: str, cuts: ACuts, headline: str) -> list[dict]:
-    """Both methods' paragraphs, the headline method first. Demo (mock) results get a warning instead."""
+def methods_paragraphs(
+    results: list[dict], summary: dict, label: str, stain: StainRatioModel, headline: str
+) -> list[dict]:
+    """Every method's paragraph, the headline method first. Demo (mock) results get a warning instead.
+    Method B is left out for slices analysed before pipeline 0.5.0 (their Method B was the retired a* cut)."""
     if results and results[0].get("mock"):
         note = (
             "These results come from the Cardia engine's demo mode (--mock): every number is made up, so there is "
@@ -115,8 +122,11 @@ def methods_paragraphs(results: list[dict], summary: dict, label: str, cuts: ACu
         )
         texts = {"a": note, "b": note}
     else:
-        texts = {"a": paragraph_a(results, summary, label), "b": paragraph_b(results, summary, label, cuts)}
-    order = ["a", "b"] if headline == "a" else ["b", "a"]
+        texts = {"a": paragraph_a(results, summary, label), "b": paragraph_b(results, summary, label, stain)}
+    if summary.get("method_b") is None:
+        del texts["b"]
+    order = [headline] + [m for m in ("b", "a") if m != headline]
+    order = [m for m in order if m in texts]
     return [
         {"method": m, "name": METHOD_NAMES[m], "text": texts[m], "mock": bool(results and results[0].get("mock"))}
         for m in order

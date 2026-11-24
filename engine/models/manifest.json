@@ -1,10 +1,6 @@
 {
   "description": "Every model file the engine loads, with its SHA-256. The engine refuses a file that is missing or differs.",
   "files": {
-    "a_cut/a_cut.json": {
-      "sha256": "249ae33cc3eb64b9c35c6c108123f24f136d5acd30da78a03c600d1ac54128b6",
-      "model_version": "1.0.0"
-    },
     "holes/hole_model.joblib": {
       "sha256": "6a6e6b37fc099d6aaa249869e2f15ca617301efecf7a587b188e6dd91ace05e9",
       "model_version": "1.0.0"
@@ -19,6 +15,10 @@
     },
     "kmeans_rf/kmeans_rf.json": {
       "sha256": "a267e710f881ab61d1f15f0e2984d9fa34c83bf12607bbaf2fe8758af69f0db5",
+      "model_version": "1.0.0"
+    },
+    "stain_ratio/stain_ratio.json": {
+      "sha256": "5bc4678af5918cd31990b9a1500db12b9f1b3b6301032738fff367db3905cd8b",
       "model_version": "1.0.0"
     }
   }

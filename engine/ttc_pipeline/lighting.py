@@ -49,6 +49,27 @@ def flat_field(img, paper, target=CFG["paper_target_linear"]):
     return (lin_to_srgb(out) * 255 + 0.5).astype(np.uint8)
 
 
+def flat_field_linear(img, paper):
+    """The same paper flat field as `flat_field`, but kept in linear light as float32 with the paper at 1.0.
+
+    Nothing is clipped. `flat_field` returns 8-bit sRGB, so on under-exposed scans it cuts the brightened red
+    channel at 255 (53% of the tissue of 119IS80): pale pink then looks paler and yellower than it is.
+    Method B reads colour from this version instead.
+    """
+    lin = srgb_to_lin(img)
+    h, w = paper.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    xs, ys = xx / w - 0.5, yy / h - 0.5
+    terms = [np.ones_like(xs), xs, ys, xs * xs, ys * ys, xs * ys]
+    A = np.stack([t[paper] for t in terms], 1)
+    sel = np.random.default_rng(0).choice(len(A), min(50000, len(A)), replace=False)
+    out = np.empty_like(lin)
+    for c in range(3):
+        coef, *_ = np.linalg.lstsq(A[sel], lin[..., c][paper][sel], rcond=None)
+        out[..., c] = lin[..., c] / np.clip(sum(cf * t for cf, t in zip(coef, terms)), 0.05, None)
+    return out.astype(np.float32)
+
+
 def normalise_lighting(img):
     """Return the lighting-corrected photo and the paper mask used as the white reference."""
     paper, _ = find_paper(img)

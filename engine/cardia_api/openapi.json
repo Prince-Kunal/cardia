@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -2154,8 +2154,8 @@
               "b"
             ],
             "title": "Headline Method",
-            "description": "The method reports lead with (PLAN.md §2g)",
-            "default": "a"
+            "description": "The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0",
+            "default": "b"
           },
           "theme": {
             "type": "string",
@@ -2217,8 +2217,8 @@
               "b"
             ],
             "title": "Headline Method",
-            "description": "The method reports lead with (PLAN.md §2g)",
-            "default": "a"
+            "description": "The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0",
+            "default": "b"
           },
           "theme": {
             "type": "string",
@@ -3002,7 +3002,15 @@
             "$ref": "#/components/schemas/HeartMethodA"
           },
           "method_b": {
-            "$ref": "#/components/schemas/HeartMethodB"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeartMethodB"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when any slice was analysed before pipeline 0.5.0 (the retired a* cut)"
           }
         },
         "type": "object",
@@ -3460,9 +3468,9 @@
           "a_dead",
           "a_unsure",
           "a_probability",
-          "b_tissue",
           "b_dead",
-          "b_borderline"
+          "b_borderline",
+          "b_stain_missing"
         ],
         "title": "Layer"
       },
@@ -3632,22 +3640,6 @@
       },
       "MethodBResult": {
         "properties": {
-          "tissue_px": {
-            "type": "integer",
-            "title": "Tissue Px",
-            "description": "Method B's own outline, real holes removed"
-          },
-          "tissue_mm2": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tissue Mm2"
-          },
           "dead_pct": {
             "anyOf": [
               {
@@ -3658,7 +3650,7 @@
               }
             ],
             "title": "Dead Pct",
-            "description": "Dead share of Method B's tissue: a* below the conservative cut"
+            "description": "Dead share of the shared tissue: less than half the red stain of living muscle, leaning cream"
           },
           "dead_px": {
             "type": "integer",
@@ -3685,7 +3677,7 @@
               }
             ],
             "title": "Borderline Pct",
-            "description": "a* between the conservative and the liberal cut"
+            "description": "Between 40% and 60% of the living stain"
           },
           "borderline_px": {
             "type": "integer",
@@ -3697,8 +3689,6 @@
         },
         "type": "object",
         "required": [
-          "tissue_px",
-          "tissue_mm2",
           "dead_pct",
           "dead_px",
           "dead_mg",
@@ -3761,7 +3751,7 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "e.g. \"Method A: K-Means + RF\""
+            "description": "e.g. \"Method B: stain ratio\""
           },
           "text": {
             "type": "string",
@@ -3834,7 +3824,7 @@
           "shown": {
             "type": "boolean",
             "title": "Shown",
-            "description": "Show this range in reports. For now only Method B's is shown (PLAN.md §2g)"
+            "description": "Show this range in reports. Method B shows its range; Method A's is hidden (PLAN.md §2g)"
           }
         },
         "type": "object",
@@ -4023,7 +4013,15 @@
             "$ref": "#/components/schemas/MethodAResult"
           },
           "method_b": {
-            "$ref": "#/components/schemas/MethodBResult"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MethodBResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Method B, the stain ratio (pipeline 0.5.0 on); null for results stored by an earlier pipeline, whose Method B was the retired a* cut"
           },
           "qc_flags": {
             "items": {
