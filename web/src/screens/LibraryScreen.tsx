@@ -8,6 +8,7 @@ import { Empty, ErrorNote, Progress } from '../components/ui';
 import { DASH, METHOD_SHORT, date, mg, methodOrder, pct, plural, range } from '../lib/format';
 import { useDebounced, useTitle } from '../lib/hooks';
 import { href, navigate } from '../lib/router';
+import { startTour } from '../lib/tour';
 import { useApp, useResource } from '../state';
 
 const RUNNING_JOBS = { ms: 1500, while: (jobs: Job[] | undefined) => !!jobs?.some((j) => !j.finished_at) };
@@ -327,9 +328,15 @@ export function LibraryScreen() {
               Drop the scanned slices of a heart into Cardia. Each slice is analysed on this computer by both methods,
               and the slices are filed into their heart by the heart ID in their file names.
             </p>
-            <a className="button primary" href="#/import">
-              New analysis
-            </a>
+            <div className="row center">
+              <a className="button primary" href="#/import">
+                New analysis
+              </a>
+              <button type="button" className="button" onClick={startTour}>
+                Try it on a demo heart
+              </button>
+            </div>
+            <p className="fine">The walkthrough analyses a real heart from the study set, step by step.</p>
           </Empty>
         )
       ) : (

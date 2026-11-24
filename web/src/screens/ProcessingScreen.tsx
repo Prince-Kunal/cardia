@@ -142,7 +142,7 @@ export function ProcessingScreen({ jobId }: { jobId: string }) {
 
       <ErrorNote error={cancelError} />
 
-      <div className="card stack">
+      <div className="card stack" data-tour="progress">
         <Progress value={j.progress} label="Overall progress" />
         <div className="job-summary">
           {(
@@ -168,7 +168,7 @@ export function ProcessingScreen({ jobId }: { jobId: string }) {
       </div>
 
       {finished && hearts.size > 0 && (
-        <div className="card stack">
+        <div className="card stack" data-tour="filed">
           <h2>{hearts.size === 1 ? 'Filed into the library' : `Filed into ${hearts.size} hearts`}</h2>
           <div className="row">
             {[...hearts].map(([key, h]) => (

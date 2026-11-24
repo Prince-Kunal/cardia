@@ -10,6 +10,7 @@ import { ACCEPTED, type Candidate, checkFiles, groupByHeart, sha256Hex, typedWei
 import { bytes, mg, plural } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { href, navigate } from '../lib/router';
+import { onStagedFiles } from '../lib/tour';
 import { useApp, useResource } from '../state';
 
 interface Typed {
@@ -69,6 +70,17 @@ export function ImportScreen() {
   useEffect(() => {
     folderPicker.current?.setAttribute('webkitdirectory', '');
   }, []);
+
+  // The walkthrough hands over the demo heart's scans; they replace anything dropped before.
+  useEffect(
+    () =>
+      onStagedFiles((staged) => {
+        clear();
+        void add(staged);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- listen once; clear() then add() start from empty
+    [],
+  );
 
   const limit = info.max_upload_mb * 1024 * 1024;
   const candidates = useMemo(() => checkFiles(files, hashes), [files, hashes]);
@@ -365,7 +377,7 @@ export function ImportScreen() {
       )}
 
       {files.length > 0 && (
-        <div className="card row between">
+        <div className="card row between" data-tour="analyse">
           <div>
             <strong>
               {plural(sendable.length, 'slice')} from {plural(groups.length, 'heart')}

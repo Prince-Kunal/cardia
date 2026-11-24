@@ -5,6 +5,7 @@
 import { useContext, useState } from 'react';
 import { href } from '../lib/router';
 import { SHORTCUTS } from '../lib/shortcuts';
+import { startTour } from '../lib/tour';
 import { useTitle } from '../lib/hooks';
 import { AppContext } from '../state';
 
@@ -72,6 +73,10 @@ const FAQ: { q: string; a: string }[] = [
 
 const NEW: { version: string; items: string[] }[] = [
   {
+    version: 'Engine API 0.6.0',
+    items: ['A walkthrough of one real analysis on a demo heart from the study set: start it here or from an empty library.'],
+  },
+  {
     version: 'Engine API 0.5.0',
     items: [
       'Cloud sync: your library and Learn progress on every computer you sign in on, and lab workspaces (off until the lab’s cloud project is set up).',
@@ -135,6 +140,19 @@ export function HelpScreen() {
 
       <section id="start" className="card stack" aria-labelledby="start-title">
         <h2 id="start-title">Getting started</h2>
+        <div className="note info row between">
+          <span>
+            <strong>The walkthrough</strong> takes you through one real analysis on a demo heart from the study set: import,
+            processing, the report, a slice’s layers and export. Two or three minutes.
+          </span>
+          {app ? (
+            <button type="button" className="button primary small" onClick={startTour}>
+              Start the walkthrough
+            </button>
+          ) : (
+            <span className="fine">It needs the engine running.</span>
+          )}
+        </div>
         <ol className="help-steps">
           <li>
             <strong>Start the engine</strong> on this computer and open the link it prints. The analysis runs here; scans never

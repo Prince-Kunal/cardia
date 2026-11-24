@@ -4,6 +4,7 @@ import { scrollPageTo, takeForwardNavigation } from '../lib/scroll';
 import { useShortcuts } from '../lib/shortcuts';
 import { SYNC_LABEL, SYNC_TONE, signedIn } from '../lib/sync';
 import { AppContext, useApp, useResource } from '../state';
+import { Tour } from './Tour';
 
 /** How sync is going, in the header, once signed in (a link to the Cloud sync screen). */
 function SyncBadge({ current }: { current: boolean }) {
@@ -90,6 +91,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       <main id="main" className="content">
         {children}
       </main>
+      <Tour route={route} />
     </div>
   );
 }
