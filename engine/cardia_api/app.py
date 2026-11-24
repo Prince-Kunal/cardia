@@ -19,7 +19,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from ttc_pipeline import PIPELINE_VERSION, Models, parse_name
 from ttc_pipeline.method_b import ACuts
 
-from . import API_VERSION
+from . import API_VERSION, demo
 from .backup import BadBackup, restore_backup, write_backup
 from .catalog import LAYERS, methods
 from .export import hearts_csv, methods_paragraphs, safe_name, slices_csv, write_bundle
@@ -29,6 +29,7 @@ from .library import Library
 from .mock import MOCK_PIPELINE_VERSION
 from .schemas import (
     AppSettings,
+    DemoHeart,
     EngineInfo,
     ErrorResponse,
     Health,
@@ -443,6 +444,24 @@ def create_app(settings: Settings) -> FastAPI:
         """The hearts the pipeline was checked on, with each method's infarct %, as context for a report.
         Compare a heart with them only when its pipeline version and model files are the same."""
         return _found(load_study_set(), "study set in this build")
+
+    @api.get("/demo", operation_id="getDemoHeart", tags=["hearts"], responses=NOT_FOUND)
+    def demo_heart() -> DemoHeart:
+        """The demo heart: one study heart's real scans, bundled so the walkthrough works with no data of
+        your own. 404 in a build without the data folder."""
+        return _found(demo.heart(), "demo heart in this build")
+
+    @api.get(
+        "/demo/{name}",
+        operation_id="getDemoScan",
+        tags=["hearts"],
+        response_class=FileResponse,
+        responses={200: {"content": {"image/tiff": {}}, "description": "The scan, unchanged"}, **NOT_FOUND},
+    )
+    def demo_scan(name: Annotated[str, Path(pattern=r"^[A-Za-z0-9_.-]+\.tif$")]):
+        """One scan of the demo heart, byte for byte as it is in the study set."""
+        path = _found(demo.scans().get(name), "scan in the demo heart")
+        return FileResponse(path, media_type="image/tiff", filename=name)
 
     @api.get(
         "/library/backup.zip",
