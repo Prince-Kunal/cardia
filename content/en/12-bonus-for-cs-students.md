@@ -32,7 +32,7 @@ At 600 dpi, one inch of slice is [[600]] pixels wide.
 
 RGB is how a scanner sees, not how people judge colour. Living, stained muscle and pale, dead muscle differ mostly in **how red** they are, and in RGB that difference is spread across all three channels and mixed up with brightness.
 
-**[CIE L\*a\*b\*](term:lab-colour)** separates them: L\* is lightness, [a\*](term:a-star) runs from green to red, b\* from blue to yellow. In Lab, "how red is this pixel?" is one number, a\*, nearly independent of how brightly the slice was lit. That is why Cardia's [Method B](term:method-b) is a cut on a\*, and why [Method A](term:method-a) uses Lab among its features.
+**[CIE L\*a\*b\*](term:lab-colour)** separates them: L\* is lightness, [a\*](term:a-star) runs from green to red, b\* from blue to yellow. In Lab, "how red is this pixel?" is one number, a\*, nearly independent of how brightly the slice was lit. That is why [Method A](term:method-a) uses Lab among its features. Cardia's [Method B](term:method-b) goes one step further: it converts each channel to the light absorbed (optical density). A shadow adds the same amount to every channel there, so the difference between the green and the red channel measures the stain alone.
 
 :::quiz{type="multiple-choice" id="m12-lab"}
 Why does Cardia convert pixels from RGB to Lab?
