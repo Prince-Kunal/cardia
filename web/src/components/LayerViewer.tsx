@@ -147,7 +147,7 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
   const titleOf = (l: Layer) => infos.find((i) => i.key === l)?.title ?? l;
 
   return (
-    <div className="viewer">
+    <div className="viewer" data-tour="layers">
       <div className="viewer-bar">
         <div className="switch" role="radiogroup" aria-label="View">
           {(

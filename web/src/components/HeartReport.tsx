@@ -58,7 +58,7 @@ export function Strip({ heart }: { heart: Heart }) {
   const { settings } = useApp();
   const order = methodOrder(settings.headline_method);
   return (
-    <section className="card stack" aria-labelledby="strip-title">
+    <section className="card stack" aria-labelledby="strip-title" data-tour="strip">
       <div className="card-head" style={{ marginBottom: 0 }}>
         <h2 id="strip-title">Apex to base</h2>
         <span className="fine">Dead tissue in each slice. Open a slice to see its layers.</span>
@@ -359,7 +359,7 @@ export function ExportCard({ heart }: { heart: Heart }) {
       .finally(() => setBusy(undefined));
   };
   return (
-    <section className="card stack no-print" aria-labelledby="export-title">
+    <section className="card stack no-print" aria-labelledby="export-title" data-tour="export">
       <h2 id="export-title">Export</h2>
       <div className="row">
         <button type="button" className="button" disabled={!!busy} onClick={() => window.print()}>

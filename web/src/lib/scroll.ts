@@ -34,6 +34,8 @@ function headerOffset(): number {
 export function scrollPageTo(target: number | HTMLElement, { smooth = false } = {}): void {
   const offset = typeof target === 'number' ? 0 : -headerOffset();
   if (lenis) {
+    // Lenis stops at the page height it last measured; a page still loading may have grown since.
+    lenis.resize();
     lenis.scrollTo(target, { offset, immediate: !smooth, force: true });
     return;
   }
