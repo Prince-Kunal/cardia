@@ -1,6 +1,7 @@
 import { type ReactNode, useContext, useLayoutEffect } from 'react';
 import { LEARN_ROUTES, type Route, href } from '../lib/router';
 import { scrollPageTo, takeForwardNavigation } from '../lib/scroll';
+import { useShortcuts } from '../lib/shortcuts';
 import { SYNC_LABEL, SYNC_TONE, signedIn } from '../lib/sync';
 import { AppContext, useApp, useResource } from '../state';
 
@@ -24,6 +25,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
   const app = useContext(AppContext);
   const learn = LEARN_ROUTES.includes(route.name);
   const at = href(route);
+  useShortcuts();
   // A page reached by a link starts at the top; Back and Forward leave the scroll to the browser.
   // A layout effect, so a screen's own effect (the glossary scrolling to a term) runs after it.
   useLayoutEffect(() => {
@@ -76,6 +78,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           )}
           {app && tab('settings', 'Settings')}
           {app && tab('sync', 'Sync')}
+          {tab('help', 'Help')}
         </nav>
         {app && <SyncBadge current={route.name === 'sync'} />}
         {app?.info.mock && !learn && (

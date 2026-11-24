@@ -36,6 +36,14 @@ describe('Context', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(5);
   });
 
+  it('compares a heart that is one of the study hearts with the others only', async () => {
+    const self = { ...measured(30, 15), label: '102' };
+    renderInApp(<Context heart={self} />, fakeClient({ studySet: vi.fn().mockResolvedValue(STUDY) }));
+    expect(await screen.findByText(/This heart is one of them/)).toBeTruthy();
+    expect(screen.getByText('This heart 30.0%: higher than 2 of 3 study hearts (median 20.0%).')).toBeTruthy();
+    expect(screen.queryAllByRole('img', { name: /^Study heart 102/ })).toHaveLength(0);
+  });
+
   it('does not compare hearts measured another way, and says why', async () => {
     renderInApp(<Context heart={heart('206')} />, fakeClient({ studySet: vi.fn().mockResolvedValue(STUDY) }));
     expect(await screen.findByText(/this heart has demo \(--mock\) results/)).toBeTruthy();
