@@ -49,7 +49,20 @@ CREATE TABLE IF NOT EXISTS watched_files (
     mtime_ns INTEGER NOT NULL,
     seen_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS sync_outbox (
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    at TEXT NOT NULL,
+    PRIMARY KEY (kind, key)
+);
+CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
+# Columns added after the first release: (table, column, definition).
+ADDED_COLUMNS = [
+    ("hearts", "field_times", "TEXT NOT NULL DEFAULT '{}'"),  # field -> when it was last set (sync)
+    ("heart_slices", "changed_at", "TEXT"),  # when the slice's heart, position or weight last changed
+]
+
 # API field name -> column
 DETAILS = {
     "label": "label",
@@ -63,6 +76,8 @@ DETAILS = {
     "tags": "tags",
     "favourite": "favourite",
 }
+# What syncs about a heart (API names): its details and whether it is in the trash.
+SYNCED = [*DETAILS, "deleted_at"]
 
 
 def _now() -> str:
@@ -82,6 +97,10 @@ class Library:
         db.execute("PRAGMA foreign_keys = ON")
         db.execute("PRAGMA journal_mode = WAL")
         db.executescript(SCHEMA)
+        for table, column, definition in ADDED_COLUMNS:
+            have = {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}
+            if column not in have:
+                db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")  # names from ADDED_COLUMNS
         self._db = db
         self.purge_trash()
 
@@ -108,6 +127,15 @@ class Library:
 
         return _Tx()
 
+    @staticmethod
+    def _enqueue(db, kind: str, key: str, at: str | None = None) -> None:
+        """Note a change for cloud sync, in the same transaction as the change. One row per thing, so
+        the outbox never grows beyond the library, whether or not sync is on."""
+        db.execute(
+            "INSERT INTO sync_outbox (kind, key, at) VALUES (?, ?, ?) ON CONFLICT (kind, key) DO UPDATE SET at = excluded.at",
+            (kind, key, at or _now()),
+        )
+
     # hearts ------------------------------------------------------------------------------------
 
     def add_slice(self, slice_id: str, label: str, typed_weight_mg: float | None = None) -> str:
@@ -116,9 +144,12 @@ class Library:
             row = db.execute("SELECT heart_key FROM heart_slices WHERE slice_id = ?", (slice_id,)).fetchone()
             if row is not None:
                 if typed_weight_mg is not None:
+                    now = _now()
                     db.execute(
-                        "UPDATE heart_slices SET typed_weight_mg = ? WHERE slice_id = ?", (typed_weight_mg, slice_id)
+                        "UPDATE heart_slices SET typed_weight_mg = ?, changed_at = ? WHERE slice_id = ?",
+                        (typed_weight_mg, now, slice_id),
                     )
+                    self._enqueue(db, "membership", slice_id, now)
                 return row["heart_key"]
             heart = db.execute(
                 "SELECT heart_key FROM hearts WHERE label = ? AND deleted_at IS NULL ORDER BY created_at LIMIT 1",
@@ -131,17 +162,20 @@ class Library:
                     "INSERT INTO hearts (heart_key, label, created_at, updated_at) VALUES (?, ?, ?, ?)",
                     (key, label, now, now),
                 )
+                self._enqueue(db, "heart", key, now)
             else:
                 key = heart["heart_key"]
             (pos,) = db.execute(
                 "SELECT COALESCE(MAX(position) + 1, 0) FROM heart_slices WHERE heart_key = ?", (key,)
             ).fetchone()
             db.execute(
-                "INSERT INTO heart_slices (slice_id, heart_key, position, typed_weight_mg, added_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (slice_id, key, pos, typed_weight_mg, now),
+                "INSERT INTO heart_slices (slice_id, heart_key, position, typed_weight_mg, added_at, changed_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (slice_id, key, pos, typed_weight_mg, now, now),
             )
             db.execute("UPDATE hearts SET updated_at = ? WHERE heart_key = ?", (now, key))
+            self._enqueue(db, "result", slice_id, now)
+            self._enqueue(db, "membership", slice_id, now)
             return key
 
     def _heart(self, db, row) -> dict:
@@ -195,9 +229,12 @@ class Library:
         detached from the heart (their results stay on disk). Raises ValueError for a slice not in it.
         """
         with self._tx() as db:
-            if db.execute("SELECT 1 FROM hearts WHERE heart_key = ?", (heart_key,)).fetchone() is None:
+            found = db.execute("SELECT field_times FROM hearts WHERE heart_key = ?", (heart_key,)).fetchone()
+            if found is None:
                 return None
-            sets, args = [], []
+            now = _now()
+            times = json.loads(found["field_times"]) | {field: now for field in details}
+            sets, args = ["field_times = ?"], [json.dumps(times)]
             for field, value in details.items():
                 sets.append(f"{DETAILS[field]} = ?")
                 if field == "tags":
@@ -217,13 +254,17 @@ class Library:
                     raise ValueError("List each of the heart's own slices at most once.")
                 for sid in current - set(wanted):
                     db.execute("DELETE FROM heart_slices WHERE slice_id = ?", (sid,))
+                    self._enqueue(db, "membership", sid, now)
                 for pos, s in enumerate(slices):
                     db.execute(
-                        "UPDATE heart_slices SET position = ?, typed_weight_mg = ? WHERE slice_id = ?",
-                        (pos, s.get("weight_mg"), s["slice_id"]),
+                        "UPDATE heart_slices SET position = ?, typed_weight_mg = ?, changed_at = ? WHERE slice_id = ?",
+                        (pos, s.get("weight_mg"), now, s["slice_id"]),
                     )
+                    self._enqueue(db, "membership", s["slice_id"], now)
+            if details:
+                self._enqueue(db, "heart", heart_key, now)
             sets.append("updated_at = ?")
-            args += [_now(), heart_key]
+            args += [now, heart_key]
             db.execute(
                 f"UPDATE hearts SET {', '.join(sets)} WHERE heart_key = ?", args
             )  # columns from DETAILS only; values bound
@@ -231,12 +272,16 @@ class Library:
 
     def trash_heart(self, heart_key: str, restore=False) -> dict | None:
         with self._tx() as db:
-            when = None if restore else _now()
-            cur = db.execute(
-                "UPDATE hearts SET deleted_at = ?, updated_at = ? WHERE heart_key = ?", (when, _now(), heart_key)
-            )
-            if cur.rowcount == 0:
+            now = _now()
+            row = db.execute("SELECT field_times FROM hearts WHERE heart_key = ?", (heart_key,)).fetchone()
+            if row is None:
                 return None
+            times = json.loads(row["field_times"]) | {"deleted_at": now}
+            db.execute(
+                "UPDATE hearts SET deleted_at = ?, updated_at = ?, field_times = ? WHERE heart_key = ?",
+                (None if restore else now, now, json.dumps(times), heart_key),
+            )
+            self._enqueue(db, "heart", heart_key, now)
         return self.get_heart(heart_key)
 
     def purge_trash(self, now: datetime | None = None) -> int:
@@ -297,17 +342,171 @@ class Library:
                         f"INSERT INTO hearts ({', '.join(columns)}) VALUES ({', '.join('?' * len(columns))})",
                         [h[c] for c in columns],
                     )  # columns are this schema's own names; values bound
+                    if "field_times" in h.keys():  # noqa: SIM118 (a sqlite3.Row's `in` looks at values, not names)
+                        db.execute(
+                            "UPDATE hearts SET field_times = ? WHERE heart_key = ?", (h["field_times"], h["heart_key"])
+                        )
+                    self._enqueue(db, "heart", h["heart_key"])
                     for m in new:
                         db.execute(
-                            "INSERT INTO heart_slices (slice_id, heart_key, position, typed_weight_mg, added_at) "
-                            "VALUES (?, ?, ?, ?, ?)",
-                            (m["slice_id"], m["heart_key"], m["position"], m["typed_weight_mg"], m["added_at"]),
+                            "INSERT INTO heart_slices (slice_id, heart_key, position, typed_weight_mg, added_at, changed_at) "
+                            "VALUES (?, ?, ?, ?, ?, ?)",
+                            (
+                                m["slice_id"],
+                                m["heart_key"],
+                                m["position"],
+                                m["typed_weight_mg"],
+                                m["added_at"],
+                                m["changed_at"] if "changed_at" in m.keys() else m["added_at"],  # noqa: SIM118
+                            ),
                         )
+                        self._enqueue(db, "result", m["slice_id"])
+                        self._enqueue(db, "membership", m["slice_id"])
                     added += 1
                     slices_added += len(new)
         finally:
             src.close()
         return {"hearts_added": added, "hearts_skipped": skipped, "slices_added": slices_added}
+
+    # cloud sync ---------------------------------------------------------------------------------
+
+    def sync_heart(self, heart_key: str) -> dict | None:
+        """A heart as it syncs: every synced field, when each was last set, and when it was made."""
+        with self._lock:
+            row = self._db.execute("SELECT * FROM hearts WHERE heart_key = ?", (heart_key,)).fetchone()
+        if row is None:
+            return None
+        fields = {api: row[col] for api, col in DETAILS.items()} | {"deleted_at": row["deleted_at"]}
+        fields["tags"] = json.loads(fields["tags"])
+        fields["favourite"] = bool(fields["favourite"])
+        times = json.loads(row["field_times"])
+        return {
+            "fields": fields,
+            "times": {f: times.get(f, row["created_at"]) for f in SYNCED},
+            "created_at": row["created_at"],
+        }
+
+    def membership(self, slice_id: str) -> dict | None:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM heart_slices WHERE slice_id = ?", (slice_id,)).fetchone()
+        return None if row is None else dict(row)
+
+    def outbox(self, limit: int = 200) -> list[dict]:
+        """Changes still to send, oldest first; hearts before the slices filed in them."""
+        order = "CASE kind WHEN 'heart' THEN 0 WHEN 'result' THEN 1 WHEN 'image' THEN 2 ELSE 3 END"
+        with self._lock:
+            rows = self._db.execute(f"SELECT kind, key, at FROM sync_outbox ORDER BY {order}, at LIMIT ?", (limit,))
+            return [dict(r) for r in rows.fetchall()]
+
+    def sent(self, item: dict) -> None:
+        """Drop an outbox row, unless it changed again while it was being sent."""
+        with self._tx() as db:
+            db.execute(
+                "DELETE FROM sync_outbox WHERE kind = ? AND key = ? AND at = ?", (item["kind"], item["key"], item["at"])
+            )
+
+    def outbox_count(self) -> int:
+        with self._lock:
+            (n,) = self._db.execute("SELECT COUNT(*) FROM sync_outbox").fetchone()
+        return n
+
+    def enqueue_everything(self, with_images: bool = False) -> None:
+        """Queue the whole library (a first sync with a workspace)."""
+        with self._tx() as db:
+            for (key,) in db.execute("SELECT heart_key FROM hearts").fetchall():
+                self._enqueue(db, "heart", key)
+            for (sid,) in db.execute("SELECT slice_id FROM heart_slices").fetchall():
+                self._enqueue(db, "result", sid)
+                self._enqueue(db, "membership", sid)
+
+    def enqueue(self, kind: str, key: str) -> None:
+        with self._tx() as db:
+            self._enqueue(db, kind, key)
+
+    def get_state(self, key: str, default=None):
+        with self._lock:
+            row = self._db.execute("SELECT value FROM sync_state WHERE key = ?", (key,)).fetchone()
+        return default if row is None else json.loads(row["value"])
+
+    def set_state(self, key: str, value) -> None:
+        with self._tx() as db:
+            if value is None:
+                db.execute("DELETE FROM sync_state WHERE key = ?", (key,))
+            else:
+                db.execute("INSERT OR REPLACE INTO sync_state (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+
+    def apply_remote_heart(self, heart_key: str, fields: dict, times: dict, created_at: str) -> None:
+        """Merge a heart from the cloud: each field takes the newer of ours and theirs. A field we
+        changed later stays ours (and is still in the outbox, so it goes up)."""
+        with self._tx() as db:
+            row = db.execute("SELECT * FROM hearts WHERE heart_key = ?", (heart_key,)).fetchone()
+            if row is None:
+                label = fields.get("label") or "?"
+                db.execute(
+                    "INSERT INTO hearts (heart_key, label, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                    (heart_key, label, created_at, _now()),
+                )
+                row = db.execute("SELECT * FROM hearts WHERE heart_key = ?", (heart_key,)).fetchone()
+                ours = {}
+            else:
+                ours = json.loads(row["field_times"])
+            changed = {}
+            for field in SYNCED:
+                if field not in fields:
+                    continue
+                theirs = times.get(field, created_at)
+                if theirs > ours.get(field, row["created_at"]):
+                    changed[field] = fields[field]
+                    ours[field] = theirs
+            if not changed and row is not None and ours == json.loads(row["field_times"]):
+                return
+            sets, args = ["field_times = ?", "updated_at = ?"], [json.dumps(ours), _now()]
+            for field, value in changed.items():
+                column = "deleted_at" if field == "deleted_at" else DETAILS[field]
+                if field == "tags":
+                    value = json.dumps(sorted(set(value or [])))
+                elif field == "favourite":
+                    value = int(bool(value))
+                elif field == "label" and not value:
+                    continue
+                sets.append(f"{column} = ?")
+                args.append(value)
+            db.execute(
+                f"UPDATE hearts SET {', '.join(sets)} WHERE heart_key = ?", [*args, heart_key]
+            )  # columns from DETAILS
+
+    def apply_remote_membership(self, row: dict, has_result) -> bool:
+        """Merge which heart a slice is in: the later change wins. False when it must wait (its heart
+        or its result has not arrived yet)."""
+        with self._tx() as db:
+            local = db.execute("SELECT * FROM heart_slices WHERE slice_id = ?", (row["slice_id"],)).fetchone()
+            pending = db.execute(
+                "SELECT at FROM sync_outbox WHERE kind = 'membership' AND key = ?", (row["slice_id"],)
+            ).fetchone()
+            ours = max(local["changed_at"] or local["added_at"] if local else "", pending["at"] if pending else "")
+            if row["changed_at"] <= ours:
+                return True
+            if row["heart_key"] is None:
+                db.execute("DELETE FROM heart_slices WHERE slice_id = ?", (row["slice_id"],))
+                return True
+            if not has_result(row["slice_id"]):
+                return False
+            if db.execute("SELECT 1 FROM hearts WHERE heart_key = ?", (row["heart_key"],)).fetchone() is None:
+                return False
+            db.execute(
+                "INSERT INTO heart_slices (slice_id, heart_key, position, typed_weight_mg, added_at, changed_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (slice_id) DO UPDATE SET heart_key = excluded.heart_key, "
+                "position = excluded.position, typed_weight_mg = excluded.typed_weight_mg, changed_at = excluded.changed_at",
+                (
+                    row["slice_id"],
+                    row["heart_key"],
+                    row["position"],
+                    row["typed_weight_mg"],
+                    row["changed_at"],
+                    row["changed_at"],
+                ),
+            )
+            return True
 
     # settings and the watch folder's memory ----------------------------------------------------
 

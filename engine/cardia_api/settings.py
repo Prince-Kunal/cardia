@@ -43,3 +43,10 @@ class Settings:
     max_upload_bytes: int = 200 * 2**20
     models_dir: Path = MODELS_DIR
     watch_interval_s: float = 3.0  # how often the watch folder is looked at
+    # Cloud sync (PLAN.md §5): off unless the Supabase project's URL and anon key are given
+    # (CARDIA_SUPABASE_URL, CARDIA_SUPABASE_ANON_KEY), or --fake-cloud syncs with one held in memory.
+    cloud_url: str | None = None
+    cloud_anon_key: str | None = None
+    fake_cloud: bool = False
+    cloud_backend: object | None = None  # tests: a backend shared by several engines
+    sync_interval_s: float = 30.0

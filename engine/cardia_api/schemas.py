@@ -366,5 +366,62 @@ class RestoreReport(Model):
     backup_created_at: datetime | None
 
 
+class SyncWorkspace(Model):
+    id: str
+    name: str
+    kind: Literal["personal", "lab"]
+    role: Literal["owner", "editor", "viewer"]
+    upload_images: bool = Field(description="Original scans are uploaded too (opt-in per workspace)")
+
+
+class SyncDevice(Model):
+    id: str
+    name: str
+    app_version: str | None = None
+    last_seen_at: datetime | None = None
+    this_device: bool
+
+
+class SyncStatus(Model):
+    """Cloud sync (PLAN.md §5). `not_configured` until the engine has a cloud to sync with."""
+
+    state: Literal["not_configured", "signed_out", "syncing", "synced", "offline", "error"]
+    backend: Literal["supabase", "memory"] | None = Field(
+        description='"memory": --fake-cloud, nothing leaves this engine'
+    )
+    email: str | None
+    workspace: SyncWorkspace | None
+    workspaces: list[SyncWorkspace]
+    read_only: bool = Field(description="A viewer: this computer pulls but does not send")
+    pending: int = Field(description="Changes here not yet sent")
+    last_sync_at: datetime | None
+    error: str | None
+    devices: list[SyncDevice]
+
+
+class SyncSignIn(Model):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(min_length=3, max_length=254, pattern=r"^[^@\s]+@[^@\s]+$")
+    password: str = Field(min_length=6, max_length=200)
+    create_account: bool = False
+
+
+class SyncWorkspaceChoice(Model):
+    model_config = ConfigDict(extra="forbid")
+    workspace_id: str
+
+
+class SyncNewWorkspace(Model):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=100)
+
+
+class LearnProgressDoc(Model):
+    """The Learn section's progress, kept by the engine so it can sync (the app merges before sending)."""
+
+    progress: dict | None
+    updated_at: datetime | None = None
+
+
 class ErrorResponse(Model):
     detail: str

@@ -38,10 +38,15 @@ from .schemas import (
     HeartUpdate,
     Job,
     Layer,
+    LearnProgressDoc,
     MethodsParagraph,
     RestoreReport,
     SliceResult,
     StudySet,
+    SyncNewWorkspace,
+    SyncSignIn,
+    SyncStatus,
+    SyncWorkspaceChoice,
     UploadMeta,
     WatchStatus,
 )
@@ -49,6 +54,7 @@ from .security import OriginGuard, require_token
 from .settings import ACCEPTED_SUFFIXES, Settings
 from .store import FileTooLarge, Store
 from .study_set import load as load_study_set
+from .sync import CloudError, MemoryBackend, NotConfigured, SupabaseBackend, SyncService
 from .watch import Watcher
 from .worker import model_files
 
@@ -128,6 +134,14 @@ def create_app(settings: Settings) -> FastAPI:
         return manager.submit(entries, source="watch_folder")
 
     watcher = Watcher(library, import_paths, settings.watch_interval_s)
+    backend = settings.cloud_backend or (
+        MemoryBackend()
+        if settings.fake_cloud
+        else SupabaseBackend(settings.cloud_url, settings.cloud_anon_key)
+        if settings.cloud_url and settings.cloud_anon_key
+        else None
+    )
+    sync = SyncService(library, store, backend, settings.data_dir, API_VERSION, settings.sync_interval_s)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -135,9 +149,11 @@ def create_app(settings: Settings) -> FastAPI:
         library.open()
         manager.start()
         watcher.start()
+        sync.start()
         try:
             yield
         finally:
+            sync.stop()
             watcher.stop()
             manager.stop()
             library.close()
@@ -475,6 +491,61 @@ def create_app(settings: Settings) -> FastAPI:
             raise HTTPException(400, str(e)) from None
         finally:
             os.unlink(tmp)
+
+    # cloud sync (PLAN.md §5) ------------------------------------------------------------------
+
+    def _cloud(call):
+        try:
+            return SyncStatus.model_validate(call())
+        except NotConfigured as e:
+            raise HTTPException(409, str(e)) from None
+        except CloudError as e:
+            raise HTTPException(400, str(e)) from None
+
+    CLOUD_ERRORS = {
+        400: {"model": ErrorResponse, "description": "The cloud refused (wrong password, not a member, offline…)"},
+        409: {"model": ErrorResponse, "description": "Cloud sync is not set up on this computer"},
+    }
+
+    @api.get("/sync", operation_id="getSyncStatus", tags=["sync"])
+    def sync_status() -> SyncStatus:
+        """Whether this computer syncs, as whom, with which workspace, and how it went."""
+        return SyncStatus.model_validate(sync.status())
+
+    @api.post("/sync/sign-in", operation_id="syncSignIn", tags=["sync"], responses=CLOUD_ERRORS)
+    def sync_sign_in(body: SyncSignIn) -> SyncStatus:
+        """Sign in (or make an account) and start syncing; the first workspace is the personal one."""
+        return _cloud(lambda: sync.sign_in(body.email, body.password, body.create_account))
+
+    @api.post("/sync/sign-out", operation_id="syncSignOut", tags=["sync"])
+    def sync_sign_out() -> SyncStatus:
+        """Stop syncing. The library here stays as it is."""
+        return SyncStatus.model_validate(sync.sign_out())
+
+    @api.put("/sync/workspace", operation_id="syncChooseWorkspace", tags=["sync"], responses=CLOUD_ERRORS)
+    def sync_choose_workspace(body: SyncWorkspaceChoice) -> SyncStatus:
+        """Sync with another workspace you are a member of; this computer's library goes up to it."""
+        return _cloud(lambda: sync.choose_workspace(body.workspace_id))
+
+    @api.post("/sync/workspaces", operation_id="syncCreateWorkspace", tags=["sync"], responses=CLOUD_ERRORS)
+    def sync_create_workspace(body: SyncNewWorkspace) -> SyncStatus:
+        """Make a lab workspace (you are its owner) and sync with it."""
+        return _cloud(lambda: sync.create_workspace(body.name))
+
+    @api.post("/sync/now", operation_id="syncNow", tags=["sync"], responses=CLOUD_ERRORS)
+    def sync_now() -> SyncStatus:
+        """Sync now and wait for it. The outcome is in `state` and `error`."""
+        return _cloud(sync.sync_now)
+
+    @api.get("/learn-progress", operation_id="getLearnProgress", tags=["sync"])
+    def get_learn_progress() -> LearnProgressDoc:
+        """The Learn section's progress as the engine last had it (from this app or the cloud)."""
+        return LearnProgressDoc.model_validate(sync.get_learn_progress() or {"progress": None})
+
+    @api.put("/learn-progress", operation_id="putLearnProgress", tags=["sync"])
+    def put_learn_progress(body: LearnProgressDoc) -> LearnProgressDoc:
+        """Keep the Learn section's progress (already merged by the app); it syncs when signed in."""
+        return LearnProgressDoc.model_validate(sync.put_learn_progress(body.progress or {}))
 
     # settings and the watch folder -------------------------------------------------------------
 
