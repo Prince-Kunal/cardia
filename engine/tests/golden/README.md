@@ -13,17 +13,16 @@ The 30 study slices, each run through the shared front end and both methods:
 | `file`, `heart`, `weight_mg` | From the file name |
 | `image_sha256` | SHA-256 of the input TIFF (must match `scripts/study-data.sha256`) |
 | `tissue_px`, `holes_removed_px`, `holes_uncertain_px`, `filled_px` | Shared tissue mask and hole decisions |
-| `b_tissue_px` | Method B's own outline, shared holes removed |
 | `a_dead_pct`, `a_low_pct`, `a_high_pct`, `a_unsure_pct` | Method A (K-Means + RF): dead at p ≥ 0.5, range, 0.35 < p < 0.65 |
-| `b_dead_pct`, `b_low_pct`, `b_high_pct`, `b_borderline_pct` | Method B (a\* cut): a\* < 11.75, range, 11.75 ≤ a\* < 18.60 |
+| `b_dead_pct`, `b_low_pct`, `b_high_pct`, `b_borderline_pct` | Method B (stain ratio, pipeline 0.5.0): less than half the living stain (stain < 0.309 and tint < 35.5°), range and borderline at 40% and 60% of the stain |
 | `qc_flags` | Semicolon-separated slice-level QC flags: `unvalidated_input`, `many_unsure`, `holes_removed`, `uncertain_holes` |
 | `pipeline_version`, `models_manifest_sha256` | What produced the row |
 
-Masks per slice (PNG, 0/255): `tissue`, `holes_removed`, `a_dead`, `b_tissue`, `b_dead`, `b_borderline`. `meta.json` records the pipeline and model versions and the platform that generated the set.
+Masks per slice (PNG, 0/255): `tissue`, `holes_removed`, `a_dead`, `b_dead`, `b_borderline`. `meta.json` records the pipeline and model versions, the platform that generated the set (`platform`, exact checks there) and the platform the frozen model files were trained on (`models_platform`, where retraining is bit-exact).
 
 ## Where it comes from
 
-`engine/training/golden.py` runs the engine exactly as the app does: shared front end and hole model, Method A with the notebook's frozen forest, Method B with its own front end and the shipped cuts. Before that, Phase 0 showed each part reproduces its source: the shared steps and the notebook's held-out hole decisions give the notebook's tissue masks on all 30 slices; Method B reproduces the research repo's `measure.py`; Method A's forest gives the notebook's printed results (PLAN.md §2d–§2f).
+`engine/training/golden.py` runs the engine exactly as the app does: shared front end and hole model, Method A with the notebook's frozen forest, Method B with the frozen stain-ratio cuts (`engine/models/stain_ratio/stain_ratio.json`). Before that, Phase 0 showed each part reproduces its source: the shared steps and the notebook's held-out hole decisions give the notebook's tissue masks on all 30 slices; Method A's forest gives the notebook's printed results (PLAN.md §2d–§2e). Method B has no source to reproduce; `engine/tests/test_method_b.py` checks its frozen file against its recipe (PLAN.md §2i).
 
 ## Pass rules
 
