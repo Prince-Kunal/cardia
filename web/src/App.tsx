@@ -12,6 +12,8 @@ import { LibraryScreen } from './screens/LibraryScreen';
 import { ProcessingScreen } from './screens/ProcessingScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { SliceScreen } from './screens/SliceScreen';
+import { SyncScreen } from './screens/SyncScreen';
+import { connectProgress } from './learn/progress';
 import { LearnApp } from './learn/LearnApp';
 import { LEARN_ROUTES, type Route, useRoute } from './lib/router';
 import { AppContext, type AppState } from './state';
@@ -42,6 +44,8 @@ function screen(route: Route) {
       return <SliceScreen key={route.id} sliceId={route.id} heartKey={route.heart} />;
     case 'settings':
       return <SettingsScreen />;
+    case 'sync':
+      return <SyncScreen />;
     case 'learn':
     case 'lesson':
     case 'glossary':
@@ -96,6 +100,16 @@ export default function App({ initial }: { initial?: Connection | null }) {
   }, [client, status.kind, connect]);
 
   useEffect(() => applyLook(status.kind === 'ready' ? status.settings : undefined), [status]);
+
+  // Learn progress goes through the engine, so cloud sync carries it to other computers.
+  const ready = status.kind === 'ready';
+  useEffect(() => {
+    if (!ready || !client) return;
+    return connectProgress({
+      pull: () => client.getLearnProgress().then((d) => d.progress),
+      push: (p) => client.putLearnProgress(p),
+    });
+  }, [ready, client]);
 
   const disconnect = useCallback(() => {
     saveConnection(null);

@@ -11,9 +11,11 @@ import type {
   Job,
   Layer,
   MethodsParagraph,
+  LearnProgressDoc,
   RestoreReport,
   SliceResult,
   StudySet,
+  SyncStatus,
   WatchStatus,
 } from './types.gen';
 
@@ -203,6 +205,40 @@ export class EngineClient {
   /** The whole library as one ZIP. */
   backupLibrary() {
     return this.download('/library/backup.zip', 'cardia-backup.zip');
+  }
+
+  // cloud sync (PLAN.md §5)
+
+  syncStatus() {
+    return this.json<SyncStatus>('GET', '/sync');
+  }
+
+  syncSignIn(email: string, password: string, createAccount = false) {
+    return this.json<SyncStatus>('POST', '/sync/sign-in', { json: { email, password, create_account: createAccount } });
+  }
+
+  syncSignOut() {
+    return this.json<SyncStatus>('POST', '/sync/sign-out');
+  }
+
+  syncChooseWorkspace(workspaceId: string) {
+    return this.json<SyncStatus>('PUT', '/sync/workspace', { json: { workspace_id: workspaceId } });
+  }
+
+  syncCreateWorkspace(name: string) {
+    return this.json<SyncStatus>('POST', '/sync/workspaces', { json: { name } });
+  }
+
+  syncNow() {
+    return this.json<SyncStatus>('POST', '/sync/now');
+  }
+
+  getLearnProgress() {
+    return this.json<LearnProgressDoc>('GET', '/learn-progress');
+  }
+
+  putLearnProgress(progress: object) {
+    return this.json<LearnProgressDoc>('PUT', '/learn-progress', { json: { progress } });
   }
 
   /** Add a backup's hearts to the library; nothing here is overwritten. */

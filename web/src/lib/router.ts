@@ -1,5 +1,5 @@
 // A small hash router: #/library, #/import, #/jobs/<id>, #/hearts/<key>, #/hearts/<key>/slices/<id> (or
-// #/slices/<id> outside a heart), #/settings, and Learn:
+// #/slices/<id> outside a heart), #/settings, #/sync (cloud sync), and Learn:
 // #/learn (the course), #/learn/<module>[/<step>|/done] (a lesson), #/learn/glossary[/<term>], #/learn/review.
 // The hash also carries the engine link the first time (#engine=…&token=…); connection.ts reads that
 // first and replaces it with a route. Hash routes work the same in the browser and, later, in Electron.
@@ -14,6 +14,7 @@ export type Route =
   | { name: 'heart'; key: string }
   | { name: 'slice'; id: string; heart?: string }
   | { name: 'settings' }
+  | { name: 'sync' }
   | { name: 'learn' }
   | { name: 'lesson'; module: number; step: number | 'done' }
   | { name: 'glossary'; term?: string }
@@ -48,6 +49,8 @@ export function parseRoute(hash: string): Route {
       return parts[1] ? { name: 'slice', id: parts[1] } : { name: 'library' };
     case 'settings':
       return { name: 'settings' };
+    case 'sync':
+      return { name: 'sync' };
     case 'learn':
       return learnRoute(parts.slice(1));
     default:

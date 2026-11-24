@@ -1,7 +1,21 @@
 import { type ReactNode, useContext, useLayoutEffect } from 'react';
 import { LEARN_ROUTES, type Route, href } from '../lib/router';
 import { scrollPageTo, takeForwardNavigation } from '../lib/scroll';
-import { AppContext } from '../state';
+import { SYNC_LABEL, SYNC_TONE, signedIn } from '../lib/sync';
+import { AppContext, useApp, useResource } from '../state';
+
+/** How sync is going, in the header, once signed in (a link to the Cloud sync screen). */
+function SyncBadge({ current }: { current: boolean }) {
+  const { client } = useApp();
+  const status = useResource(() => client.syncStatus(), [], { ms: 15_000, while: () => true });
+  const s = status.data;
+  if (!signedIn(s)) return null;
+  return (
+    <a href="#/sync" className={`badge ${SYNC_TONE[s.state]} sync-badge`} aria-current={current ? 'page' : undefined} title={s.error ?? undefined}>
+      {SYNC_LABEL[s.state]}
+    </a>
+  );
+}
 
 const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart', 'slice'];
 
@@ -61,7 +75,9 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             </>
           )}
           {app && tab('settings', 'Settings')}
+          {app && tab('sync', 'Sync')}
         </nav>
+        {app && <SyncBadge current={route.name === 'sync'} />}
         {app?.info.mock && !learn && (
           <span className="badge warn" title="The engine runs with --mock: every number is made up">
             Demo data

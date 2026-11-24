@@ -1552,6 +1552,14 @@ select.input {
   pointer-events: none;
 }
 
+/* the sync badge in the header */
+.sync-badge {
+  text-decoration: none;
+}
+.sync-badge:hover {
+  filter: brightness(0.96);
+}
+
 /* ---------- printing: the heart report as a PDF (PLAN.md §6) ---------- */
 
 @media print {
