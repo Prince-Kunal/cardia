@@ -40,11 +40,24 @@ def main(argv=None) -> int:
     ap.add_argument("--workers", type=int, default=default_workers(), help="slices analysed at once")
     ap.add_argument("--mock", action="store_true", help="fake analysis for UI work: no model files or lab data needed")
     ap.add_argument("--open", action="store_true", help="open the UI in the browser with the engine address and token")
+    ap.add_argument(
+        "--fake-cloud",
+        action="store_true",
+        help="sync with a cloud held in memory (to try the sync screens without a Supabase project)",
+    )
     args = ap.parse_args(argv)
 
     data_dir = args.data_dir or (default_data_dir() / "mock" if args.mock else default_data_dir())
     origins = tuple(args.origin) if args.origin else DEFAULT_ORIGINS
-    settings = Settings(data_dir=data_dir, allowed_origins=origins, workers=max(1, args.workers), mock=args.mock)
+    settings = Settings(
+        data_dir=data_dir,
+        allowed_origins=origins,
+        workers=max(1, args.workers),
+        mock=args.mock,
+        cloud_url=os.environ.get("CARDIA_SUPABASE_URL") or None,
+        cloud_anon_key=os.environ.get("CARDIA_SUPABASE_ANON_KEY") or None,
+        fake_cloud=args.fake_cloud,
+    )
     try:
         app = create_app(settings)
     except ModelFileError as e:

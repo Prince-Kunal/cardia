@@ -1,7 +1,7 @@
 // Generated from engine/cardia_api/openapi.json by `uv run python -m cardia_api.openapi`. Do not edit.
-// Cardia engine API 0.4.0.
+// Cardia engine API 0.5.0.
 
-export const API_VERSION = "0.4.0";
+export const API_VERSION = "0.5.0";
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettingsInput {
@@ -209,6 +209,18 @@ export interface LayerInfo {
   description: string;
 }
 
+/** The Learn section's progress, kept by the engine so it can sync (the app merges before sending). */
+export interface LearnProgressDocInput {
+  progress: Record<string, unknown> | null;
+  updated_at?: string | null;
+}
+
+/** The Learn section's progress, kept by the engine so it can sync (the app merges before sending). */
+export interface LearnProgressDoc {
+  progress: Record<string, unknown> | null;
+  updated_at: string | null;
+}
+
 export interface MethodAResult {
   /** Dead share of the shared tissue: p >= 0.5 */
   dead_pct: number | null;
@@ -326,6 +338,54 @@ export interface StudySet {
   pipeline_version: string;
   models_manifest_sha256: string | null;
   hearts: StudyHeart[];
+}
+
+export interface SyncDevice {
+  id: string;
+  name: string;
+  app_version: string | null;
+  last_seen_at: string | null;
+  this_device: boolean;
+}
+
+export interface SyncNewWorkspace {
+  name: string;
+}
+
+export interface SyncSignIn {
+  email: string;
+  password: string;
+  create_account?: boolean;
+}
+
+/** Cloud sync (PLAN.md §5). `not_configured` until the engine has a cloud to sync with. */
+export interface SyncStatus {
+  state: "not_configured" | "signed_out" | "syncing" | "synced" | "offline" | "error";
+  /** "memory": --fake-cloud, nothing leaves this engine */
+  backend: "supabase" | "memory" | null;
+  email: string | null;
+  workspace: SyncWorkspace | null;
+  workspaces: SyncWorkspace[];
+  /** A viewer: this computer pulls but does not send */
+  read_only: boolean;
+  /** Changes here not yet sent */
+  pending: number;
+  last_sync_at: string | null;
+  error: string | null;
+  devices: SyncDevice[];
+}
+
+export interface SyncWorkspace {
+  id: string;
+  name: string;
+  kind: "personal" | "lab";
+  role: "owner" | "editor" | "viewer";
+  /** Original scans are uploaded too (opt-in per workspace) */
+  upload_images: boolean;
+}
+
+export interface SyncWorkspaceChoice {
+  workspace_id: string;
 }
 
 export interface TissueResult {

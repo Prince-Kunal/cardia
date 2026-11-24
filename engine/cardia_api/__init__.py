@@ -6,4 +6,4 @@ and export (CSV, the ZIP bundle and the Methods paragraph). Start it with `uv ru
 The contract is `cardia_api/openapi.json`; README.md in this folder explains it for the UI.
 """
 
-API_VERSION = "0.4.0"  # the contract's version; /api/v1 changes only by adding fields until 1.0.0
+API_VERSION = "0.5.0"  # the contract's version; /api/v1 changes only by adding fields until 1.0.0

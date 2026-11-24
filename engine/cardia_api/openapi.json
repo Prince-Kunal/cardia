@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -1421,6 +1421,460 @@
           },
           "400": {
             "description": "Not a Cardia backup, or a damaged one",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Status",
+        "description": "Whether this computer syncs, as whom, with which workspace, and how it went.",
+        "operationId": "getSyncStatus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/sign-in": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Sign In",
+        "description": "Sign in (or make an account) and start syncing; the first workspace is the personal one.",
+        "operationId": "syncSignIn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncSignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The cloud refused (wrong password, not a member, offline…)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cloud sync is not set up on this computer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/sign-out": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Sign Out",
+        "description": "Stop syncing. The library here stays as it is.",
+        "operationId": "syncSignOut",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/workspace": {
+      "put": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Choose Workspace",
+        "description": "Sync with another workspace you are a member of; this computer's library goes up to it.",
+        "operationId": "syncChooseWorkspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncWorkspaceChoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The cloud refused (wrong password, not a member, offline…)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cloud sync is not set up on this computer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/workspaces": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Create Workspace",
+        "description": "Make a lab workspace (you are its owner) and sync with it.",
+        "operationId": "syncCreateWorkspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncNewWorkspace"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The cloud refused (wrong password, not a member, offline…)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cloud sync is not set up on this computer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/now": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Now",
+        "description": "Sync now and wait for it. The outcome is in `state` and `error`.",
+        "operationId": "syncNow",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The cloud refused (wrong password, not a member, offline…)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cloud sync is not set up on this computer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/learn-progress": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Get Learn Progress",
+        "description": "The Learn section's progress as the engine last had it (from this app or the cloud).",
+        "operationId": "getLearnProgress",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearnProgressDoc-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Put Learn Progress",
+        "description": "Keep the Learn section's progress (already merged by the app); it syncs when signed in.",
+        "operationId": "putLearnProgress",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearnProgressDoc-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearnProgressDoc-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong token",
             "content": {
               "application/json": {
                 "schema": {
@@ -2886,6 +3340,75 @@
         ],
         "title": "LayerInfo"
       },
+      "LearnProgressDoc-Input": {
+        "properties": {
+          "progress": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "progress"
+        ],
+        "title": "LearnProgressDoc",
+        "description": "The Learn section's progress, kept by the engine so it can sync (the app merges before sending)."
+      },
+      "LearnProgressDoc-Output": {
+        "properties": {
+          "progress": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "progress",
+          "updated_at"
+        ],
+        "title": "LearnProgressDoc",
+        "description": "The Learn section's progress, kept by the engine so it can sync (the app merges before sending)."
+      },
       "MethodAResult": {
         "properties": {
           "dead_pct": {
@@ -3475,6 +3998,271 @@
         ],
         "title": "StudySet",
         "description": "The hearts the pipeline was checked on (PLAN.md §1d), as context for a report. Compare a heart with\nthem only when it was measured with the same pipeline version and model files."
+      },
+      "SyncDevice": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "this_device": {
+            "type": "boolean",
+            "title": "This Device"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "app_version",
+          "last_seen_at",
+          "this_device"
+        ],
+        "title": "SyncDevice"
+      },
+      "SyncNewWorkspace": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SyncNewWorkspace"
+      },
+      "SyncSignIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 6,
+            "title": "Password"
+          },
+          "create_account": {
+            "type": "boolean",
+            "title": "Create Account",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "SyncSignIn"
+      },
+      "SyncStatus": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "not_configured",
+              "signed_out",
+              "syncing",
+              "synced",
+              "offline",
+              "error"
+            ],
+            "title": "State"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "supabase",
+                  "memory"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend",
+            "description": "\"memory\": --fake-cloud, nothing leaves this engine"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncWorkspace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/SyncWorkspace"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          },
+          "read_only": {
+            "type": "boolean",
+            "title": "Read Only",
+            "description": "A viewer: this computer pulls but does not send"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending",
+            "description": "Changes here not yet sent"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/SyncDevice"
+            },
+            "type": "array",
+            "title": "Devices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "backend",
+          "email",
+          "workspace",
+          "workspaces",
+          "read_only",
+          "pending",
+          "last_sync_at",
+          "error",
+          "devices"
+        ],
+        "title": "SyncStatus",
+        "description": "Cloud sync (PLAN.md §5). `not_configured` until the engine has a cloud to sync with."
+      },
+      "SyncWorkspace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "lab"
+            ],
+            "title": "Kind"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role"
+          },
+          "upload_images": {
+            "type": "boolean",
+            "title": "Upload Images",
+            "description": "Original scans are uploaded too (opt-in per workspace)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "role",
+          "upload_images"
+        ],
+        "title": "SyncWorkspace"
+      },
+      "SyncWorkspaceChoice": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id"
+        ],
+        "title": "SyncWorkspaceChoice"
       },
       "TissueResult": {
         "properties": {

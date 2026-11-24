@@ -76,3 +76,32 @@ class Store:
 
     def layer_path(self, slice_id: str, layer: str) -> Path:
         return self.slice_dir(slice_id) / f"{layer}.png"
+
+    def put_slice(self, slice_id: str, files: dict[str, bytes]) -> bool:
+        """Write a slice folder that came from elsewhere (cloud sync): result.json and its layers, all
+        at once, so a slice is never half there. False if the slice is here already."""
+        final = self.slice_dir(slice_id)
+        if final.exists():
+            return False
+        tmp = self.slices / f".sync-{slice_id}-{uuid.uuid4().hex}"
+        tmp.mkdir()
+        try:
+            for name, data in files.items():
+                (tmp / name).write_bytes(data)
+            os.replace(tmp, final)
+        except BaseException:
+            for p in tmp.glob("*"):
+                p.unlink()
+            tmp.rmdir()
+            raise
+        return True
+
+    def put_image(self, name: str, data: bytes) -> bool:
+        """Store an image that came from elsewhere under its content name (<sha256>.<ext>), if missing."""
+        final = self.images / name
+        if final.exists():
+            return False
+        tmp = self.images / f".sync-{uuid.uuid4().hex}"
+        tmp.write_bytes(data)
+        os.replace(tmp, final)
+        return True
