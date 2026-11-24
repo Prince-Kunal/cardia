@@ -9,6 +9,7 @@ describe('router', () => {
     expect(parseRoute('#/hearts/k1/slices/s1')).toEqual({ name: 'slice', id: 's1', heart: 'k1' });
     expect(parseRoute('#/slices/s1')).toEqual({ name: 'slice', id: 's1' });
     expect(parseRoute('#/settings')).toEqual({ name: 'settings' });
+    expect(parseRoute('#/sync')).toEqual({ name: 'sync' });
     expect(parseRoute('#/learn')).toEqual({ name: 'learn' });
     expect(parseRoute('#/learn/5')).toEqual({ name: 'lesson', module: 5, step: 1 });
     expect(parseRoute('#/learn/5/3')).toEqual({ name: 'lesson', module: 5, step: 3 });
@@ -35,6 +36,7 @@ describe('router', () => {
       { name: 'slice', id: 's1', heart: 'h1' },
       { name: 'slice', id: 's1' },
       { name: 'settings' },
+      { name: 'sync' },
       { name: 'learn' },
       { name: 'lesson', module: 8, step: 2 },
       { name: 'lesson', module: 8, step: 'done' },
