@@ -174,7 +174,7 @@ export function ProcessingScreen({ jobId }: { jobId: string }) {
             {[...hearts].map(([key, h]) => (
               <a key={key} className={`button ${hearts.size === 1 ? 'primary' : ''}`} href={href({ name: 'heart', key })}>
                 Open heart {h.label}
-                <span className="badge" style={{ background: 'transparent' }}>
+                <span className="badge">
                   {plural(h.n, 'slice')}
                 </span>
               </a>
