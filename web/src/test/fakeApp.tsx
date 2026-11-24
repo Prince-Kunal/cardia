@@ -15,7 +15,7 @@ export const INFO: EngineInfo = {
   models: [],
   methods: [
     { key: 'a', name: 'Method A: K-Means + RF', dead_rule: 'p ≥ 0.5', unsure_rule: 'unsure: 0.35 < p < 0.65', range_shown: false },
-    { key: 'b', name: 'Method B: a* cut', dead_rule: 'a* < 11.75', unsure_rule: 'borderline: 11.75 ≤ a* < 18.6', range_shown: true },
+    { key: 'b', name: 'Method B: stain ratio', dead_rule: 'stain log(R/G) < 0.309 and tint < 35.5°', unsure_rule: 'borderline: between 40% and 60% of the living stain', range_shown: true },
   ],
   layers: [],
   accepted_extensions: ['.tif', '.tiff', '.png', '.jpg', '.jpeg'],

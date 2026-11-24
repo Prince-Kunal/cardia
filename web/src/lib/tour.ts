@@ -52,7 +52,7 @@ export const TOUR: TourStep[] = [
   {
     id: 'numbers',
     title: 'Two methods, side by side',
-    body: 'Method A (K-Means + random forest) and Method B (an a* cut) each give the dead tissue as a % of the heart, with a range. They can disagree a lot, as on heart 206. Each was checked against different reference measurements, so until expert tracings settle which is closer, Cardia shows both. Learn module 10 explains why.',
+    body: 'Method A (K-Means + random forest) and Method B (the stain ratio) each give the dead tissue as a % of the heart. They draw the line between dead and alive in different places and can disagree a lot, as on heart 206. Until expert tracings settle which is closer, Cardia shows both. Learn module 10 explains why.',
     on: ['heart'],
     target: ['numbers'],
   },

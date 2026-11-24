@@ -1,12 +1,22 @@
 // Screen 5, the slice report (PLAN.md §9, §1c): the scan and its layers, what the slice is made of by
 // each method, a one-line summary, and how sure the result is and why.
 
-import type { HeartSlice, SliceResult } from '../api/types.gen';
+import type { HeartSlice, Layer, SliceResult } from '../api/types.gen';
 import { LayerViewer } from '../components/LayerViewer';
 import { ErrorNote } from '../components/ui';
-import { DASH, METHOD_LABEL, type MethodKey, dateTime, methodOrder, pct, range, shortHash } from '../lib/format';
+import { DASH, METHOD_LABEL, type MethodKey, NO_METHOD_B_NOTE, dateTime, pct, range, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
-import { type CompositionRow, CONFIDENCE_LABEL, composition, confidenceOf, sharedParts, sliceReasons, sliceSummary } from '../lib/report';
+import {
+  type CompositionRow,
+  CONFIDENCE_LABEL,
+  composition,
+  confidenceOf,
+  methodResult,
+  sharedParts,
+  sliceOrder,
+  sliceReasons,
+  sliceSummary,
+} from '../lib/report';
 import { href } from '../lib/router';
 import { useApp, useResource } from '../state';
 
@@ -32,7 +42,8 @@ function CompositionTable({ rows, caption }: { rows: CompositionRow[]; caption: 
 }
 
 function MethodBlock({ r, m, headline }: { r: SliceResult; m: MethodKey; headline: boolean }) {
-  const x = m === 'a' ? r.method_a : r.method_b;
+  const x = methodResult(r, m);
+  if (!x) return null;
   return (
     <section className={`method ${m} ${headline ? 'headline' : ''}`} aria-label={METHOD_LABEL[m]}>
       <div className="method-name">
@@ -42,7 +53,6 @@ function MethodBlock({ r, m, headline }: { r: SliceResult; m: MethodKey; headlin
       <div className="method-value">{pct(x.dead_pct)}</div>
       <div className="method-detail">
         dead{x.range.shown && <> · range {range(x.range.low_pct, x.range.high_pct)}</>}
-        {m === 'b' && ' · its own tissue outline'}
       </div>
       <CompositionTable rows={composition(r, m)} caption={`What the slice is made of by ${METHOD_LABEL[m]}`} />
     </section>
@@ -127,6 +137,7 @@ export function SliceScreen({ sliceId, heartKey }: { sliceId: string; heartKey?:
 
       <section className="card summary-line" aria-label="Summary">
         <p className="summary-text">{sliceSummary(r, headline)}</p>
+        {r.method_b === null && <p className="fine">{NO_METHOD_B_NOTE}</p>}
         <div className="row">
           <span className={`badge confidence ${confidence}`}>Confidence: {CONFIDENCE_LABEL[confidence]}</span>
           {reasons.length === 0 ? (
@@ -149,14 +160,15 @@ export function SliceScreen({ sliceId, heartKey }: { sliceId: string; heartKey?:
           height={r.height_px}
           available={r.layers}
           infos={info.layers}
-          initial={headline === 'a' ? ['a_dead'] : ['b_dead']}
+          initial={[`${sliceOrder(r, headline)[0]}_dead` as Layer]}
+          compare={sliceOrder(r, headline).length >= 2 ? (sliceOrder(r, headline).slice(0, 2) as [MethodKey, MethodKey]) : null}
         />
         <div className="stack">
-          {methodOrder(headline).map((m) => (
+          {sliceOrder(r, headline).map((m) => (
             <MethodBlock key={m} r={r} m={m} headline={m === headline} />
           ))}
           <section className="card" aria-label="Holes and gaps">
-            <h2 className="section-title">Holes and gaps (both methods)</h2>
+            <h2 className="section-title">Holes and gaps (every method)</h2>
             <CompositionTable rows={sharedParts(r)} caption="Holes and gaps" />
           </section>
         </div>

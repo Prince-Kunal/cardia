@@ -6,9 +6,10 @@ import type { Heart, HeartSlice, HeartUpdate } from '../api/types.gen';
 import { EngineError } from '../api/client';
 import { Context, ExportCard, MethodsText, PrintDetails, Quality, Strip } from '../components/HeartReport';
 import { ErrorNote, MethodsPanel } from '../components/ui';
-import { DASH, METHOD_SHORT, QC_LABEL, date, mg, methodOrder, pct, plural, shortHash } from '../lib/format';
+import { DASH, METHOD_SHORT, NO_METHOD_B_NOTE, QC_LABEL, date, mg, methodOrder, pct, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { typedWeight } from '../lib/filenames';
+import { slicePct } from '../lib/report';
 import { href, navigate } from '../lib/router';
 import { useApp, useResource } from '../state';
 
@@ -258,7 +259,7 @@ function WeightCell({ s, onSave }: { s: HeartSlice; onSave: (weight: number | nu
 function Slices({ heart, onSaved }: { heart: Heart; onSaved: (h: Heart) => void }) {
   const { client, settings } = useApp();
   const [error, setError] = useState<string>();
-  const order = methodOrder(settings.headline_method);
+  const order = methodOrder(settings.headline_method, (m) => m !== 'b' || heart.slices.some((s) => s.method_b_dead_pct !== null));
   const n = heart.slices.length;
 
   async function send(slices: ReturnType<typeof sliceUpdate>) {
@@ -321,7 +322,7 @@ function Slices({ heart, onSaved }: { heart: Heart; onSaved: (h: Heart) => void 
                 </td>
                 {order.map((m) => (
                   <td key={m} className="num">
-                    {pct(m === 'a' ? s.method_a_dead_pct : s.method_b_dead_pct)}
+                    {pct(slicePct(s, m))}
                   </td>
                 ))}
                 <td>
@@ -474,6 +475,7 @@ export function HeartScreen({ heartKey }: { heartKey: string }) {
       {s ? (
         <section className="stack" aria-label="Heart numbers" data-tour="numbers">
           <MethodsPanel summary={s} headline={settings.headline_method} />
+          {s.method_b === null && <p className="fine">{NO_METHOD_B_NOTE}</p>}
           <p className="fine">
             {s.weighting === 'slice_weight'
               ? 'Heart percentages are the slice percentages weighted by slice weight.'

@@ -43,7 +43,7 @@ const FLAGS: { flag: string; title: string; means: string; todo: string }[] = [
 const FAQ: { q: string; a: string }[] = [
   {
     q: 'Why does every heart have two results?',
-    a: 'Cardia measures with two methods, Method A (K-Means + random forest) and Method B (an a* cut). Each was checked against a different set of reference measurements and agrees best with its own, and they can differ by tens of percentage points. Until expert tracings show which is closer to the truth, reports show both, leading with the one chosen in Settings. Learn module 10 explains both.',
+    a: 'Cardia measures with two methods, Method A (K-Means + random forest) and Method B (the stain ratio: tissue holding less than half the red stain of living muscle). They draw the line between dead and alive in different places and can differ by tens of percentage points. Until expert tracings show which is closer to the truth, reports show both, leading with the one chosen in Settings. Learn module 10 explains both.',
   },
   {
     q: 'My hand tracing gives a different number. Which is right?',
@@ -51,7 +51,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'What do “unsure” and “borderline” mean?',
-    a: 'Unsure (Method A): the random forest’s probability is between 0.35 and 0.65. Borderline (Method B): redness a* between 11.75 and 18.60, not clearly dead or alive. Method B’s range runs from only the clearly dead pixels to the dead and borderline pixels together.',
+    a: 'Unsure (Method A): the random forest’s probability is between 0.35 and 0.65. Borderline (Method B): tissue holding between 40% and 60% of the red stain of living muscle, not clearly dead or alive. Method B’s range runs from the same rule at 40% of the stain to the rule at 60%.',
   },
   {
     q: 'Does my data leave this computer?',
