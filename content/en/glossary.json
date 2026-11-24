@@ -1,7 +1,7 @@
 {
   "a-star": {
     "title": "a* (redness)",
-    "short": "The red–green number in Lab colour. TTC-stained living muscle has a high a*; pale dead muscle has a low a*. Method B decides dead or alive from it.",
+    "short": "The red–green number in Lab colour. TTC-stained living muscle has a high a*; pale dead muscle has a low a*. Method A uses it among its features.",
     "lesson": 10
   },
   "aorta": {
@@ -41,7 +41,7 @@
   },
   "borderline-tissue": {
     "title": "Borderline tissue (Method B)",
-    "short": "Pixels whose redness a* is between Method B's two cuts (11.75 and 18.60): not clearly dead, not clearly alive. They make up Method B's range.",
+    "short": "Pixels holding between 40% and 60% of the red stain of living muscle: not clearly dead, not clearly alive. They make up Method B's range.",
     "lesson": 10
   },
   "cardiac-cycle": {
@@ -160,8 +160,8 @@
     "lesson": 10
   },
   "method-b": {
-    "title": "Method B: a* cut",
-    "short": "Cardia's other way of deciding dead or alive: a pixel is dead when its smoothed redness a* is below 11.75, and borderline up to 18.60.",
+    "title": "Method B: stain ratio",
+    "short": "Cardia's other way of deciding dead or alive: a pixel is dead when it holds less than half the red stain of living muscle and its colour leans cream. Shadows don't change it.",
     "lesson": 10
   },
   "myocardial-infarction": {

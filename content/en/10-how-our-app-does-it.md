@@ -88,21 +88,25 @@ A **[random forest](term:random-forest)**, many small decision trees that vote, 
 
 The forest was trained once, before the app was built, on pixels that **[K-Means](term:k-means)** had sorted into red, pink and cream groups. The app only uses the saved forest; it never learns from your scans.
 
-## 5b. Method B: the a\* cut
+## 5b. Method B: the stain ratio
 
-[Method B](term:method-b) is simpler. It smooths the redness a\* and calls a pixel dead when a\* is below **11.75**. Pixels between 11.75 and 18.60 are [borderline](term:borderline-tissue): not clearly dead, not clearly alive.
+[Method B](term:method-b) asks one question of every pixel: **does it hold less than half the red stain of living muscle?**
 
-Method B's [range](term:range) runs from "only the clearly dead pixels" to "the dead and the borderline pixels".
+The red stain absorbs green light and lets red light through. So Method B compares how much green and how much red comes back from each pixel: the more stain, the less green. A shadow dims every colour alike, so it leaves that comparison, and Method B's answer, unchanged.
+
+Two reference colours were taken once from the study scans: fully stained muscle and unstained tissue. A pixel holding less than half the stain, and leaning towards the cream of unstained tissue, counts as dead. Pixels holding between 40% and 60% of the stain are [borderline](term:borderline-tissue): not clearly dead, not clearly alive.
+
+Method B's [range](term:range) runs from the same rule at 40% of the stain to the rule at 60%.
 
 ::scene{camera="ttc" highlight="infarct"}
 
 ## Why two numbers?
 
-Before Cardia, the two methods were each checked against a different set of reference measurements made in the lab, and each agrees best with its own. On the same heart they can differ by 6 to 40 [percentage points](term:percentage-points).
+The two methods draw the line between dead and alive in different places. Method A learned it from the colour groups K-Means found; Method B puts it at half the stain of living muscle. On the same heart they can differ by 5 to 26 [percentage points](term:percentage-points), most where there is a lot of pale pink tissue.
 
 Nobody knows yet which is closer to the truth: that needs careful tracings by experts, which the team has asked for. Until then Cardia shows **both methods side by side**, leading with the one chosen in Settings, and shows Method B's range.
 
-> Known limits of Method A: it reads some hearts higher than Method B and the references do, and shadows on the slice can change its answer, so Cardia warns about shadows.
+> Known limits. Method A reads the control hearts higher than Method B and the references do, and shadows on the slice can change its answer, so Cardia warns about shadows. Method B counts pale tissue that is not muscle (valves, fat) as dead, so it reads control hearts a few points high.
 
 :::quiz{type="multiple-choice" id="m10-two"}
 Why does Cardia show two results for every heart?
