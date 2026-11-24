@@ -277,7 +277,7 @@ function Slices({ heart, onSaved }: { heart: Heart; onSaved: (h: Heart) => void 
   }
 
   return (
-    <section className="card stack" aria-label="Slices">
+    <section className="card stack" aria-label="Slices" data-tour="slices">
       <div className="card-head" style={{ marginBottom: 0 }}>
         <h2>Slices</h2>
         <span className="fine">Put them in order from apex to base. Weights typed here replace the file name's.</span>
@@ -472,7 +472,7 @@ export function HeartScreen({ heartKey }: { heartKey: string }) {
       <ErrorNote error={error} />
 
       {s ? (
-        <section className="stack" aria-label="Heart numbers">
+        <section className="stack" aria-label="Heart numbers" data-tour="numbers">
           <MethodsPanel summary={s} headline={settings.headline_method} />
           <p className="fine">
             {s.weighting === 'slice_weight'

@@ -3,6 +3,7 @@
 import type { Connection } from './connection';
 import type {
   AppSettings,
+  DemoHeart,
   EngineInfo,
   Health,
   Heart,
@@ -200,6 +201,22 @@ export class EngineClient {
   /** The hearts the pipeline was checked on, for a report's context (404 if this engine has none). */
   studySet() {
     return this.json<StudySet>('GET', '/study-set');
+  }
+
+  /** The demo heart for the walkthrough: one study heart's real scans (404 in a build without them). */
+  demoHeart() {
+    return this.json<DemoHeart>('GET', '/demo');
+  }
+
+  /** The demo heart's scans as files, ready for the Import screen. */
+  async demoScans(): Promise<File[]> {
+    const heart = await this.demoHeart();
+    return Promise.all(
+      heart.scans.map(async (s) => {
+        const res = await this.send('GET', `/demo/${encodeURIComponent(s.name)}`);
+        return new File([await res.blob()], s.name, { type: 'image/tiff' });
+      }),
+    );
   }
 
   /** The whole library as one ZIP. */
