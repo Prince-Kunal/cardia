@@ -2,8 +2,7 @@
 
 Parity tests need the GVSU study scans (`data/`), the notebook's saved results
 (`reference/results_local/`) and, for holes, the hand-marked outlines (`engine/annotations/holes/`),
-all in git. Method B's parity test also needs the research repo at `reference/research-repo`
-(CONTRIBUTING.md). Tests skip with a message when files are missing.
+all in git. Tests skip with a message when files are missing.
 """
 
 import json
@@ -21,13 +20,17 @@ REFERENCE_MASKS = REPO / "reference" / "results_local" / "masks"
 
 @pytest.fixture(scope="session")
 def on_reference_platform() -> bool:
-    """True on the platform the models and the golden set were made on (reference/golden/meta.json).
+    """True on the platform the frozen model files were trained on (reference/golden/meta.json, `models_platform`).
 
-    There, training and analysis must be bit-identical; on other platforms PLAN.md §7's tolerances apply,
-    because the linear algebra libraries differ in the last bits.
+    There, retraining must be bit-identical; on other platforms PLAN.md §7's tolerances apply, because the
+    linear algebra libraries differ in the last bits. (The golden set itself records the platform that
+    generated it in `platform`; test_golden.py checks exactness against that.)
     """
     meta = GOLDEN / "meta.json"
-    return meta.exists() and json.loads(meta.read_text())["platform"] == platform_tag()
+    if not meta.exists():
+        return False
+    m = json.loads(meta.read_text())
+    return m.get("models_platform", m["platform"]) == platform_tag()
 
 
 @pytest.fixture(scope="session")

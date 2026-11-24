@@ -136,7 +136,7 @@ def test_trash_restore_and_purge(client, first_import):
 def test_settings(client):
     s = client.get("/api/v1/settings", headers=AUTH).json()
     assert s == {
-        "headline_method": "a",
+        "headline_method": "b",
         "theme": "system",
         "language": "en",
         "report_language": "en",
@@ -144,12 +144,28 @@ def test_settings(client):
         "watch_folder": None,
         "watch_enabled": False,
     }
-    new = s | {"headline_method": "b", "theme": "dark", "language": "hi"}
+    new = s | {"headline_method": "a", "theme": "dark", "language": "hi"}
     assert client.put("/api/v1/settings", headers=AUTH, json=new).json() == new
     assert client.get("/api/v1/settings", headers=AUTH).json() == new
     for bad in ({"headline_method": "c"}, {"watch_folder": "relative/path"}, {"language": "Hindi"}, {"x": 1}):
         assert client.put("/api/v1/settings", headers=AUTH, json=new | bad).status_code == 422
     client.put("/api/v1/settings", headers=AUTH, json=s)
+
+
+def test_a_saved_headline_of_retired_method_c_falls_back(client, data_dir):
+    """Pipeline 0.4.0 let users choose Method C as the headline; it has been retired (2026-11-24)."""
+    from cardia_api.library import Library
+
+    lib = Library(data_dir / "library.sqlite3")
+    lib.open()
+    before = lib.get_settings()
+    lib.set_settings(before | {"headline_method": "c"})
+    try:
+        assert client.get("/api/v1/settings", headers=AUTH).json()["headline_method"] == "b"
+        assert client.get("/api/v1/engine", headers=AUTH).status_code == 200
+    finally:
+        lib.set_settings(before)
+        lib.close()
 
 
 def test_the_watch_folder_imports_new_scans_only(client, tmp_path):

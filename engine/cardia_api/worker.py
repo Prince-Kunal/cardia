@@ -14,8 +14,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from ttc_pipeline import Models, analyse_slice, read_rgb
-from ttc_pipeline.method_b import ACuts
+from ttc_pipeline import Models, StainRatioModel, analyse_slice, read_rgb
 
 from .catalog import RANGE_SHOWN
 from .layers import write_layers
@@ -28,7 +27,7 @@ _W: dict = {}  # this process's models and settings, set by init()
 def init(models_dir, mock: bool, mock_delay_s: float, events) -> None:
     _W.update(
         models=None if mock else Models.load(models_dir),
-        cuts=ACuts.load(models_dir),
+        stain=StainRatioModel.load(models_dir),
         mock=mock,
         delay=mock_delay_s,
         events=events,
@@ -102,8 +101,6 @@ def build_result(task: dict, sa, masks: dict, shape, dpi, layers: list[str]) -> 
             "range": {"low_pct": _num(n["a_low_pct"]), "high_pct": _num(n["a_high_pct"]), "shown": RANGE_SHOWN["a"]},
         },
         "method_b": {
-            "tissue_px": n["b_tissue_px"],
-            "tissue_mm2": area(n["b_tissue_px"]),
             "dead_pct": _num(n["b_dead_pct"]),
             "dead_px": int(masks["b_dead"].sum()),
             "dead_mg": mass(n["b_dead_pct"]),
@@ -131,7 +128,7 @@ def run(task: dict) -> dict:
         return {"ok": False, "error": {"code": "unreadable_image", "message": f"Could not read the image: {e}"}}
     try:
         if _W["mock"]:
-            sa = mock_analyse(rgb, task["file_name"], _W["cuts"], _W["delay"], tell)
+            sa = mock_analyse(rgb, task["file_name"], _W["stain"], _W["delay"], tell)
         else:
             sa = analyse_slice(rgb, task["file_name"], _W["models"], tell)
         tell("layers")
@@ -140,7 +137,8 @@ def run(task: dict) -> dict:
         tmp.mkdir(parents=True)
         try:
             masks = sa.masks()
-            layers = write_layers(tmp, rgb, sa.front_end.norm, masks, sa.a.p)
+            missing = _W["stain"].stain_missing(sa.b.stain)
+            layers = write_layers(tmp, rgb, sa.front_end.norm, masks, sa.a.p, missing)
             result = SliceResult.model_validate(build_result(task, sa, masks, rgb.shape, dpi, layers))
             (tmp / "result.json").write_text(result.model_dump_json(indent=2) + "\n")
             try:

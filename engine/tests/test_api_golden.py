@@ -58,7 +58,6 @@ def test_the_api_reproduces_the_golden_set(scans, tmp_path):
                 else:
                     assert abs(value - want[col]) <= 0.1, (name, col)
             assert got["tissue"]["tissue_px"] == want.tissue_px or not exact, name
-            assert got["method_b"]["tissue_px"] == want.b_tissue_px or not exact, name
             for k in MASKS:
                 png = client.get(f"/api/v1/slices/{sid}/layers/{k}", headers=AUTH).content
                 mask = np.asarray(Image.open(io.BytesIO(png)))[..., 1] > 0

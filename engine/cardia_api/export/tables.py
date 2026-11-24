@@ -63,13 +63,7 @@ SLICE_COLUMNS = (
         "a_unsure_pct",
     ]
     + _range_columns("a")
-    + [
-        "b_tissue_px",
-        "b_tissue_mm2",
-        "b_dead_pct",
-        "b_dead_mg",
-        "b_borderline_pct",
-    ]
+    + ["b_dead_pct", "b_dead_mg", "b_borderline_pct"]
     + _range_columns("b")
     + [
         "qc_flags",
@@ -93,7 +87,7 @@ def slice_rows(heart: dict, results: dict[str, dict]) -> list[dict]:
     rows = []
     for i, s in enumerate(heart["slices"]):
         r = results[s["slice_id"]]
-        a, b, t = r["method_a"], r["method_b"], r["tissue"]
+        a, b, t = r["method_a"], r["method_b"] or {}, r["tissue"]
         weight = s["weight_mg"]
         dpi = r.get("dpi")
         rows.append(
@@ -113,13 +107,11 @@ def slice_rows(heart: dict, results: dict[str, dict]) -> list[dict]:
                 "a_unsure_pct": a["unsure_pct"],
                 "a_low_pct": a["range"]["low_pct"],
                 "a_high_pct": a["range"]["high_pct"],
-                "b_tissue_px": b["tissue_px"],
-                "b_tissue_mm2": b["tissue_mm2"],
-                "b_dead_pct": b["dead_pct"],
-                "b_dead_mg": _dead_mg(b["dead_pct"], weight),
-                "b_borderline_pct": b["borderline_pct"],
-                "b_low_pct": b["range"]["low_pct"],
-                "b_high_pct": b["range"]["high_pct"],
+                "b_dead_pct": b.get("dead_pct"),
+                "b_dead_mg": _dead_mg(b.get("dead_pct"), weight),
+                "b_borderline_pct": b.get("borderline_pct"),
+                "b_low_pct": (b.get("range") or {}).get("low_pct"),
+                "b_high_pct": (b.get("range") or {}).get("high_pct"),
                 "qc_flags": r["qc_flags"],
                 "dpi": "x".join(_num(v) for v in dpi) if dpi else None,
                 "pipeline_version": r["pipeline_version"],

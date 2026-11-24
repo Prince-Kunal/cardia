@@ -52,7 +52,7 @@ def test_every_other_route_needs_the_token(client):
     assert client.get("/api/v1/slices").status_code == 401
     assert client.post("/api/v1/jobs", files=[("files", ("a.tif", scan()))]).status_code == 401
     info = client.get("/api/v1/engine", headers=AUTH).json()
-    assert [m["key"] for m in info["methods"]] == ["a", "b"]
+    assert [m["key"] for m in info["methods"]] == ["b", "a"]
     assert {m["key"]: m["range_shown"] for m in info["methods"]} == {"a": False, "b": True}
     assert [layer["key"] for layer in info["layers"]] == [layer.value for layer in Layer]
 
@@ -187,3 +187,36 @@ def test_the_engine_file_is_readable_only_by_its_owner(tmp_path):
     path = tmp_path / "engine.json"
     write_engine_file(path, "http://127.0.0.1:8765", "secret")
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_results_stored_before_pipeline_0_5_still_open(tmp_path):
+    """Pipelines 0.3.0 and 0.4.0 stored the retired a* cut as "method_b" (with its own tissue_px) and 0.4.0 also
+    Method C. Their results still open, with method_b null and neither shown; their hearts are summarised with
+    Method A only (2026-11-24)."""
+    import json
+
+    with make_client(tmp_path) as c:
+        job = wait(c, upload(c, [("401IS90mg.tif", scan(seed=41)), ("401IS100mg.tif", scan(seed=42))])["job_id"])
+        ids = [s["slice_id"] for s in job["slices"]]
+        for sid in ids:  # make them look like results of pipeline 0.4.0
+            p = tmp_path / "slices" / sid / "result.json"
+            r = json.loads(p.read_text())
+            r["method_b"] |= {"tissue_px": 1000, "tissue_mm2": None}
+            r["method_c"] = dict(r["method_b"])
+            r["layers"] += ["b_tissue", "c_dead", "c_borderline", "c_hue"]
+            p.write_text(json.dumps(r))
+        for sid in ids:
+            got = c.get(f"/api/v1/slices/{sid}", headers=AUTH)
+            assert got.status_code == 200, got.text
+            body = got.json()
+            assert body["method_b"] is None and "method_c" not in body
+            assert not any(k.startswith(("b_", "c_")) for k in body["layers"])
+            assert c.get(f"/api/v1/slices/{sid}/layers/b_dead", headers=AUTH).status_code == 404
+        key = job["slices"][0]["heart_key"]
+        heart = c.get(f"/api/v1/hearts/{key}", headers=AUTH).json()
+        assert heart["summary"]["method_b"] is None and heart["summary"]["method_a"]["dead_pct"] is not None
+        assert all(s["method_b_dead_pct"] is None for s in heart["slices"])
+        methods = c.get(f"/api/v1/hearts/{key}/methods", headers=AUTH).json()
+        assert [m["method"] for m in methods] == ["a"]
+        assert c.get(f"/api/v1/hearts/{key}/slices.csv", headers=AUTH).status_code == 200
+        assert c.get(f"/api/v1/hearts/{key}/export.zip", headers=AUTH).status_code == 200

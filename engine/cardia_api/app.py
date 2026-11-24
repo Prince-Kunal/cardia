@@ -17,11 +17,11 @@ from starlette.background import BackgroundTask
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ttc_pipeline import PIPELINE_VERSION, Models, parse_name
-from ttc_pipeline.method_b import ACuts
+from ttc_pipeline.method_b import StainRatioModel
 
 from . import API_VERSION, demo
 from .backup import BadBackup, restore_backup, write_backup
-from .catalog import LAYERS, methods
+from .catalog import LAYERS, METHOD_NAMES, methods
 from .export import hearts_csv, methods_paragraphs, safe_name, slices_csv, write_bundle
 from .hearts import MixedVersions, heart_record, summarise
 from .jobs import Entry, JobManager
@@ -70,7 +70,7 @@ _META = TypeAdapter(list[UploadMeta])
 def create_app(settings: Settings) -> FastAPI:
     """Build the app. Outside mock mode this loads every model file first, so a bad one stops the launch."""
     models = None if settings.mock else Models.load(settings.models_dir)
-    cuts = models.cuts if models else ACuts.load(settings.models_dir)
+    stain = models.stain if models else StainRatioModel.load(settings.models_dir)
     pipeline_version = MOCK_PIPELINE_VERSION if settings.mock else PIPELINE_VERSION
     manifest_sha256 = models.manifest_sha256 if models else None
     store = Store(settings.data_dir)
@@ -88,7 +88,7 @@ def create_app(settings: Settings) -> FastAPI:
         mock=settings.mock,
         models_manifest_sha256=manifest_sha256,
         models=model_files(models.files) if models else [],
-        methods=methods(cuts),
+        methods=methods(stain),
         layers=LAYERS,
         accepted_extensions=list(ACCEPTED_SUFFIXES),
         max_upload_mb=settings.max_upload_bytes // 2**20,
@@ -267,9 +267,10 @@ def create_app(settings: Settings) -> FastAPI:
 
         Results never change, so the response may be cached for good.
         """
+        r = store.read_result(slice_id)
         path = store.layer_path(slice_id, layer.value)
-        if not path.exists():
-            raise HTTPException(404, "No such slice.")
+        if r is None or layer.value not in r["layers"] or not path.exists():  # retired layers are not shown
+            raise HTTPException(404, "No such slice or layer.")
         return FileResponse(
             path, media_type="image/png", headers={"Cache-Control": "private, max-age=31536000, immutable"}
         )
@@ -342,11 +343,15 @@ def create_app(settings: Settings) -> FastAPI:
 
     # export (PLAN.md §1e) -----------------------------------------------------------------------
 
+    def _stored_settings() -> AppSettings:
+        """The saved settings; a headline method that has since been retired (Method C) falls back to the default."""
+        stored = {k: v for k, v in library.get_settings().items() if k in AppSettings.model_fields}
+        if stored.get("headline_method") not in METHOD_NAMES:
+            stored.pop("headline_method", None)
+        return AppSettings.model_validate(stored)
+
     def _settings() -> dict:
-        stored = library.get_settings()
-        return AppSettings.model_validate(
-            {k: v for k, v in stored.items() if k in AppSettings.model_fields}
-        ).model_dump()
+        return _stored_settings().model_dump()
 
     def _heart_and_results(heart_key: str) -> tuple[dict, dict[str, dict]]:
         heart = heart_record(_found(library.get_heart(heart_key), "heart"), store).model_dump(mode="json")
@@ -396,7 +401,9 @@ def create_app(settings: Settings) -> FastAPI:
         if heart["summary"] is None:
             raise HTTPException(409, "These slices were analysed with different pipeline versions or models.")
         ordered = [results[s["slice_id"]] for s in heart["slices"]]
-        paragraphs = methods_paragraphs(ordered, heart["summary"], heart["label"], cuts, _settings()["headline_method"])
+        paragraphs = methods_paragraphs(
+            ordered, heart["summary"], heart["label"], stain, _settings()["headline_method"]
+        )
         return [MethodsParagraph.model_validate(p) for p in paragraphs]
 
     @api.get(
@@ -413,7 +420,7 @@ def create_app(settings: Settings) -> FastAPI:
         ordered = [results[s["slice_id"]] for s in heart["slices"]]
         try:
             paragraphs = (
-                methods_paragraphs(ordered, heart["summary"], heart["label"], cuts, _settings()["headline_method"])
+                methods_paragraphs(ordered, heart["summary"], heart["label"], stain, _settings()["headline_method"])
                 if heart["summary"]
                 else []
             )
@@ -571,8 +578,7 @@ def create_app(settings: Settings) -> FastAPI:
     @api.get("/settings", operation_id="getSettings", tags=["settings"])
     def get_settings() -> AppSettings:
         """The app's settings (defaults until changed)."""
-        stored = library.get_settings()
-        return AppSettings.model_validate({k: v for k, v in stored.items() if k in AppSettings.model_fields})
+        return _stored_settings()
 
     @api.put("/settings", operation_id="putSettings", tags=["settings"])
     def put_settings(new: AppSettings) -> AppSettings:

@@ -1,8 +1,7 @@
 """Generate the golden set (PLAN.md §7, engine/tests/golden/README.md).
 
 The 30 study slices through the engine exactly as the app runs them: shared front end and hole model,
-Method A with the frozen forest, Method B with its own front end and the shipped cuts. Writes
-reference/golden/ and the list of its files' SHA-256 in engine/tests/golden/golden.sha256, so a copy can be
+Method A with the frozen forest, Method B with the frozen stain-ratio cuts. Writes reference/golden/ and the list of its files' SHA-256 in engine/tests/golden/golden.sha256, so a copy can be
 checked.
 
     cd engine && uv run python -m training.golden
@@ -24,7 +23,10 @@ from .study import REPO, study_scans
 
 GOLDEN = REPO / "reference" / "golden"
 HASHES = REPO / "engine" / "tests" / "golden" / "golden.sha256"
-MASKS = ("tissue", "holes_removed", "a_dead", "b_tissue", "b_dead", "b_borderline")
+# Where the frozen hole model and Method A's forest export were made (Phase 0, 2026-11-20): their retraining
+# tests are bit-exact only there. The golden set may be generated elsewhere.
+MODELS_PLATFORM = "Darwin-arm64"
+MASKS = ("tissue", "holes_removed", "a_dead", "b_dead", "b_borderline")
 
 
 def analyse(path, models: Models):
@@ -59,10 +61,11 @@ def main():
         "models": {
             "hole_model": models.holes.version,
             "kmeans_rf": models.forest.version,
-            "a_cut": models.cuts.version,
+            "stain_ratio": models.stain.version,
         },
         "models_manifest_sha256": models.manifest_sha256,
         "platform": platform_tag(),
+        "models_platform": MODELS_PLATFORM,
         "python": sys.version.split()[0],
         "numpy": np.__version__,
     }

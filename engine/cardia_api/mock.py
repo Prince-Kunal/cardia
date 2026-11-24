@@ -15,7 +15,7 @@ from scipy import ndimage as ndi
 from ttc_pipeline.analysis import SliceAnalysis, qc_flags
 from ttc_pipeline.holes import CANDIDATE_COLUMNS, Holes
 from ttc_pipeline.method_a import summarise_a
-from ttc_pipeline.method_b import ACuts, summarise_b
+from ttc_pipeline.method_b import StainRatioModel, stain_and_tint, summarise_b
 from ttc_pipeline.pipeline import FrontEnd
 
 MOCK_PIPELINE_VERSION = "mock"
@@ -30,7 +30,7 @@ def _largest(mask):
     return lab == sizes.argmax()
 
 
-def mock_analyse(rgb, file_name, cuts: ACuts, delay_s=0.0, progress=None) -> SliceAnalysis:
+def mock_analyse(rgb, file_name, stain: StainRatioModel, delay_s=0.0, progress=None) -> SliceAnalysis:
     tell = progress or (lambda stage: None)
     tell("front_end")
     time.sleep(delay_s)
@@ -56,6 +56,8 @@ def mock_analyse(rgb, file_name, cuts: ACuts, delay_s=0.0, progress=None) -> Sli
     a = summarise_a(p[tissue], tissue, holes.uncertain)
     tell("method_b")
     time.sleep(delay_s)
-    smoothed = cv2.GaussianBlur(a_star, (0, 0), 1.5)
-    b = summarise_b(smoothed, tissue, holes.uncertain, cuts.conservative, cuts.liberal)
+    od = -np.log10(np.clip(cv2.GaussianBlur(rgb.astype(np.float32) / 255.0, (0, 0), 2.0), 1e-3, None))
+    s, t = stain_and_tint(od)
+    nan = np.float32(np.nan)
+    b = summarise_b(np.where(tissue, s, nan), np.where(tissue, t, nan), tissue, holes.uncertain, stain)
     return SliceAnalysis(fe, a, b, tuple(qc_flags(file_name, a, holes)))

@@ -1,4 +1,4 @@
-"""One slice as the app analyses it: shared front end, both methods, slice QC flags (PLAN.md §2g).
+"""One slice as the app analyses it: shared front end, the two methods, slice QC flags (PLAN.md §2g).
 
 The golden set (`training/golden.py`) and the local API (`cardia_api`) both call `analyse_slice`, so
 the golden test checks exactly what the app runs.
@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from .method_a import UNSURE, ForestModel, MethodA, method_a
-from .method_b import ACuts, MethodB, method_b
+from .method_b import MethodB, StainRatioModel, method_b
 from .models import MANIFEST, MODELS_DIR, HoleModel, read_manifest, sha256_file
 from .pipeline import FrontEnd, run_front_end
 
@@ -26,7 +26,7 @@ class Models:
 
     holes: HoleModel
     forest: ForestModel
-    cuts: ACuts
+    stain: StainRatioModel
     manifest_sha256: str
     files: dict  # the manifest's "files": {path: {sha256, model_version, ...}}
 
@@ -35,7 +35,7 @@ class Models:
         return cls(
             holes=HoleModel.load(models_dir),
             forest=ForestModel.load(models_dir),
-            cuts=ACuts.load(models_dir),
+            stain=StainRatioModel.load(models_dir),
             manifest_sha256=sha256_file(Path(models_dir) / MANIFEST),
             files=read_manifest(models_dir)["files"],
         )
@@ -74,7 +74,6 @@ class SliceAnalysis:
             "a_low_pct": a.low_pct,
             "a_high_pct": a.high_pct,
             "a_unsure_pct": a.unsure_pct,
-            "b_tissue_px": int(b.tissue.sum()),
             "b_dead_pct": b.dead_pct,
             "b_low_pct": b.low_pct,
             "b_high_pct": b.high_pct,
@@ -92,7 +91,6 @@ class SliceAnalysis:
             "filled": fe.filled,
             "a_dead": a.dead,
             "a_unsure": fe.tissue & (a.p > UNSURE[0]) & (a.p < UNSURE[1]),
-            "b_tissue": b.tissue,
             "b_dead": b.dead,
             "b_borderline": b.borderline,
         }
@@ -106,5 +104,5 @@ def analyse_slice(rgb, file_name, models: Models, progress: Callable[[str], None
     tell("method_a")
     a = method_a(fe.norm, fe.tissue, fe.holes.uncertain, models.forest)
     tell("method_b")
-    b = method_b(rgb, fe.holes, models.cuts)
+    b = method_b(rgb, fe.paper, fe.tissue, fe.holes.removed, fe.holes.uncertain, models.stain)
     return SliceAnalysis(fe, a, b, tuple(qc_flags(file_name, a, fe.holes)))

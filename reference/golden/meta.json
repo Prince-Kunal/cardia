@@ -1,12 +1,13 @@
 {
-  "pipeline_version": "0.3.0",
+  "pipeline_version": "0.5.0",
   "models": {
     "hole_model": "1.0.0",
     "kmeans_rf": "1.0.0",
-    "a_cut": "1.0.0"
+    "stain_ratio": "1.0.0"
   },
-  "models_manifest_sha256": "afa26398d134e062545a7f686c4c7a56746cd8b8ddfa7e0fc64ef01cda7b76cf",
-  "platform": "Darwin-arm64",
+  "models_manifest_sha256": "8cac01009776820de17e9ade4c8a80e261fe78c7a77de43a6a9dca2afb376988",
+  "platform": "Linux-x86_64",
+  "models_platform": "Darwin-arm64",
   "python": "3.14.4",
   "numpy": "2.5.5"
 }

@@ -19,7 +19,6 @@ from .schemas import StudyHeart, StudySet
 GOLDEN = Path(__file__).resolve().parents[2] / "reference" / "golden"
 NUMBERS = (
     "tissue_px",
-    "b_tissue_px",
     "a_dead_pct",
     "a_unsure_pct",
     "a_low_pct",

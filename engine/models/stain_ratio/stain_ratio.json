@@ -1,0 +1,234 @@
+{
+  "model": "stain_ratio",
+  "model_version": "1.0.0",
+  "trained": "2026-11-24",
+  "pipeline_version": "0.5.0",
+  "hole_model_version": "1.0.0",
+  "measure": "optical density OD = -log10(linear light / paper) from the paper flat field in linear light without clipping, each channel averaged over tissue-only neighbourhoods; stain s = OD_G - OD_R; tint theta = atan2(s, OD_B - OD_R) in degrees; pixels within edge_px of the slice outline take the OD of the nearest pixel further in",
+  "sigma": 2.0,
+  "edge_px": 17,
+  "cuts": {
+    "low": {
+      "fraction_of_living_stain": 0.4,
+      "s": 0.2692,
+      "tint": 33.92
+    },
+    "dead": {
+      "fraction_of_living_stain": 0.5,
+      "s": 0.3094,
+      "tint": 35.48
+    },
+    "high": {
+      "fraction_of_living_stain": 0.6,
+      "s": 0.3495,
+      "tint": 36.77
+    }
+  },
+  "rule": "dead = s < cuts.dead.s and theta < cuts.dead.tint; range low / high = the same with cuts.low / cuts.high; borderline = high and not low",
+  "calibration": {
+    "unstained_peak_s": 0.1401,
+    "unstained_peak_sd": 0.0501,
+    "unstained_od": [
+      -0.0015,
+      0.107,
+      0.264
+    ],
+    "stained_od": [
+      0.2068,
+      0.717,
+      0.8092
+    ],
+    "leave_one_heart_out": {
+      "108": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2667,
+          "tint": 33.87
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.3062,
+          "tint": 35.45
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3457,
+          "tint": 36.76
+        }
+      },
+      "109": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2674,
+          "tint": 33.7
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.3067,
+          "tint": 35.23
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3461,
+          "tint": 36.49
+        }
+      },
+      "119": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2668,
+          "tint": 33.71
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.3066,
+          "tint": 35.24
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3465,
+          "tint": 36.51
+        }
+      },
+      "129": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2667,
+          "tint": 33.86
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.3064,
+          "tint": 35.43
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3462,
+          "tint": 36.73
+        }
+      },
+      "206": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2752,
+          "tint": 34.04
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.3157,
+          "tint": 35.6
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3562,
+          "tint": 36.9
+        }
+      },
+      "207": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2775,
+          "tint": 34.0
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.3179,
+          "tint": 35.57
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3583,
+          "tint": 36.88
+        }
+      },
+      "208": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2719,
+          "tint": 34.59
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.313,
+          "tint": 36.12
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3541,
+          "tint": 37.37
+        }
+      },
+      "210": {
+        "low": {
+          "fraction_of_living_stain": 0.4,
+          "s": 0.2646,
+          "tint": 33.73
+        },
+        "dead": {
+          "fraction_of_living_stain": 0.5,
+          "s": 0.305,
+          "tint": 35.33
+        },
+        "high": {
+          "fraction_of_living_stain": 0.6,
+          "s": 0.3454,
+          "tint": 36.65
+        }
+      }
+    },
+    "edge_rise_by_px": [
+      0.0,
+      0.055,
+      0.13,
+      0.222,
+      0.321,
+      0.416,
+      0.51,
+      0.583,
+      0.624,
+      0.669,
+      0.721,
+      0.753,
+      0.789,
+      0.803,
+      0.85,
+      0.884,
+      0.884,
+      0.905,
+      0.926,
+      0.911,
+      0.935,
+      0.949,
+      0.951,
+      0.947,
+      0.971,
+      0.972,
+      0.997,
+      0.994,
+      1.002,
+      1.004,
+      1.0,
+      1.005,
+      1.0,
+      1.004,
+      0.999,
+      0.998,
+      0.996,
+      0.989,
+      1.0,
+      1.0
+    ],
+    "edge_slices_with_a_pale_edge": 29
+  },
+  "recipe": {
+    "edge_px": "first distance from the outline where the median over slices of each slice's rescaled s profile (edge 0, plateau 25-39 px = 1) reaches 0.9",
+    "reference_colours": "unstained = median OD of pixels with s below the unstained peak of s (Gaussian KDE, bandwidth factor 0.08, highest maximum between 0.05 and 0.25); stained = median OD of pixels with s above the peak + 4 sd, sd = the peak's lower half width at half maximum / 1.1774; 6000 tissue px per slice, seed 0, all 30 study slices",
+    "cuts": "s and theta of OD = unstained + f x (stained - unstained), f = 0.4 (low), 0.5 (dead), 0.6 (high)",
+    "labels_or_references_used": false
+  },
+  "python": "3.14.4",
+  "evidence": {
+    "time_control_slices_mae_vs_yhs_pp": 5.83,
+    "slices": 11
+  }
+}
