@@ -48,7 +48,7 @@ The engine refuses requests whose `Origin` is not an allowed UI origin (403) and
 | Watch folder | `GET /api/v1/watch` | Set `watch_folder` (absolute path) and `watch_enabled` in the settings. New scans saved there are imported within seconds as `source: "watch_folder"` jobs; files already there when the folder is chosen are not |
 | All results | `GET /api/v1/slices` | Every stored slice result, newest first. Jobs are kept only until the engine stops; results and the library stay on disk |
 | Methods paragraph | `GET /api/v1/hearts/{heart_key}/methods` | One English paragraph per method, the headline method first, with the pipeline version, model versions and SHA-256s, and the cut-offs. Demo (`--mock`) results get a warning instead. `409` when the slices come from different pipeline versions |
-| CSV | `GET /api/v1/hearts/{heart_key}/slices.csv`, `GET /api/v1/hearts.csv?q=&group=&tag=&favourite=` | One row per slice of a heart; one row per library heart. Decimal point `.` always, empty cell for no value; only the ranges reports show (now Method B's) |
+| CSV | `GET /api/v1/hearts/{heart_key}/slices.csv`, `GET /api/v1/hearts.csv?q=&group=&tag=&favourite=` | One row per slice of a heart; one row per library heart. Decimal point `.` always, empty cell for no value; only the ranges reports show (Methods B and C) |
 | ZIP bundle | `GET /api/v1/hearts/{heart_key}/export.zip` | The original scans, every slice's `result.json` and layer PNGs, `heart.json`, both CSVs, `methods.txt`, `settings.json` and `manifest.json` (versions, model hashes, and the SHA-256 of every file in the bundle) |
 | Study set | `GET /api/v1/study-set` | The hearts the pipeline was checked on (from `reference/golden`), each with both methods' %, plus the pipeline version and model hash they were measured with. A report compares a heart with them only when those match. `404` in a build without the reference folder |
 | Demo heart | `GET /api/v1/demo`, `GET /api/v1/demo/{name}` | Heart 206 from the study set (four real TTC scans), for the walkthrough: the list, then each scan byte for byte as `image/tiff`. The app imports them like any other scan. `404` in a build without the `data/` folder |
@@ -75,7 +75,8 @@ Uploading a scan that was already analysed returns the stored result at once (`c
 ## Numbers
 
 * Percentages are 0–100; `null` means the method found no tissue. mm² values are `null` when the image has no DPI; mg values are `null` without a weight.
-* `method_a.range` and `method_b.range` carry `shown`. **Show a range only when `shown` is true.** For now only Method B's is (PLAN.md §2g).
+* `method_a.range` and `method_b.range` carry `shown`. **Show a range only when `shown` is true.** Method B shows its range (PLAN.md §2g, §2i).
+* `method_b` (API 0.6.0, pipeline 0.5.0) is the stain ratio and the default headline method. It is `null` on results stored by pipeline 0.3.0 or 0.4.0, whose Method B was the retired a\* cut (their Method C is dropped too, with the layers of both); a heart summary's `method_b` is `null` when any of its slices is, and the UI then shows Method A only. To get Method B, move the heart to the trash and import its scans again (otherwise the new slices join the old heart, and a heart with mixed pipeline versions has no summary).
 * `qc_flags`: `unvalidated_input` (not a TIFF), `many_unsure` (Method A: > 15% unsure), `holes_removed`, `uncertain_holes`.
 * A heart summary's `weighting` is `slice_weight`, or `tissue_area` when any weight is missing. The `weights_missing` flag marks the second case. `mixed_heart_ids` means the slices came from different heart IDs.
 * Every result names the `pipeline_version`, the model files with their SHA-256, and the image's SHA-256. Show them in reports and exports (PLAN.md §1e).

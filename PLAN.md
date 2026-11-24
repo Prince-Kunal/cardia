@@ -9,7 +9,7 @@
    * what is in each slice;
    * what the result means for the heart.
 
-   Two methods run on every slice until the team picks one (§2): **Method A "K-Means + RF"** (the notebook) and **Method B "a\* cut"** (the earlier repo method). Analysis always runs on the computer. Reports are stored locally and, if the user signs in, synced to the cloud so the same library is available on every computer and can be shared with the lab.
+   Two methods run on every slice (§2): **Method A "K-Means + RF"** (the notebook) and **Method B "stain ratio"** (§2i, the default since 2026-11-24; it replaced the earlier repo method, the a\* cut, D12). Analysis always runs on the computer. Reports are stored locally and, if the user signs in, synced to the cloud so the same library is available on every computer and can be shared with the lab.
 2. **Learn.** A course for someone with no biology background, built around an animated, interactive 3D heart. It covers what the heart is, what an infarct is, why we measure it, how TTC staining works, the traditional methods, and what our method does. It includes quizzes along the way. English only (languages dropped 2026-11-23, D10).
 
 ---
@@ -28,6 +28,8 @@
 | D8 | **Web first, desktop later.** UI: React + TypeScript (Vite, pnpm) in the browser. Engine: the notebook's and `ttc/` code as a Python package behind a **local FastAPI server on 127.0.0.1**, so scans never leave the computer. Desktop phase: Electron wraps the same UI and launches the same engine (frozen with PyInstaller). No C++ port. | No Windows machine yet, and a web app needs no installers, signing or Windows setup. The engine *is* the reference code. Because the UI talks to the engine over HTTP from day one, the desktop step only changes packaging. Electron then gives the same Chromium/WebGL on every OS for the 3D heart (Tauri is the alternative; see §13). |
 | D9 | **A Learn section with an interactive 3D heart**, aimed at students and people with no biology knowledge. | Explains the science and the method to new lab members, students and reviewers. |
 | D10 | **English only (decided 2026-11-23).** The multilingual UI and Learn content are dropped from the plan; §4 is kept only for reference. | Effort goes to the analysis, the reports, Learn and the 3D heart instead. |
+| D11 | *Superseded by D12.* Method C "stain hue" was the default headline method (2026-11-24, pipeline 0.4.0), with A and B beside it. | A over-called the control hearts, B (a\* cut) missed unstained tissue on the infarct hearts. |
+| D12 | **Two methods: A and the new Method B "stain ratio", the default (2026-11-24, pipeline 0.5.0).** The a\* cut (old Method B, D4, D5) and Method C are retired; their code, cut files and parity tests are removed (git history keeps them). Results stored by pipeline 0.3.0 or 0.4.0 still open, with Method A only. | On review, C still missed infarct: pale-pink and mottled tissue around the cream core, which keeps part of the stain. B counts tissue holding less than half the red stain of living muscle (§2i): it reads the infarct hearts between C and A, follows the cream and mottled regions by eye, and does not move under shadows. Its cost: 0.5–11% on the control hearts (YHS: 1–6%), from pale non-muscle tissue and pale patches. No reference or label sets any of its numbers. |
 
 ### What changed from the 2026-11-18 plan
 
@@ -127,12 +129,14 @@
 
 ## 2. Analysis pipelines (per slice, fully automatic)
 
-Until the team chooses one (§13), the app runs **two methods on every slice** and shows both. They share every step except the dead/alive decision:
+The app runs **two methods on every slice** and shows both. They share every step except the dead/alive decision:
 
 ```
 read → lighting correction → tissue mask → holes (one shared hole-model file) ─┬─ Method A "K-Means + RF": 22 pixel features → random forest
-                                                                              └─ Method B "a* cut": smoothed redness a* below a cut-off
+                                                                              └─ Method B "stain ratio": less than half the living stain (§2i)
 ```
+
+(Until 2026-11-24 Method B was the "a\* cut" of the research repo, on its own GrabCut front end; §2a–§2h describe Phase 0 with it. D12 retired it.)
 
 Sources: `GVSU_Infarct_Pipeline_main.ipynb` (Parts D, E, G, L, O) for the shared steps and Method A; `ttc/pipeline.py` + `ttc/infarct.py` for Method B. Phase 0 (§8) moves both into the package `ttc_pipeline/` **without changing behaviour**. Function names below are the original ones.
 
@@ -201,7 +205,7 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
   - **Close, not exact:** retraining with the ported recipe (`engine/training/method_a.py`) moves the K-Means centres by up to 3·10⁻⁴ and the held-out per-slice % by 0.13 pp on average (at most 0.55 pp) from the notebook's. K-Means adds float32 numbers in an order that depends on the CPU and thread count, and the notebook's held-out run shared its random generator across five labellers in an order that changed between Python processes. This is why the shipped forest is the notebook's file, not a retrain; our retrains run K-Means on one thread so they repeat exactly on one machine.
   - In the app, Method A reads the shared front end, whose holes now come from the shipped hole model (§2d), so on hole slices its numbers differ from the notebook's.
 
-### 2f. Method B: a\* cut
+### 2f. Method B (retired 2026-11-24, D12): a\* cut
 - **Front end: its own** (`ttc/segment.py`: white balance, chroma + GrabCut outline, lumen excluded), with the real holes from the shared hole model removed. Phase 0 tried the shared front end and it failed the rule below.
 - a = CIELAB a\* (redness) of the white-balanced photo, Gaussian-blurred σ 1.5 (`smoothed_a`).
 - **Main (conservative):** dead = a < **11.75**. The cut whose slice infarct % is closest to Ref-YHS on the time-control slices; held out by heart it is **2.41 pp** from YHS.
@@ -234,7 +238,19 @@ Fixed settings (`CFG`): `seed=42`, `paper_target_linear=0.88`, `hole_small_frac=
 - **No "methods disagree" flag (decided 2026-11-23).** A and B differ on almost every heart (6–40 pp; median slice difference 25 pp) because A follows the professor's references and B follows YHS, so a 10 pp flag would fire on 7 of 8 hearts. The report shows both methods side by side instead, and Learn module 10 and the About page explain why they differ.
 - QC: area vs weight, implied thickness, edge contact, unsure share, holes removed, non-TIFF input, shadow warning ◆.
 
+### 2i. Method B: stain ratio (2026-11-24, pipeline 0.5.0; replaces the a\* cut and Method C)
+
+* **Question per pixel:** does it hold less than half the red stain of living muscle? Dead = yes, and its colour leans cream (`ttc_pipeline/method_b.py`).
+* **Measures:** the shared paper flat field kept in linear light, unclipped (`flat_field_linear`; the 8-bit corrected image clips the red channel of under-exposed scans, 53% of 119IS80's tissue); each channel averaged over tissue-only neighbourhoods (σ 2 px) and turned into optical density OD = −log10(light / paper). Stain s = OD_G − OD_R (formazan absorbs green, hardly any red); tint θ = atan2(s, OD_B − OD_R) (unstained tissue absorbs blue). A shadow adds the same OD to every channel, so neither moves.
+* **Slice edge:** the outer edge of every slice reads pale whatever its state (thinner tissue, paper showing through). Pixels within 17 px of the outline take the colour of the nearest pixel further in; 17 px is where the pale edge has recovered 90% of the way to each slice's plateau (median over 29 slices).
+* **Cuts, label-free** (`training/calibrate_method_b.py`, `models/stain_ratio/stain_ratio.json`, model 1.0.0): reference colours = median OD of clearly unstained pixels (s below the unstained peak of s) and of clearly stained pixels (s above that peak + 4 sd). Tissue holding a fraction f of the living stain has OD = unstained + f × (stained − unstained) (Beer–Lambert). f = 0.5 gives the dead cut (s 0.309, θ 35.5°); f = 0.4 and 0.6 the range and the borderline band. Leave-one-heart-out: s 0.305–0.318, θ 35.1–36.1°.
+* **Rejected while designing** (each on the 30 slices): a\* with a hue gate (Method C: missed pale-pink and mottled infarct); s alone (counts whitish-pink pale tissue, about as common on control hearts as on infarct hearts); a lightness term (blurs the cream/red split, and shadows move it); valleys of s or θ (shallow; moved with the hearts or pixels used); half-unstained by area (linear-light mixing: ≈ Method C's numbers, but pale-pink tissue is weakly stained throughout, not specks); a classifier of control-heart vs infarct-heart colours (learned heart-to-heart colour differences: 95–99% dead on infarct hearts); counting pale pixels next to cream (under 3 points).
+* **Evidence** (scorecard, held out, `reference/phase0/`): time-control hearts 6.6 / 0.5 / 10.7 / 8.8% (YHS 1.5 / 3.0 / 4.4 for 109 / 119 / 129: heart MAE 4.3 pp, slice MAE 5.6 pp); infarct hearts 66.5 / 66.6 / 59.4 / 30.1% (A 81.2 / 81.4 / 64.6 / 52.0, Ref-1 79.5 / 78.7 / 64.4 / 56.1); Dice vs Ref-1 0.746 (a\* cut 0.562); edge ring −0.5 points; shadow flips 0.1–0.6% at 75% and 55% light; rotate + flip + 8% darker 0.19 (1.91) pp. `tests/test_method_b.py` checks the rule on synthetic colours at known stain fractions, shadows, the edge fill, that the frozen file is what the recipe gives, and the YHS record.
+* **Known limits:** on the control hearts, pale non-muscle tissue (valves, fat, the base) and pale patches count as dead (119: 10.7%, 129: 8.8%; YHS 3.0 and 4.4); on the infarct hearts, nothing checks the line at half the living stain, since expert tracings cannot be obtained; the range (40–60% of the stain) is 9 pp wide at the median slice and contains YHS on 1 of 11 slices.
+
 ### 2h. Evidence and known limits
+
+*Historical: the Method B column below is the retired a\* cut. The scorecard now scores the stain ratio (§2i).*
 
 Phase 0 scorecard (2026-11-23, `engine/training/scorecard.py`): both methods as the engine runs them, every number held out (A: each heart scored by a forest trained on the other 7; B: each time-control heart with the cut chosen on the other two). Full table in the README.
 
@@ -280,7 +296,7 @@ Phase 0 scorecard (2026-11-23, `engine/training/scorecard.py`): both methods as 
 | 7 | Why measure infarct size | The main outcome in preclinical studies testing heart-protecting treatments; area at risk vs infarct | Area-at-risk overlay (Evans blue idea) |
 | 8 | How TTC staining works | Living cells' enzymes turn colourless TTC into red formazan; dead cells cannot, so they stay pale. Protocol: excise → slice → stain → fix → scan. The gold standard: after TTC, the pale (dead) tissue is cut away from the red (living) tissue and both are weighed; infarct % = dead weight ÷ total weight | Heart sliced apex → base; TTC reaches the tissue (§3c); live tissue turns red |
 | 9 | Traditional methods | The gold standard (TTC, then dissecting and weighing the dead and living tissue); manual tracing in ImageJ (planimetry), grayscale cut-offs, histology; in patients, cardiac MRI, SPECT, troponin. Slow, destructive or subjective, and people disagree | Side by side: a slice traced by hand vs a cut-off |
-| 10 | How our app does it | Lighting correction, tissue mask, holes, colour in Lab, the two ways of deciding dead vs alive (random forest and a\* cut), why a range, validation and limits | A real study slice runs through the pipeline step by step, each step drawn on the slice |
+| 10 | How our app does it | Lighting correction, tissue mask, holes, colour in Lab, the two ways of deciding dead vs alive (random forest and stain ratio), why a range, validation and limits | A real study slice runs through the pipeline step by step, each step drawn on the slice |
 | 11 | Good research practice | Blinding, reproducibility, the 3Rs (consistent measurement can mean fewer animals) | — |
 | 12 | Bonus for CS students | Pixels, DPI, colour spaces, morphology, connected components, random forests | Interactive image-processing demos |
 
