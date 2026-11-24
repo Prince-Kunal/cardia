@@ -22,7 +22,9 @@ describe('format', () => {
   });
 
   it('puts the headline method first', () => {
-    expect(methodOrder('a')).toEqual(['a', 'b']);
     expect(methodOrder('b')).toEqual(['b', 'a']);
+    expect(methodOrder('a')).toEqual(['a', 'b']);
+    // Results stored before pipeline 0.5.0 have no Method B (theirs was the retired a* cut).
+    expect(methodOrder('b', (m) => m !== 'b')).toEqual(['a']);
   });
 });

@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EngineError, saveFile } from '../api/client';
 import type { Heart, Job } from '../api/types.gen';
 import { Empty, ErrorNote, Progress } from '../components/ui';
-import { DASH, METHOD_SHORT, date, mg, methodOrder, pct, plural, range } from '../lib/format';
+import { DASH, METHOD_SHORT, type MethodKey, date, mg, methodOrder, pct, plural, range } from '../lib/format';
+import { heartMethod } from '../lib/report';
 import { useDebounced, useTitle } from '../lib/hooks';
 import { href, navigate } from '../lib/router';
 import { startTour } from '../lib/tour';
@@ -79,9 +80,9 @@ function HeartRow({ heart, onChanged }: { heart: Heart; onChanged: () => void })
   const s = heart.summary;
   const open = () => navigate({ name: 'heart', key: heart.heart_key });
 
-  const cell = (m: 'a' | 'b') => {
-    if (!s) return <span className="faint">{DASH}</span>;
-    const r = m === 'a' ? s.method_a : s.method_b;
+  const cell = (m: MethodKey) => {
+    const r = s ? heartMethod(s, m) : null;
+    if (!r) return <span className="faint">{DASH}</span>;
     return (
       <>
         <span className={m === settings.headline_method ? '' : 'muted'}>{pct(r.dead_pct)}</span>
@@ -89,7 +90,7 @@ function HeartRow({ heart, onChanged }: { heart: Heart; onChanged: () => void })
       </>
     );
   };
-  const headline = s ? (settings.headline_method === 'a' ? s.method_a : s.method_b) : null;
+  const headline = s ? heartMethod(s, settings.headline_method) : null;
 
   return (
     <tr className="clickable" onClick={open}>

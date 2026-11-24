@@ -1,13 +1,14 @@
 // The slice image viewer (PLAN.md §1c): the scan with any layers on top, zoom and pan, a before/after
-// slider (original against lighting-corrected) and an A vs B slider (each method's dead map on one side).
+// slider (original against lighting-corrected) and a compare slider (two methods' dead maps, one on each side).
 // Layer PNGs need the token, so they are fetched once and shown through object URLs.
 
 import { type PointerEvent, type WheelEvent, useEffect, useRef, useState } from 'react';
 import type { EngineClient } from '../api/client';
 import type { Layer, LayerInfo } from '../api/types.gen';
+import { METHOD_SHORT, type MethodKey } from '../lib/format';
 import { LAYER_COLOUR } from '../lib/layers';
 
-export type ViewMode = 'layers' | 'before-after' | 'a-vs-b';
+export type ViewMode = 'layers' | 'before-after' | 'compare';
 
 function useLayerUrls(client: EngineClient, sliceId: string, wanted: Layer[]) {
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -81,9 +82,13 @@ interface Props {
   infos: LayerInfo[];
   /** Overlays to start with. */
   initial?: Layer[];
+  /** The two methods the compare slider shows (headline on the left); none when the slice carries one method. */
+  compare?: [MethodKey, MethodKey] | null;
 }
 
-export function LayerViewer({ client, sliceId, width, height, available, infos, initial = ['a_dead'] }: Props) {
+export function LayerViewer({ client, sliceId, width, height, available, infos, initial = ['a_dead'], compare = ['b', 'a'] }: Props) {
+  const [cl, cr] = compare ?? ['b', 'a'];
+  const deadOf = (m: MethodKey) => `${m}_dead` as Layer;
   const [mode, setMode] = useState<ViewMode>('layers');
   const [base, setBase] = useState<'original' | 'corrected'>('corrected');
   const [on, setOn] = useState<Set<Layer>>(() => new Set(initial.filter((l) => available.includes(l))));
@@ -97,8 +102,8 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
   const wanted: Layer[] =
     mode === 'before-after'
       ? ['original', 'corrected']
-      : mode === 'a-vs-b'
-        ? ['corrected', 'a_dead', 'b_dead']
+      : mode === 'compare'
+        ? ['corrected', deadOf(cl), deadOf(cr)]
         : [base, ...on];
   const { url, error } = useLayerUrls(client, sliceId, wanted);
 
@@ -154,9 +159,11 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
             [
               ['layers', 'Layers'],
               ['before-after', 'Before / after'],
-              ['a-vs-b', 'A vs B'],
+              ['compare', `${METHOD_SHORT[cl].replace('Method ', '')} vs ${METHOD_SHORT[cr].replace('Method ', '')}`],
             ] as const
-          ).map(([m, label]) => (
+          )
+            .filter(([m]) => m !== 'compare' || compare)
+            .map(([m, label]) => (
             <button
               key={m}
               type="button"
@@ -201,7 +208,7 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
             ? `Slice scan (${base === 'original' ? 'original' : 'lighting corrected'})${on.size ? ` with ${[...on].map(titleOf).join(', ')}` : ''}`
             : mode === 'before-after'
               ? 'Original scan on the left, lighting corrected on the right'
-              : 'Method A dead tissue on the left, Method B dead tissue on the right'
+              : `${METHOD_SHORT[cl]} dead tissue on the left, ${METHOD_SHORT[cr]} dead tissue on the right`
         }
       >
         <div className="viewer-stage" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}>
@@ -225,11 +232,11 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
               {url('original') && <img className="viewer-layer" src={url('original')} alt="" style={{ clipPath: left }} draggable={false} />}
             </>
           )}
-          {mode === 'a-vs-b' && (
+          {mode === 'compare' && (
             <>
               {url('corrected') && <img className="viewer-layer" src={url('corrected')} alt="" draggable={false} />}
-              <Mask url={url('a_dead')} colour="var(--method-a)" opacity={opacity} clip={left} />
-              <Mask url={url('b_dead')} colour="var(--method-b)" opacity={opacity} clip={right} />
+              <Mask url={url(deadOf(cl))} colour={`var(--method-${cl})`} opacity={opacity} clip={left} />
+              <Mask url={url(deadOf(cr))} colour={`var(--method-${cr})`} opacity={opacity} clip={right} />
             </>
           )}
         </div>
@@ -245,9 +252,9 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
 
       {mode !== 'layers' && (
         <label className="viewer-slider">
-          <span className="fine">{mode === 'before-after' ? 'Original' : <><span className="dot a" />Method A dead</>}</span>
+          <span className="fine">{mode === 'before-after' ? 'Original' : <><span className={`dot ${cl}`} />{METHOD_SHORT[cl]} dead</>}</span>
           <input type="range" min={0} max={100} value={split} onChange={(e) => setSplit(Number(e.target.value))} aria-label="Divider position" />
-          <span className="fine">{mode === 'before-after' ? 'Lighting corrected' : <><span className="dot b" />Method B dead</>}</span>
+          <span className="fine">{mode === 'before-after' ? 'Lighting corrected' : <><span className={`dot ${cr}`} />{METHOD_SHORT[cr]} dead</>}</span>
         </label>
       )}
 
@@ -287,6 +294,13 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
           <span>p = 0 (alive)</span>
           <span className="heat-bar" aria-hidden="true" />
           <span>1 (dead)</span>
+        </div>
+      )}
+      {mode === 'layers' && on.has('b_stain_missing') && (
+        <div className="heat-legend fine" aria-label="Share of the living stain missing, from none to all">
+          <span>none missing (red)</span>
+          <span className="heat-bar" aria-hidden="true" />
+          <span>all missing (unstained)</span>
         </div>
       )}
       <p className="fine">Drag to move when zoomed; scroll with Ctrl (⌘ on a Mac) to zoom at the pointer.</p>

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { EngineError, saveFile } from '../api/client';
 import type { Heart, SliceResult, StudyHeart, StudySet } from '../api/types.gen';
 import { DASH, METHOD_SHORT, type MethodKey, date, methodOrder, pct, shortHash } from '../lib/format';
-import { AREA_WEIGHT_R, CONFIDENCE_LABEL, confidenceOf, heartQuality } from '../lib/report';
+import { AREA_WEIGHT_R, CONFIDENCE_LABEL, confidenceOf, heartQuality, slicePct } from '../lib/report';
 import { href } from '../lib/router';
 import { useApp, useResource } from '../state';
 import { ErrorNote } from './ui';
@@ -56,7 +56,7 @@ function Bar({ m, value }: { m: MethodKey; value: number | null }) {
 /** Slices from apex to base, each with both methods' dead %, so it shows where the damage is. */
 export function Strip({ heart }: { heart: Heart }) {
   const { settings } = useApp();
-  const order = methodOrder(settings.headline_method);
+  const order = methodOrder(settings.headline_method, (m) => m !== 'b' || heart.slices.some((s) => s.method_b_dead_pct !== null));
   return (
     <section className="card stack" aria-labelledby="strip-title" data-tour="strip">
       <div className="card-head" style={{ marginBottom: 0 }}>
@@ -72,21 +72,19 @@ export function Strip({ heart }: { heart: Heart }) {
                 <strong>{i + 1}</strong> · {s.weight_mg === null ? 'no weight' : `${s.weight_mg} mg`}
               </span>
               {order.map((m) => (
-                <Bar key={m} m={m} value={m === 'a' ? s.method_a_dead_pct : s.method_b_dead_pct} />
+                <Bar key={m} m={m} value={slicePct(s, m)} />
               ))}
             </a>
           </li>
         ))}
       </ol>
       <p className="fine row" style={{ gap: 14 }}>
-        <span>
-          <span className="dot a" aria-hidden="true" />
-          {METHOD_SHORT.a}
-        </span>
-        <span>
-          <span className="dot b" aria-hidden="true" />
-          {METHOD_SHORT.b}
-        </span>
+        {order.map((m) => (
+          <span key={m}>
+            <span className={`dot ${m}`} aria-hidden="true" />
+            {METHOD_SHORT[m]}
+          </span>
+        ))}
         <span>1 is nearest the apex.</span>
       </p>
     </section>
@@ -138,7 +136,7 @@ export function Context({ heart }: { heart: Heart }) {
   // A heart that is one of the study hearts (same ID, same results) is compared with the others only.
   const close = (x: number | null, y: number | null) => x !== null && y !== null && Math.abs(x - y) < 0.01;
   const itself = same
-    ? set.hearts.find((h) => h.heart_id === heart.label && close(h.method_a_dead_pct, s.method_a.dead_pct) && close(h.method_b_dead_pct, s.method_b.dead_pct))
+    ? set.hearts.find((h) => h.heart_id === heart.label && close(h.method_a_dead_pct, s.method_a.dead_pct) && close(h.method_b_dead_pct, s.method_b?.dead_pct ?? null))
     : undefined;
   const others = set ? set.hearts.filter((h) => h !== itself) : [];
   return (
@@ -161,8 +159,8 @@ export function Context({ heart }: { heart: Heart }) {
       )}
       {set && same && (
         <>
-          {methodOrder(settings.headline_method).map((m) => (
-            <ContextRow key={m} method={m} value={m === 'a' ? s.method_a.dead_pct : s.method_b.dead_pct} hearts={others} />
+          {methodOrder(settings.headline_method, (m) => m === 'a' || s.method_b !== null).map((m) => (
+            <ContextRow key={m} method={m} value={m === 'a' ? s.method_a.dead_pct : (s.method_b?.dead_pct ?? null)} hearts={others} />
           ))}
           <StudyTable set={set} />
         </>

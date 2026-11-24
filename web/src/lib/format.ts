@@ -39,14 +39,24 @@ export function dateTime(iso: string | null | undefined): string {
     : d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-export const METHOD_LABEL = { a: 'Method A: K-Means + RF', b: 'Method B: a* cut' } as const;
-export const METHOD_SHORT = { a: 'Method A', b: 'Method B' } as const;
+export const METHOD_LABEL = { b: 'Method B: stain ratio', a: 'Method A: K-Means + RF' } as const;
+export const METHOD_SHORT = { b: 'Method B', a: 'Method A' } as const;
 export type MethodKey = keyof typeof METHOD_LABEL;
+/** Every method, in the order reports list them after the headline one. */
+export const METHODS: MethodKey[] = ['b', 'a'];
 
-/** The headline method first, then the other (PLAN.md §2g: one headline, the other always beside it). */
-export function methodOrder(headline: MethodKey): MethodKey[] {
-  return headline === 'a' ? ['a', 'b'] : ['b', 'a'];
+/**
+ * The headline method first, then the others (PLAN.md §2g: one headline, the others always beside it).
+ * `has` leaves out a method the results don't carry: Method B is missing from results stored before
+ * pipeline 0.5.0 (their Method B was the retired a* cut).
+ */
+export function methodOrder(headline: MethodKey, has: (m: MethodKey) => boolean = () => true): MethodKey[] {
+  return [headline, ...METHODS.filter((m) => m !== headline)].filter(has);
 }
+
+/** Shown where a result predates pipeline 0.5.0, so it carries no Method B (theirs was the retired a* cut). */
+export const NO_METHOD_B_NOTE =
+  'Analysed with an earlier pipeline, before Method B became the stain ratio, so only Method A is shown. To get Method B, move the heart to the trash, then import its scans again (the trash keeps the old results for 30 days).';
 
 export const STAGE_LABEL: Record<string, string> = {
   reading: 'Reading the scan',

@@ -10,7 +10,6 @@ export const LAYER_COLOUR: Partial<Record<Layer, string>> = {
   filled: '#3b82f6',
   a_dead: '#f2c14e',
   a_unsure: '#7cc4f2',
-  b_tissue: '#19a7a7',
-  b_dead: '#f28c28',
-  b_borderline: '#c8a2f0',
+  b_dead: '#2bb3e0',
+  b_borderline: '#9be0f5',
 };

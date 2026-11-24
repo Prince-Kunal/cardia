@@ -241,7 +241,7 @@ export function SettingsScreen() {
           <Section
             id="reports"
             title="Headline method"
-            intro="Both methods run on every slice and reports always show them side by side. The headline method is the one reports lead with."
+            intro="Both methods run on every slice and reports always show them side by side. The headline method is the one reports lead with. Method B, the stain ratio, is the default since pipeline 0.5.0: it counts tissue holding less than half the red stain of living muscle, and shadows do not move it."
           >
             <div className="choices" role="radiogroup" aria-label="Headline method">
               {info.methods.map((m) => (
