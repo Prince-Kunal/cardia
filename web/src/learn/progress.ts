@@ -1,6 +1,7 @@
 // Learn progress: the chosen track, where each lesson is, every quiz answer, and the days learned on.
-// Kept in this browser for now; cloud sync (milestone 4) will carry it between computers. If the
-// browser refuses storage (a private window), progress lasts until the page is closed.
+// Kept in this browser; when the app is connected to an engine, it is merged with the engine's copy,
+// which cloud sync carries between computers (connectProgress). If the browser refuses storage (a
+// private window), progress lasts until the page is closed.
 
 import { useSyncExternalStore } from 'react';
 import type { Track } from './lesson';
@@ -191,4 +192,67 @@ export function badges(p: Progress, available: number[], now = new Date()): Badg
 /** For tests: start again from nothing. */
 export function resetProgress(next: Progress = EMPTY): void {
   write(next);
+}
+
+const later = <T extends { at: string }>(a: T | undefined, b: T | undefined): T | undefined =>
+  !a ? b : !b ? a : b.at > a.at ? b : a;
+
+/** Two copies of progress as one: per lesson and per quiz the later record wins, days are joined. */
+export function mergeProgress(a: Progress, b: Progress): Progress {
+  const lessons: Record<string, LessonRecord> = {};
+  for (const id of new Set([...Object.keys(a.lessons), ...Object.keys(b.lessons)])) lessons[id] = later(a.lessons[id], b.lessons[id])!;
+  const quizzes: Record<string, QuizRecord> = {};
+  for (const id of new Set([...Object.keys(a.quizzes), ...Object.keys(b.quizzes)])) quizzes[id] = later(a.quizzes[id], b.quizzes[id])!;
+  return {
+    track: a.track ?? b.track,
+    lessons,
+    quizzes,
+    days: [...new Set([...a.days, ...b.days])].sort().slice(-60),
+  };
+}
+
+function normalise(raw: unknown): Progress | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Partial<Progress>;
+  return { track: p.track ?? null, lessons: p.lessons ?? {}, quizzes: p.quizzes ?? {}, days: p.days ?? [] };
+}
+
+/** Keep progress in step with the engine's copy (and so with cloud sync): pull and merge once, then
+ *  send every change, a moment after it happens. Returns a function that stops it. */
+export function connectProgress(engine: {
+  pull: () => Promise<unknown>;
+  push: (p: Progress) => Promise<unknown>;
+}): () => void {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let sent = '';
+  const send = () => {
+    const body = JSON.stringify(current);
+    if (stopped || body === sent) return;
+    sent = body;
+    engine.push(current).catch(() => {
+      sent = ''; // try again with the next change
+    });
+  };
+  const onChange = () => {
+    clearTimeout(timer);
+    timer = setTimeout(send, 1500);
+  };
+  engine
+    .pull()
+    .then((raw) => {
+      if (stopped) return;
+      const theirs = normalise(raw);
+      const merged = theirs ? mergeProgress(current, theirs) : current;
+      if (JSON.stringify(merged) !== JSON.stringify(current)) write(merged);
+      sent = theirs ? JSON.stringify(theirs) : '';
+      send();
+    })
+    .catch(() => undefined);
+  listeners.add(onChange);
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+    listeners.delete(onChange);
+  };
 }
