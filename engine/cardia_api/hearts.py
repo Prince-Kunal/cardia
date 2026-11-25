@@ -19,7 +19,9 @@ def _nan(x):
 
 
 def _row(r: dict, weight_mg: float | None) -> dict:
-    a, b = r["method_a"], r["method_b"] or {"dead_pct": None, "borderline_pct": None, "range": {}}
+    a = r["method_a"]
+    b = r["method_b"] or {"dead_pct": None, "unsure_pct": None, "range": {}}
+    c = r.get("method_c") or {"dead_pct": None, "borderline_pct": None, "range": {}}
     return {
         "weight_mg": weight_mg,
         "tissue_px": r["tissue"]["tissue_px"],
@@ -28,9 +30,13 @@ def _row(r: dict, weight_mg: float | None) -> dict:
         "a_low_pct": _nan(a["range"]["low_pct"]),
         "a_high_pct": _nan(a["range"]["high_pct"]),
         "b_dead_pct": _nan(b["dead_pct"]),
-        "b_borderline_pct": _nan(b["borderline_pct"]),
+        "b_unsure_pct": _nan(b["unsure_pct"]),
         "b_low_pct": _nan(b["range"].get("low_pct")),
         "b_high_pct": _nan(b["range"].get("high_pct")),
+        "c_dead_pct": _nan(c["dead_pct"]),
+        "c_borderline_pct": _nan(c["borderline_pct"]),
+        "c_low_pct": _nan(c["range"].get("low_pct")),
+        "c_high_pct": _nan(c["range"].get("high_pct")),
     }
 
 
@@ -40,6 +46,7 @@ def summarise(results: list[dict], weights: list[float | None], heart_id: str | 
         raise MixedVersions("These slices were analysed with different pipeline versions or models.")
     hn = heart_numbers([_row(r, w) for r, w in zip(results, weights, strict=True)])
     has_b = all(r["method_b"] is not None for r in results)
+    has_c = all(r.get("method_c") is not None for r in results)
     flags = list(hn.flags) + (["mixed_heart_ids"] if len({r["heart_id"] for r in results}) > 1 else [])
     return HeartSummary(
         heart_id=heart_id or results[0]["heart_id"],
@@ -59,10 +66,18 @@ def summarise(results: list[dict], weights: list[float | None], heart_id: str | 
         method_b={
             "dead_pct": hn.pct["b_dead_pct"],
             "dead_mg": hn.b_dead_mg,
-            "borderline_pct": hn.pct["b_borderline_pct"],
+            "unsure_pct": hn.pct["b_unsure_pct"],
             "range": {"low_pct": hn.pct["b_low_pct"], "high_pct": hn.pct["b_high_pct"], "shown": RANGE_SHOWN["b"]},
         }
         if has_b
+        else None,
+        method_c={
+            "dead_pct": hn.pct["c_dead_pct"],
+            "dead_mg": hn.c_dead_mg,
+            "borderline_pct": hn.pct["c_borderline_pct"],
+            "range": {"low_pct": hn.pct["c_low_pct"], "high_pct": hn.pct["c_high_pct"], "shown": RANGE_SHOWN["c"]},
+        }
+        if has_c
         else None,
     )
 
@@ -86,6 +101,7 @@ def heart_record(heart: dict, store: Store) -> Heart:
                 "weight_source": source,
                 "method_a_dead_pct": r["method_a"]["dead_pct"],
                 "method_b_dead_pct": (r["method_b"] or {}).get("dead_pct"),
+                "method_c_dead_pct": (r.get("method_c") or {}).get("dead_pct"),
                 "qc_flags": r["qc_flags"],
             }
         )

@@ -30,7 +30,7 @@ from .store import Store
 
 log = logging.getLogger("cardia.jobs")
 FINAL = ("done", "failed", "cancelled")
-STAGE_PROGRESS = {"reading": 0.05, "front_end": 0.1, "method_a": 0.4, "method_b": 0.7, "layers": 0.9}
+STAGE_PROGRESS = {"reading": 0.05, "front_end": 0.1, "method_a": 0.35, "method_b": 0.55, "method_c": 0.7, "layers": 0.9}
 KEEP_FINISHED_JOBS = 200
 
 

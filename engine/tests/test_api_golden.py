@@ -25,7 +25,9 @@ COLUMNS = {  # golden column -> (result section, key)
     "a_dead_pct": ("method_a", "dead_pct"),
     "a_unsure_pct": ("method_a", "unsure_pct"),
     "b_dead_pct": ("method_b", "dead_pct"),
-    "b_borderline_pct": ("method_b", "borderline_pct"),
+    "b_unsure_pct": ("method_b", "unsure_pct"),
+    "c_dead_pct": ("method_c", "dead_pct"),
+    "c_borderline_pct": ("method_c", "borderline_pct"),
 }
 
 

@@ -17,11 +17,11 @@ from starlette.background import BackgroundTask
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ttc_pipeline import PIPELINE_VERSION, Models, parse_name
-from ttc_pipeline.method_b import StainRatioModel
+from ttc_pipeline.method_c import StainRatioModel
 
 from . import API_VERSION, demo
 from .backup import BadBackup, restore_backup, write_backup
-from .catalog import LAYERS, METHOD_NAMES, methods
+from .catalog import LAYERS, METHOD_LETTERS, METHOD_NAMES, METHODS_MARK, methods
 from .export import hearts_csv, methods_paragraphs, safe_name, slices_csv, write_bundle
 from .hearts import MixedVersions, heart_record, summarise
 from .jobs import Entry, JobManager
@@ -344,9 +344,12 @@ def create_app(settings: Settings) -> FastAPI:
     # export (PLAN.md §1e) -----------------------------------------------------------------------
 
     def _stored_settings() -> AppSettings:
-        """The saved settings; a headline method that has since been retired (Method C) falls back to the default."""
-        stored = {k: v for k, v in library.get_settings().items() if k in AppSettings.model_fields}
-        if stored.get("headline_method") not in METHOD_NAMES:
+        """The saved settings. A headline method saved before the three methods (API 0.8.0) meant another method
+        under the same letter ("b" was the stain ratio, "c" the retired stain hue), so it falls back to the
+        default (Method A)."""
+        saved = library.get_settings()
+        stored = {k: v for k, v in saved.items() if k in AppSettings.model_fields}
+        if saved.get(METHODS_MARK) != METHOD_LETTERS or stored.get("headline_method") not in METHOD_NAMES:
             stored.pop("headline_method", None)
         return AppSettings.model_validate(stored)
 
@@ -428,7 +431,7 @@ def create_app(settings: Settings) -> FastAPI:
             paragraphs = []
         images = {r["image_sha256"]: store.image_path(r["image_sha256"]) for r in ordered}
         layers = {
-            r["slice_id"]: [p for name in r["layers"] if (p := store.layer_path(r["slice_id"], name)).exists()]
+            r["slice_id"]: [(name, p) for name in r["layers"] if (p := store.layer_path(r["slice_id"], name)).exists()]
             for r in ordered
         }
         fd, tmp = tempfile.mkstemp(prefix="cardia-export-", suffix=".zip")
@@ -583,7 +586,7 @@ def create_app(settings: Settings) -> FastAPI:
     @api.put("/settings", operation_id="putSettings", tags=["settings"])
     def put_settings(new: AppSettings) -> AppSettings:
         """Replace the settings. Choosing a watch folder takes effect within seconds."""
-        library.set_settings(new.model_dump())
+        library.set_settings({**new.model_dump(), METHODS_MARK: METHOD_LETTERS})
         return new
 
     @api.get("/watch", operation_id="getWatchStatus", tags=["settings"])

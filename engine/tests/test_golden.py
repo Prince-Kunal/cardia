@@ -23,7 +23,11 @@ PCT_COLUMNS = [
     "b_dead_pct",
     "b_low_pct",
     "b_high_pct",
-    "b_borderline_pct",
+    "b_unsure_pct",
+    "c_dead_pct",
+    "c_low_pct",
+    "c_high_pct",
+    "c_borderline_pct",
 ]
 PX_COLUMNS = ["tissue_px", "holes_removed_px", "holes_uncertain_px", "filled_px"]
 

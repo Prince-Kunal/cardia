@@ -1,9 +1,12 @@
-"""Phase 0 scorecard: both methods through the same checks (PLAN.md §8).
+"""Phase 0 scorecard: the three methods through the same checks (PLAN.md §8).
 
 Every number is held out unless it says otherwise:
-* Method A: each heart is scored by a forest retrained on the other 7 hearts (training/method_a.py), on the
-  shipped front end. "A (app)" is the frozen forest, which saw every heart.
-* Method B ("stain ratio", 2026-11-24): each heart is scored with the cuts recalibrated on the other 7 hearts
+* Method A (K-Means + RF): each heart is scored by a forest retrained on the other 7 hearts
+  (training/method_a.py), on the shipped front end. "A (app)" is the frozen forest, which saw every heart.
+* Method B (DBSCAN + RF, 2026-11-25): each heart is scored by a forest retrained on the other 7 hearts with the
+  DBSCAN settings tuned on those 7 (training/method_b.py; models/dbscan_rf/dbscan_rf.json, "leave_one_heart_out").
+  "B (app)" is the frozen forest.
+* Method C (stain ratio, 2026-11-24): each heart is scored with the cuts recalibrated on the other 7 hearts
   (models/stain_ratio/stain_ratio.json, "leave_one_heart_out"); no label or reference sets any cut.
 
 References: Ref-0 = the professor's .out files; Ref-1 = the notebook's corrected reference (her live cut-off
@@ -22,12 +25,21 @@ from PIL import Image
 from scipy import ndimage as ndi
 from sklearn.metrics import roc_auc_score
 
-from ttc_pipeline import ForestModel, HoleModel, StainRatioModel, parse_name, read_rgb, run_front_end
+from ttc_pipeline import (
+    ForestModel,
+    HoleModel,
+    StainRatioModel,
+    load_dbscan_forest,
+    parse_name,
+    read_rgb,
+    run_front_end,
+)
 from ttc_pipeline.color import lin_to_srgb, srgb_to_lin
-from ttc_pipeline.method_a import pixel_features, summarise_a
-from ttc_pipeline.method_b import stain_maps, summarise_b
+from ttc_pipeline.method_a import apply_cut, pixel_features, summarise_a
+from ttc_pipeline.method_c import stain_maps, summarise_c
 
 from .method_a import fit_k_means_rf
+from .method_b import fit_dbscan_rf
 from .study import REPO, read_out, study_scans
 
 OUT = REPO / "reference" / "phase0"
@@ -36,6 +48,7 @@ TIME_CONTROL = ("108", "109", "119", "129")
 PROF_LIVE_CUT = {"A": 145, "B": 150}  # the professor's live cut-off per photo batch (notebook CFG["prof_rule"])
 BATCH_A = ("206", "207", "208", "210")
 SEED = 42
+METHODS = ("a", "b", "c")
 SHADOW_LEVELS = (0.75, 0.55)
 RIM_PX = 3
 W_GRAY = np.array([0.298936021293775, 0.587043074451121, 0.114020904255103])
@@ -101,63 +114,71 @@ class Slice:
     tissue_a: np.ndarray
     uncertain: np.ndarray
     features: np.ndarray = field(repr=False)
-    p_app: np.ndarray = field(repr=False)  # frozen forest, per tissue pixel
+    p_app: np.ndarray = field(repr=False)  # Method A's frozen forest, per tissue pixel
+    p_b_app: np.ndarray = field(repr=False)  # Method B's frozen forest
     rgb: np.ndarray = field(repr=False)
     paper: np.ndarray = field(repr=False)
     holes_removed: np.ndarray = field(repr=False)
-    stain: np.ndarray = field(repr=False)  # Method B's s and theta per pixel (NaN outside the tissue)
+    stain: np.ndarray = field(repr=False)  # Method C's s and theta per pixel (NaN outside the tissue)
     tint: np.ndarray = field(repr=False)
     ref_tissue: np.ndarray = field(repr=False)
     ref_dead: np.ndarray = field(repr=False)
-    p_held_out: np.ndarray | None = field(default=None, repr=False)
+    p_held_out: np.ndarray | None = field(default=None, repr=False)  # Method A
+    p_b_held_out: np.ndarray | None = field(default=None, repr=False)  # Method B
 
 
-def run_slice(rgb, hole_model, forest, stain):
+def run_slice(rgb, hole_model, forest, dbscan, stain):
     fe = run_front_end(rgb, hole_model)
     features = pixel_features(fe.norm, fe.tissue)
     s, t = stain_maps(rgb, fe.paper, fe.tissue, fe.holes.removed, stain.sigma, stain.edge_px)
-    return fe, features, forest.dead_probability(features), s, t
+    return fe, features, forest.dead_probability(features), dbscan.dead_probability(features), s, t
 
 
-def load_study(scans, hole_model, forest, stain):
+def load_study(scans, hole_model, forest, dbscan, stain):
     out = []
     for name, path in scans.items():
         rgb = read_rgb(path)
-        fe, features, p_app, b_s, b_t = run_slice(rgb, hole_model, forest, stain)
+        fe, features, p_app, p_b_app, c_s, c_t = run_slice(rgb, hole_model, forest, dbscan, stain)
         ref_tissue, ref_dead = ref1(rgb, name)
         heart, weight = parse_name(name)
         out.append(
-            Slice(name, heart, weight, fe.norm, fe.tissue, fe.holes.uncertain, features, p_app, rgb, fe.paper,
-                  fe.holes.removed, b_s, b_t, ref_tissue, ref_dead)
+            Slice(name, heart, weight, fe.norm, fe.tissue, fe.holes.uncertain, features, p_app, p_b_app, rgb,
+                  fe.paper, fe.holes.removed, c_s, c_t, ref_tissue, ref_dead)
         )  # fmt: skip
     return out
 
 
-def held_out_forests(slices):
-    """{heart: forest trained on the other hearts}, and each slice's held-out probabilities."""
-    forests = {}
+def held_out_forests(slices, dbscan):
+    """({heart: Method A forest trained on the other hearts}, {heart: Method B forest, likewise, with the DBSCAN
+    settings tuned on those hearts}), and each slice's held-out probabilities from both."""
+    forests, forests_b = {}, {}
     feats = [s.features for s in slices]
+    settings = dbscan.info["leave_one_heart_out"]
     for h in sorted({s.heart for s in slices}):
-        _, rf = fit_k_means_rf(feats, [i for i, s in enumerate(slices) if s.heart != h])
-        rf.n_jobs = 1
-        forests[h] = rf
+        train = [i for i, s in enumerate(slices) if s.heart != h]
+        _, rf = fit_k_means_rf(feats, train)
+        _, rf_b = fit_dbscan_rf(feats, train, settings[h])
+        rf.n_jobs = rf_b.n_jobs = 1
+        forests[h], forests_b[h] = rf, (rf_b, settings[h]["cut"])
     for s in slices:
         s.p_held_out = forests[s.heart].predict_proba(s.features)[:, 1].astype(np.float32)
-    return forests
+        rf_b, cut = forests_b[s.heart]
+        s.p_b_held_out = apply_cut(rf_b.predict_proba(s.features)[:, 1], cut)
+    return forests, forests_b
 
 
-def b_model(s, stain):
-    """Method B with the cuts recalibrated without this slice's heart."""
+def c_model(s, stain):
+    """Method C with the cuts recalibrated without this slice's heart."""
     return StainRatioModel.from_info({**stain.info, "cuts": stain.info["calibration"]["leave_one_heart_out"][s.heart]})
 
 
-def b_held_out(s, stain):
-    return summarise_b(s.stain, s.tint, s.tissue_a, s.uncertain, b_model(s, stain))
+def c_held_out(s, stain):
+    return summarise_c(s.stain, s.tint, s.tissue_a, s.uncertain, c_model(s, stain))
 
 
-def b_score(s, stain):
+def c_score(s, stain):
     """Higher = more likely dead: less stain, and red-leaning pixels below every cream-leaning one."""
-    m = b_model(s, stain)
+    m = c_model(s, stain)
     with np.errstate(invalid="ignore"):
         return np.where(s.tissue_a, -np.nan_to_num(s.stain) - 10.0 * (s.tint >= m.tint_cut), -1e9)
 
@@ -216,8 +237,10 @@ def per_slice_table(slices, stain, ref0, yhs):
     for s in slices:
         a_app = summarise_a(s.p_app, s.tissue_a, s.uncertain)
         a_ho = summarise_a(s.p_held_out, s.tissue_a, s.uncertain)
-        b_app = summarise_b(s.stain, s.tint, s.tissue_a, s.uncertain, stain)
-        b_ho = b_held_out(s, stain)
+        b_app = summarise_a(s.p_b_app, s.tissue_a, s.uncertain)
+        b_ho = summarise_a(s.p_b_held_out, s.tissue_a, s.uncertain)
+        c_app = summarise_c(s.stain, s.tint, s.tissue_a, s.uncertain, stain)
+        c_ho = c_held_out(s, stain)
         rows.append(
             {
                 "file": s.name,
@@ -235,7 +258,12 @@ def per_slice_table(slices, stain, ref0, yhs):
                 "b": b_ho.dead_pct,
                 "b_low": b_ho.low_pct,
                 "b_high": b_ho.high_pct,
-                "b_borderline": b_ho.borderline_pct,
+                "b_unsure": b_ho.unsure_pct,
+                "c_app": c_app.dead_pct,
+                "c": c_ho.dead_pct,
+                "c_low": c_ho.low_pct,
+                "c_high": c_ho.high_pct,
+                "c_borderline": c_ho.borderline_pct,
                 "area": int(s.tissue_a.sum()),
             }
         )
@@ -244,11 +272,14 @@ def per_slice_table(slices, stain, ref0, yhs):
 
 def agreement(df):
     hearts = pd.DataFrame(
-        {c: heart_pct(df, c) for c in ("ref0", "ref1", "a", "b", "a_low", "a_high", "b_low", "b_high")}
+        {
+            c: heart_pct(df, c)
+            for c in ("ref0", "ref1", *METHODS, *(f"{m}_{e}" for m in METHODS for e in ("low", "high")))
+        }
     )
     hearts["yhs"] = heart_pct(df.dropna(subset=["yhs"]), "yhs")
     out = {}
-    for m in ("a", "b"):
+    for m in METHODS:
         out[m] = {
             "slice_mae_vs_ref0": mae(df[m], df.ref0),
             "slice_mae_vs_ref1": mae(df[m], df.ref1),
@@ -261,23 +292,28 @@ def agreement(df):
     return hearts, out
 
 
-def shadow_test(slices, forests, stain):
+def shadow_test(slices, forests, forests_b, stain):
     """Share of pixels under a soft shadow that change verdict (notebook Step 51), mean over slices."""
     rows = []
     for i, s in enumerate(slices):
         before_a = s.p_held_out >= 0.5
-        mb = b_model(s, stain)
-        before_b = b_held_out(s, stain).dead[s.tissue_a]
+        before_b = s.p_b_held_out >= 0.5
+        mc = c_model(s, stain)
+        before_c = c_held_out(s, stain).dead[s.tissue_a]
+        rf_b, cut_b = forests_b[s.heart]
         for lv in SHADOW_LEVELS:
             img, w = shade_image(s.norm, s.tissue_a, lv, SEED + i)
             zone = w[s.tissue_a] >= 0.5
-            after = forests[s.heart].predict_proba(pixel_features(img, s.tissue_a))[:, 1] >= 0.5
+            feats = pixel_features(img, s.tissue_a)
+            after = forests[s.heart].predict_proba(feats)[:, 1] >= 0.5
             rows.append(_flips("a", lv, before_a[zone], after[zone]))
-            img_b, w_b = shade_image(s.rgb, s.tissue_a, lv, SEED + i)
-            zone_b = w_b[s.tissue_a] >= 0.5
-            sb, tb = stain_maps(img_b, s.paper, s.tissue_a, s.holes_removed, mb.sigma, mb.edge_px)
-            after_b = summarise_b(sb, tb, s.tissue_a, s.uncertain, mb).dead[s.tissue_a]
-            rows.append(_flips("b", lv, before_b[zone_b], after_b[zone_b]))
+            after_b = apply_cut(rf_b.predict_proba(feats)[:, 1], cut_b) >= 0.5
+            rows.append(_flips("b", lv, before_b[zone], after_b[zone]))
+            img_c, w_c = shade_image(s.rgb, s.tissue_a, lv, SEED + i)
+            zone_c = w_c[s.tissue_a] >= 0.5
+            sc, tc = stain_maps(img_c, s.paper, s.tissue_a, s.holes_removed, mc.sigma, mc.edge_px)
+            after_c = summarise_c(sc, tc, s.tissue_a, s.uncertain, mc).dead[s.tissue_a]
+            rows.append(_flips("c", lv, before_c[zone_c], after_c[zone_c]))
     return pd.DataFrame(rows).groupby(["method", "light"]).mean().round(2)
 
 
@@ -290,17 +326,19 @@ def _flips(method, light, b0, b1):
     }
 
 
-def robustness(scans, slices, hole_model, forest, stain):
-    """|change in slice %| after rotate + flip + 8% darker, for the app's pipeline (frozen forest, shipped cuts)."""
+def robustness(scans, slices, hole_model, forest, dbscan, stain):
+    """|change in slice %| after rotate + flip + 8% darker, for the app's pipeline (frozen forests, shipped cuts)."""
     rows = []
     for s in slices:
         rgb = perturb(read_rgb(scans[s.name]))
-        fe, _, p_app, b_s, b_t = run_slice(rgb, hole_model, forest, stain)
+        fe, _, p_app, p_b_app, c_s, c_t = run_slice(rgb, hole_model, forest, dbscan, stain)
         a = summarise_a(p_app, fe.tissue, fe.holes.uncertain).dead_pct
-        b = summarise_b(b_s, b_t, fe.tissue, fe.holes.uncertain, stain)
+        b = summarise_a(p_b_app, fe.tissue, fe.holes.uncertain).dead_pct
+        c = summarise_c(c_s, c_t, fe.tissue, fe.holes.uncertain, stain).dead_pct
         a0 = summarise_a(s.p_app, s.tissue_a, s.uncertain).dead_pct
-        b0 = summarise_b(s.stain, s.tint, s.tissue_a, s.uncertain, stain)
-        rows.append({"file": s.name, "a_shift": abs(a - a0), "b_shift": abs(b.dead_pct - b0.dead_pct)})
+        b0 = summarise_a(s.p_b_app, s.tissue_a, s.uncertain).dead_pct
+        c0 = summarise_c(s.stain, s.tint, s.tissue_a, s.uncertain, stain).dead_pct
+        rows.append({"file": s.name, "a_shift": abs(a - a0), "b_shift": abs(b - b0), "c_shift": abs(c - c0)})
     return pd.DataFrame(rows)
 
 
@@ -358,7 +396,7 @@ def a_time_control_fixes(slices, df, hearts, base_dice, yhs):
 def ranges(df, hearts):
     """PLAN §2g / §8: the range contains Ref-YHS on the time-control hearts and is <= 10 pp wide on >= 80% of slices."""
     out = {}
-    for m in ("a", "b"):
+    for m in METHODS:
         width = df[f"{m}_high"] - df[f"{m}_low"]
         tc = hearts.loc[["109", "119", "129"]]
         contains = {h: bool(tc.loc[h, f"{m}_low"] <= tc.loc[h, "yhs"] <= tc.loc[h, f"{m}_high"]) for h in tc.index}
@@ -379,45 +417,53 @@ def main():
     assert len(scans) == 30
     yhs, ref0 = read_out("*InfSizeYHS.out"), read_out("*InfSize.out")
     hole_model, forest, stain = HoleModel.load(), ForestModel.load(), StainRatioModel.load()
-    slices = load_study(scans, hole_model, forest, stain)
+    dbscan = load_dbscan_forest()
+    slices = load_study(scans, hole_model, forest, dbscan, stain)
     print("Ref-1 reproduces the notebook's masks on all 30 slices.")
-    forests = held_out_forests(slices)
+    forests, forests_b = held_out_forests(slices, dbscan)
     df = per_slice_table(slices, stain, ref0, yhs)
     hearts, agree = agreement(df)
     pix = {
         "a": pixel_scores(slices, lambda s: full(s, s.p_held_out >= 0.5, s.tissue_a) > 0,
                           lambda s: full(s, s.p_held_out, s.tissue_a)),
-        "b": pixel_scores(slices, lambda s: b_held_out(s, stain).dead, lambda s: b_score(s, stain)),
+        "b": pixel_scores(slices, lambda s: full(s, s.p_b_held_out >= 0.5, s.tissue_a) > 0,
+                          lambda s: full(s, s.p_b_held_out, s.tissue_a)),
+        "c": pixel_scores(slices, lambda s: c_held_out(s, stain).dead, lambda s: c_score(s, stain)),
     }  # fmt: skip
     rings = {
         "ref1": ring(slices, lambda s: s.ref_dead, lambda s: s.ref_tissue),
         "a": ring(slices, lambda s: full(s, s.p_held_out >= 0.5, s.tissue_a) > 0, lambda s: s.tissue_a),
-        "b": ring(slices, lambda s: b_held_out(s, stain).dead, lambda s: s.tissue_a),
+        "b": ring(slices, lambda s: full(s, s.p_b_held_out >= 0.5, s.tissue_a) > 0, lambda s: s.tissue_a),
+        "c": ring(slices, lambda s: c_held_out(s, stain).dead, lambda s: s.tissue_a),
     }
-    shadows = shadow_test(slices, forests, stain)
-    robust = robustness(scans, slices, hole_model, forest, stain)
+    shadows = shadow_test(slices, forests, forests_b, stain)
+    robust = robustness(scans, slices, hole_model, forest, dbscan, stain)
     fixes = a_time_control_fixes(slices, df, hearts, pix["a"]["dice_vs_ref1"], yhs)
     rng = ranges(df, hearts)
-    diff_slices = (df.a - df.b).abs()
-    diff_hearts = (hearts.a - hearts.b).abs()
+    pairs = (("a", "b"), ("a", "c"), ("b", "c"))
     summary = {
         "agreement": agree,
         "pixels_vs_ref1": pix,
         "ring_points": {k: round(v, 1) for k, v in rings.items()},
         "shadow": {f"{m} at {int(100 * lv)}% light": row.to_dict() for (m, lv), row in shadows.iterrows()},
-        "rotate_flip_darker_mean_shift_pp": {
-            "a": round(robust.a_shift.mean(), 2),
-            "b": round(robust.b_shift.mean(), 2),
-        },
-        "rotate_flip_darker_max_shift_pp": {"a": round(robust.a_shift.max(), 2), "b": round(robust.b_shift.max(), 2)},
+        "rotate_flip_darker_mean_shift_pp": {m: round(robust[f"{m}_shift"].mean(), 2) for m in METHODS},
+        "rotate_flip_darker_max_shift_pp": {m: round(robust[f"{m}_shift"].max(), 2) for m in METHODS},
         "area_vs_weight_mean_within_heart_r": round(area_weight_r(df, "area"), 3),
         "method_a_time_control_fixes": fixes,
         "ranges": rng,
-        "a_minus_b": {
-            "slice_abs_diff_pp": {q: round(float(diff_slices.quantile(q)), 1) for q in (0.5, 0.8, 0.9, 1.0)},
-            "heart_abs_diff_pp": {h: round(float(v), 1) for h, v in diff_hearts.items()},
+        **{
+            f"{x}_minus_{y}": {
+                "slice_abs_diff_pp": {
+                    q: round(float((df[x] - df[y]).abs().quantile(q)), 1) for q in (0.5, 0.8, 0.9, 1.0)
+                },
+                "heart_abs_diff_pp": {h: round(float(v), 1) for h, v in (hearts[x] - hearts[y]).abs().items()},
+            }
+            for x, y in pairs
         },
-        "app_vs_held_out_a_mean_abs_diff_pp": round(float((df.a_app - df.a).abs().mean()), 2),
+        "app_vs_held_out_mean_abs_diff_pp": {
+            m: round(float((df[f"{m}_app"] - df[m]).abs().mean()), 2) for m in METHODS
+        },
+        "method_b_settings_held_out": dbscan.info["leave_one_heart_out"],
     }
     df.to_csv(OUT / "scorecard_per_slice.csv", index=False)
     hearts.round(2).to_csv(OUT / "scorecard_per_heart.csv")

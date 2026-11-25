@@ -3,7 +3,7 @@
   "info": {
     "title": "Cardia engine",
     "summary": "Local analysis engine for the Cardia app. Listens on 127.0.0.1 only.",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -2151,11 +2151,12 @@
             "type": "string",
             "enum": [
               "a",
-              "b"
+              "b",
+              "c"
             ],
             "title": "Headline Method",
-            "description": "The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0",
-            "default": "b"
+            "description": "The method reports lead with. Default Method A (K-Means + RF) since pipeline 0.6.0",
+            "default": "a"
           },
           "theme": {
             "type": "string",
@@ -2214,11 +2215,12 @@
             "type": "string",
             "enum": [
               "a",
-              "b"
+              "b",
+              "c"
             ],
             "title": "Headline Method",
-            "description": "The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0",
-            "default": "b"
+            "description": "The method reports lead with. Default Method A (K-Means + RF) since pipeline 0.6.0",
+            "default": "a"
           },
           "theme": {
             "type": "string",
@@ -2766,6 +2768,54 @@
             ],
             "title": "Dead Mg"
           },
+          "unsure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsure Pct"
+          },
+          "range": {
+            "$ref": "#/components/schemas/PctRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dead_pct",
+          "dead_mg",
+          "unsure_pct",
+          "range"
+        ],
+        "title": "HeartMethodB"
+      },
+      "HeartMethodC": {
+        "properties": {
+          "dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Pct"
+          },
+          "dead_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Mg"
+          },
           "borderline_pct": {
             "anyOf": [
               {
@@ -2788,7 +2838,7 @@
           "borderline_pct",
           "range"
         ],
-        "title": "HeartMethodB"
+        "title": "HeartMethodC"
       },
       "HeartSlice": {
         "properties": {
@@ -2854,6 +2904,17 @@
             ],
             "title": "Method B Dead Pct"
           },
+          "method_c_dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method C Dead Pct"
+          },
           "qc_flags": {
             "items": {
               "type": "string",
@@ -2877,6 +2938,7 @@
           "weight_source",
           "method_a_dead_pct",
           "method_b_dead_pct",
+          "method_c_dead_pct",
           "qc_flags"
         ],
         "title": "HeartSlice"
@@ -3010,7 +3072,18 @@
                 "type": "null"
               }
             ],
-            "description": "Null when any slice was analysed before pipeline 0.5.0 (the retired a* cut)"
+            "description": "Null when any slice was analysed before pipeline 0.6.0 (no DBSCAN + RF)"
+          },
+          "method_c": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeartMethodC"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when any slice was analysed before pipeline 0.5.0 (no stain ratio)"
           }
         },
         "type": "object",
@@ -3024,7 +3097,8 @@
           "models_manifest_sha256",
           "mock",
           "method_a",
-          "method_b"
+          "method_b",
+          "method_c"
         ],
         "title": "HeartSummary"
       },
@@ -3370,6 +3444,7 @@
                   "front_end",
                   "method_a",
                   "method_b",
+                  "method_c",
                   "layers"
                 ]
               },
@@ -3469,8 +3544,11 @@
           "a_unsure",
           "a_probability",
           "b_dead",
-          "b_borderline",
-          "b_stain_missing"
+          "b_unsure",
+          "b_probability",
+          "c_dead",
+          "c_borderline",
+          "c_stain_missing"
         ],
         "title": "Layer"
       },
@@ -3650,6 +3728,68 @@
               }
             ],
             "title": "Dead Pct",
+            "description": "Dead share of the shared tissue: p >= 0.5 (DBSCAN + RF forest)"
+          },
+          "dead_px": {
+            "type": "integer",
+            "title": "Dead Px"
+          },
+          "dead_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Mg",
+            "description": "dead_pct x slice weight; null without a weight"
+          },
+          "unsure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsure Pct",
+            "description": "0.35 < p < 0.65"
+          },
+          "many_unsure": {
+            "type": "boolean",
+            "title": "Many Unsure",
+            "description": "More than 15% of the tissue is unsure"
+          },
+          "range": {
+            "$ref": "#/components/schemas/PctRange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dead_pct",
+          "dead_px",
+          "dead_mg",
+          "unsure_pct",
+          "many_unsure",
+          "range"
+        ],
+        "title": "MethodBResult"
+      },
+      "MethodCResult": {
+        "properties": {
+          "dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Pct",
             "description": "Dead share of the shared tissue: less than half the red stain of living muscle, leaning cream"
           },
           "dead_px": {
@@ -3696,7 +3836,7 @@
           "borderline_px",
           "range"
         ],
-        "title": "MethodBResult"
+        "title": "MethodCResult"
       },
       "MethodInfo": {
         "properties": {
@@ -3704,7 +3844,8 @@
             "type": "string",
             "enum": [
               "a",
-              "b"
+              "b",
+              "c"
             ],
             "title": "Key"
           },
@@ -3713,6 +3854,15 @@
             "title": "Name",
             "description": "Label to show, e.g. \"Method A: K-Means + RF\""
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "machine_learning",
+              "colour_rule"
+            ],
+            "title": "Kind",
+            "description": "Methods A and B learn from the photos (compared side by side); Method C is a colour rule"
+          },
           "dead_rule": {
             "type": "string",
             "title": "Dead Rule"
@@ -3720,7 +3870,7 @@
           "unsure_rule": {
             "type": "string",
             "title": "Unsure Rule",
-            "description": "Method A: unsure tissue; Method B: borderline tissue"
+            "description": "Methods A and B: unsure tissue; Method C: borderline tissue"
           },
           "range_shown": {
             "type": "boolean",
@@ -3732,6 +3882,7 @@
         "required": [
           "key",
           "name",
+          "kind",
           "dead_rule",
           "unsure_rule",
           "range_shown"
@@ -3744,14 +3895,15 @@
             "type": "string",
             "enum": [
               "a",
-              "b"
+              "b",
+              "c"
             ],
             "title": "Method"
           },
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "e.g. \"Method B: stain ratio\""
+            "description": "e.g. \"Method B: DBSCAN + RF\""
           },
           "text": {
             "type": "string",
@@ -3824,7 +3976,7 @@
           "shown": {
             "type": "boolean",
             "title": "Shown",
-            "description": "Show this range in reports. Method B shows its range; Method A's is hidden (PLAN.md §2g)"
+            "description": "Show this range in reports. Method C shows its range; Methods A and B hide theirs (PLAN.md §2g)"
           }
         },
         "type": "object",
@@ -4021,7 +4173,18 @@
                 "type": "null"
               }
             ],
-            "description": "Method B, the stain ratio (pipeline 0.5.0 on); null for results stored by an earlier pipeline, whose Method B was the retired a* cut"
+            "description": "Method B, DBSCAN + RF (pipeline 0.6.0 on); null for results stored by an earlier pipeline"
+          },
+          "method_c": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MethodCResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Method C, the stain ratio (pipeline 0.5.0 on, where it was called Method B); null for results stored by an earlier pipeline"
           },
           "qc_flags": {
             "items": {
@@ -4063,6 +4226,7 @@
           "tissue",
           "method_a",
           "method_b",
+          "method_c",
           "qc_flags",
           "layers"
         ],
@@ -4110,6 +4274,17 @@
               }
             ],
             "title": "Method B Dead Pct"
+          },
+          "method_c_dead_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method C Dead Pct"
           }
         },
         "type": "object",
@@ -4118,7 +4293,8 @@
           "slices",
           "total_weight_mg",
           "method_a_dead_pct",
-          "method_b_dead_pct"
+          "method_b_dead_pct",
+          "method_c_dead_pct"
         ],
         "title": "StudyHeart"
       },

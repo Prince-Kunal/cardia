@@ -33,8 +33,11 @@ class Layer(StrEnum):
     a_unsure = "a_unsure"
     a_probability = "a_probability"
     b_dead = "b_dead"
-    b_borderline = "b_borderline"
-    b_stain_missing = "b_stain_missing"
+    b_unsure = "b_unsure"
+    b_probability = "b_probability"
+    c_dead = "c_dead"
+    c_borderline = "c_borderline"
+    c_stain_missing = "c_stain_missing"
 
 
 class Health(Model):
@@ -50,14 +53,17 @@ class ModelFile(Model):
     sha256: str
 
 
-MethodKey = Literal["a", "b"]
+MethodKey = Literal["a", "b", "c"]
 
 
 class MethodInfo(Model):
     key: MethodKey
     name: str = Field(description='Label to show, e.g. "Method A: K-Means + RF"')
+    kind: Literal["machine_learning", "colour_rule"] = Field(
+        description="Methods A and B learn from the photos (compared side by side); Method C is a colour rule"
+    )
     dead_rule: str
-    unsure_rule: str = Field(description="Method A: unsure tissue; Method B: borderline tissue")
+    unsure_rule: str = Field(description="Methods A and B: unsure tissue; Method C: borderline tissue")
     range_shown: bool = Field(description="Whether reports show this method's range (PLAN.md §2g)")
 
 
@@ -97,7 +103,7 @@ class PctRange(Model):
     low_pct: float | None
     high_pct: float | None
     shown: bool = Field(
-        description="Show this range in reports. Method B shows its range; Method A's is hidden (PLAN.md §2g)"
+        description="Show this range in reports. Method C shows its range; Methods A and B hide theirs (PLAN.md §2g)"
     )
 
 
@@ -111,6 +117,15 @@ class MethodAResult(Model):
 
 
 class MethodBResult(Model):
+    dead_pct: float | None = Field(description="Dead share of the shared tissue: p >= 0.5 (DBSCAN + RF forest)")
+    dead_px: int
+    dead_mg: float | None = Field(description="dead_pct x slice weight; null without a weight")
+    unsure_pct: float | None = Field(description="0.35 < p < 0.65")
+    many_unsure: bool = Field(description="More than 15% of the tissue is unsure")
+    range: PctRange
+
+
+class MethodCResult(Model):
     dead_pct: float | None = Field(
         description="Dead share of the shared tissue: less than half the red stain of living muscle, leaning cream"
     )
@@ -140,8 +155,12 @@ class SliceResult(Model):
     method_a: MethodAResult
     method_b: MethodBResult | None = Field(
         default=None,
-        description="Method B, the stain ratio (pipeline 0.5.0 on); null for results stored by an earlier pipeline, "
-        "whose Method B was the retired a* cut",
+        description="Method B, DBSCAN + RF (pipeline 0.6.0 on); null for results stored by an earlier pipeline",
+    )
+    method_c: MethodCResult | None = Field(
+        default=None,
+        description="Method C, the stain ratio (pipeline 0.5.0 on, where it was called Method B); null for results "
+        "stored by an earlier pipeline",
     )
     qc_flags: list[QcFlag]
     layers: list[Layer]
@@ -159,7 +178,7 @@ class JobSlice(Model):
     weight_mg: float | None
     image_sha256: str | None
     state: Literal["queued", "running", "done", "failed", "cancelled"]
-    stage: Literal["reading", "front_end", "method_a", "method_b", "layers"] | None = Field(
+    stage: Literal["reading", "front_end", "method_a", "method_b", "method_c", "layers"] | None = Field(
         description="While running: the step in progress"
     )
     progress: float = Field(ge=0, le=1)
@@ -214,6 +233,13 @@ class HeartMethodA(Model):
 class HeartMethodB(Model):
     dead_pct: float | None
     dead_mg: float | None
+    unsure_pct: float | None
+    range: PctRange
+
+
+class HeartMethodC(Model):
+    dead_pct: float | None
+    dead_mg: float | None
     borderline_pct: float | None
     range: PctRange
 
@@ -231,7 +257,10 @@ class HeartSummary(Model):
     mock: bool
     method_a: HeartMethodA
     method_b: HeartMethodB | None = Field(
-        default=None, description="Null when any slice was analysed before pipeline 0.5.0 (the retired a* cut)"
+        default=None, description="Null when any slice was analysed before pipeline 0.6.0 (no DBSCAN + RF)"
+    )
+    method_c: HeartMethodC | None = Field(
+        default=None, description="Null when any slice was analysed before pipeline 0.5.0 (no stain ratio)"
     )
 
 
@@ -251,6 +280,7 @@ class HeartSlice(Model):
     weight_source: Literal["typed", "file_name"] | None
     method_a_dead_pct: float | None
     method_b_dead_pct: float | None = None
+    method_c_dead_pct: float | None = None
     qc_flags: list[QcFlag]
 
 
@@ -285,7 +315,7 @@ class MethodsParagraph(Model):
     """A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes."""
 
     method: MethodKey
-    name: str = Field(description='e.g. "Method B: stain ratio"')
+    name: str = Field(description='e.g. "Method B: DBSCAN + RF"')
     text: str = Field(description="English. For demo (--mock) results, a warning instead of a paragraph")
     mock: bool
 
@@ -326,7 +356,7 @@ class AppSettings(Model):
 
     model_config = ConfigDict(extra="forbid")
     headline_method: MethodKey = Field(
-        default="b", description="The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0"
+        default="a", description="The method reports lead with. Default Method A (K-Means + RF) since pipeline 0.6.0"
     )
     theme: Literal["system", "light", "dark"] = "system"
     language: str = Field(default="en", pattern=r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$", description="App language")
@@ -357,6 +387,7 @@ class StudyHeart(Model):
     total_weight_mg: float | None
     method_a_dead_pct: float | None
     method_b_dead_pct: float | None
+    method_c_dead_pct: float | None
 
 
 class StudySet(Model):

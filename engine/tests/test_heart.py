@@ -4,12 +4,12 @@ import math
 
 import pytest
 
-from ttc_pipeline.heart import A_COLUMNS, B_COLUMNS, heart_numbers
+from ttc_pipeline.heart import A_COLUMNS, B_COLUMNS, C_COLUMNS, heart_numbers
 
 
 def slice_row(weight, tissue, a_dead, b_dead):
     row = {"weight_mg": weight, "tissue_px": tissue}
-    row |= {c: a_dead for c in A_COLUMNS} | {c: b_dead for c in B_COLUMNS}
+    row |= {c: a_dead for c in A_COLUMNS} | {c: b_dead for c in B_COLUMNS} | {c: b_dead + 1 for c in C_COLUMNS}
     return row
 
 
@@ -21,12 +21,14 @@ def test_slices_are_weighted_by_slice_weight():
     assert h.pct["b_dead_pct"] == pytest.approx((20 * 100 + 40 * 300) / 400)
     assert h.a_dead_mg == pytest.approx(0.10 * 100 + 0.30 * 300)
     assert h.b_dead_mg == pytest.approx(h.pct["b_dead_pct"] / 100 * 400)
+    assert h.pct["c_dead_pct"] == pytest.approx((21 * 100 + 41 * 300) / 400)
+    assert h.c_dead_mg == pytest.approx(h.pct["c_dead_pct"] / 100 * 400)
 
 
 def test_a_missing_weight_switches_every_slice_to_its_tissue_area():
     h = heart_numbers([slice_row(None, 1000, 10.0, 20.0), slice_row(300.0, 3000, 30.0, 40.0)])
     assert h.weighting == "tissue_area" and h.flags == ("weights_missing",)
-    assert h.total_weight_mg is None and h.a_dead_mg is None and h.b_dead_mg is None
+    assert h.total_weight_mg is None and h.a_dead_mg is None and h.b_dead_mg is None and h.c_dead_mg is None
     assert h.pct["a_dead_pct"] == pytest.approx((10 * 1000 + 30 * 3000) / 4000)
     assert h.pct["b_dead_pct"] == pytest.approx((20 * 1000 + 40 * 3000) / 4000)  # the same shared tissue
 

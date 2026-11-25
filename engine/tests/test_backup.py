@@ -143,7 +143,7 @@ def test_the_study_set_matches_the_golden_set():
         float(r["weight_mg"]) for r in mine
     )
     assert first.method_a_dead_pct == pytest.approx(expected)
-    assert all(0 <= h.method_b_dead_pct <= 100 for h in study.hearts)
+    assert all(0 <= h.method_b_dead_pct <= 100 and 0 <= h.method_c_dead_pct <= 100 for h in study.hearts)
 
 
 def test_the_study_set_is_served(source):

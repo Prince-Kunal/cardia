@@ -1,6 +1,14 @@
 {
   "description": "Every model file the engine loads, with its SHA-256. The engine refuses a file that is missing or differs.",
   "files": {
+    "dbscan_rf/dbscan_rf.joblib": {
+      "sha256": "32a1e3e7738180d09b6cf6c8fd87aa3247e2e015048665180458f0cee6f16935",
+      "model_version": "1.0.0"
+    },
+    "dbscan_rf/dbscan_rf.json": {
+      "sha256": "d172b031996210639e7711ef82700bd2caa86eb04556ef655eb0c7f20b0f2b87",
+      "model_version": "1.0.0"
+    },
     "holes/hole_model.joblib": {
       "sha256": "6a6e6b37fc099d6aaa249869e2f15ca617301efecf7a587b188e6dd91ace05e9",
       "model_version": "1.0.0"

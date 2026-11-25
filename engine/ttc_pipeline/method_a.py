@@ -63,11 +63,11 @@ def apply_cut(p, cut):
 
 @dataclass(frozen=True)
 class ForestModel:
-    """The frozen random forest of Method A."""
+    """A frozen random forest on the 22 pixel features (Method A's, or Method B's)."""
 
     rf: object  # fitted RandomForestClassifier
     cut: float
-    info: dict  # the contents of kmeans_rf.json
+    info: dict  # the contents of its .json (kmeans_rf.json or dbscan_rf.json)
 
     @property
     def version(self) -> str:
@@ -78,22 +78,25 @@ class ForestModel:
         return apply_cut(self.rf.predict_proba(features)[:, col], self.cut)
 
     @classmethod
-    def load(cls, models_dir=MODELS_DIR) -> ForestModel:
-        info = json.loads(verified_path(RF_JSON, models_dir).read_text())
+    def load(cls, models_dir=MODELS_DIR, json_rel=RF_JSON, joblib_rel=RF_JOBLIB, name="Method A") -> ForestModel:
+        """A frozen forest on the 22 pixel features: Method A's by default, Method B's with its file names."""
+        info = json.loads(verified_path(json_rel, models_dir).read_text())
         if info["sklearn_version"] != sklearn.__version__:
             raise ModelFileError(
-                f"The Method A forest was saved with scikit-learn {info['sklearn_version']}, "
+                f"The {name} forest was saved with scikit-learn {info['sklearn_version']}, "
                 f"but the engine runs {sklearn.__version__}. Use the pinned environment (uv sync --locked)."
             )
         if info["features"] != FEATURE_NAMES:
-            raise ModelFileError("The Method A forest expects different pixel features than the engine computes.")
-        rf = joblib.load(verified_path(RF_JOBLIB, models_dir))
+            raise ModelFileError(f"The {name} forest expects different pixel features than the engine computes.")
+        rf = joblib.load(verified_path(joblib_rel, models_dir))
         rf.n_jobs = 1  # add the trees' votes in a fixed order, so p is bit-identical on every run
         return cls(rf, float(info["cut"]), info)
 
 
 @dataclass(frozen=True)
-class MethodA:
+class ForestResult:
+    """One forest method's slice result (Method A, and Method B, which reads the same way)."""
+
     p: np.ndarray  # probability of dead per pixel (NaN outside the tissue)
     dead: np.ndarray  # p >= 0.5, inside the tissue
     dead_pct: float
@@ -108,14 +111,17 @@ def _pct(part, whole):
     return 100.0 * float((part & whole).sum()) / n if n else float("nan")
 
 
-def summarise_a(p_tissue, tissue, uncertain_holes, dead_threshold=0.5) -> MethodA:
-    """Method A's slice numbers from the dead probability of each tissue pixel (in tissue-pixel order)."""
+MethodA = ForestResult
+
+
+def summarise_a(p_tissue, tissue, uncertain_holes, dead_threshold=0.5) -> ForestResult:
+    """A forest method's slice numbers from the dead probability of each tissue pixel (in tissue-pixel order)."""
     p = np.full(tissue.shape, np.nan, np.float32)
     p[tissue] = p_tissue
     dead = tissue & (p >= dead_threshold)
     unsure = tissue & (p > UNSURE[0]) & (p < UNSURE[1])
     unsure_pct = _pct(unsure, tissue)
-    return MethodA(
+    return ForestResult(
         p=p,
         dead=dead,
         dead_pct=_pct(dead, tissue),
@@ -126,7 +132,7 @@ def summarise_a(p_tissue, tissue, uncertain_holes, dead_threshold=0.5) -> Method
     )
 
 
-def method_a(norm_img, tissue, uncertain_holes, model: ForestModel, dead_threshold=0.5) -> MethodA:
+def method_a(norm_img, tissue, uncertain_holes, model: ForestModel, dead_threshold=0.5) -> ForestResult:
     """Method A on one lighting-corrected photo. `tissue` has removed holes taken out; uncertain holes are in it."""
     return summarise_a(
         model.dead_probability(pixel_features(norm_img, tissue)), tissue, uncertain_holes, dead_threshold

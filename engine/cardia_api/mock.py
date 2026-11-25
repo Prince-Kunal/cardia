@@ -15,7 +15,7 @@ from scipy import ndimage as ndi
 from ttc_pipeline.analysis import SliceAnalysis, qc_flags
 from ttc_pipeline.holes import CANDIDATE_COLUMNS, Holes
 from ttc_pipeline.method_a import summarise_a
-from ttc_pipeline.method_b import StainRatioModel, stain_and_tint, summarise_b
+from ttc_pipeline.method_c import StainRatioModel, stain_and_tint, summarise_c
 from ttc_pipeline.pipeline import FrontEnd
 
 MOCK_PIPELINE_VERSION = "mock"
@@ -56,8 +56,11 @@ def mock_analyse(rgb, file_name, stain: StainRatioModel, delay_s=0.0, progress=N
     a = summarise_a(p[tissue], tissue, holes.uncertain)
     tell("method_b")
     time.sleep(delay_s)
+    b = summarise_a(np.clip(p * 0.9 + 0.02, 0.0, 1.0)[tissue], tissue, holes.uncertain)  # made up, like A
+    tell("method_c")
+    time.sleep(delay_s)
     od = -np.log10(np.clip(cv2.GaussianBlur(rgb.astype(np.float32) / 255.0, (0, 0), 2.0), 1e-3, None))
     s, t = stain_and_tint(od)
     nan = np.float32(np.nan)
-    b = summarise_b(np.where(tissue, s, nan), np.where(tissue, t, nan), tissue, holes.uncertain, stain)
-    return SliceAnalysis(fe, a, b, tuple(qc_flags(file_name, a, holes)))
+    c = summarise_c(np.where(tissue, s, nan), np.where(tissue, t, nan), tissue, holes.uncertain, stain)
+    return SliceAnalysis(fe, a, b, c, tuple(qc_flags(file_name, a, holes)))

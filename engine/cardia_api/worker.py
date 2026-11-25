@@ -104,9 +104,17 @@ def build_result(task: dict, sa, masks: dict, shape, dpi, layers: list[str]) -> 
             "dead_pct": _num(n["b_dead_pct"]),
             "dead_px": int(masks["b_dead"].sum()),
             "dead_mg": mass(n["b_dead_pct"]),
-            "borderline_pct": _num(n["b_borderline_pct"]),
-            "borderline_px": int(masks["b_borderline"].sum()),
+            "unsure_pct": _num(n["b_unsure_pct"]),
+            "many_unsure": bool(sa.b.many_unsure),
             "range": {"low_pct": _num(n["b_low_pct"]), "high_pct": _num(n["b_high_pct"]), "shown": RANGE_SHOWN["b"]},
+        },
+        "method_c": {
+            "dead_pct": _num(n["c_dead_pct"]),
+            "dead_px": int(masks["c_dead"].sum()),
+            "dead_mg": mass(n["c_dead_pct"]),
+            "borderline_pct": _num(n["c_borderline_pct"]),
+            "borderline_px": int(masks["c_borderline"].sum()),
+            "range": {"low_pct": _num(n["c_low_pct"]), "high_pct": _num(n["c_high_pct"]), "shown": RANGE_SHOWN["c"]},
         },
         "qc_flags": list(sa.qc_flags),
         "layers": layers,
@@ -137,8 +145,8 @@ def run(task: dict) -> dict:
         tmp.mkdir(parents=True)
         try:
             masks = sa.masks()
-            missing = _W["stain"].stain_missing(sa.b.stain)
-            layers = write_layers(tmp, rgb, sa.front_end.norm, masks, sa.a.p, missing)
+            missing = _W["stain"].stain_missing(sa.c.stain)
+            layers = write_layers(tmp, rgb, sa.front_end.norm, masks, sa.a.p, sa.b.p, missing)
             result = SliceResult.model_validate(build_result(task, sa, masks, rgb.shape, dpi, layers))
             (tmp / "result.json").write_text(result.model_dump_json(indent=2) + "\n")
             try:

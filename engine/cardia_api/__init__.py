@@ -6,4 +6,4 @@ and export (CSV, the ZIP bundle and the Methods paragraph). Start it with `uv ru
 The contract is `cardia_api/openapi.json`; README.md in this folder explains it for the UI.
 """
 
-API_VERSION = "0.7.0"  # 0.7.0: Method B is the stain ratio (a* cut and Method C retired); the contract's version
+API_VERSION = "0.8.0"  # 0.8.0: three methods (B is DBSCAN + RF, the stain ratio is C); the contract's version
