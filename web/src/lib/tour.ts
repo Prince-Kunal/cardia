@@ -52,7 +52,7 @@ export const TOUR: TourStep[] = [
   {
     id: 'numbers',
     title: 'Two methods, side by side',
-    body: 'Method A (K-Means + random forest) and Method B (the stain ratio) each give the dead tissue as a % of the heart. They draw the line between dead and alive in different places and can disagree a lot, as on heart 206. Until expert tracings settle which is closer, Cardia shows both. Learn module 10 explains why.',
+    body: 'Each method gives the dead tissue as a % of the heart. Methods A (K-Means + random forest) and B (DBSCAN + random forest) are machine learning and sit side by side to compare; Method C (the stain ratio) is a colour rule, shown apart. They draw the line between dead and alive in different places and can disagree a lot. Until expert tracings settle which is closer, Cardia shows all three. Learn module 10 explains why.',
     on: ['heart'],
     target: ['numbers'],
   },
@@ -74,7 +74,7 @@ export const TOUR: TourStep[] = [
   {
     id: 'layers',
     title: 'See what each method saw',
-    body: 'Turn layers on and off over the scan: the tissue outline, the holes, and the dead tissue each method found. The heatmap shows Method A’s probability of dead for every pixel. Zoom in, or compare two views side by side with the divider.',
+    body: 'Turn layers on and off over the scan: the tissue outline, the holes, and the dead tissue each method found. The heatmaps show Method A’s and Method B’s probability of dead for every pixel. Zoom in, or compare two views side by side with the divider.',
     on: ['slice'],
     target: ['layers'],
   },

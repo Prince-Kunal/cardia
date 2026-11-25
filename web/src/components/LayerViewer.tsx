@@ -82,12 +82,12 @@ interface Props {
   infos: LayerInfo[];
   /** Overlays to start with. */
   initial?: Layer[];
-  /** The two methods the compare slider shows (headline on the left); none when the slice carries one method. */
+  /** The two methods the compare slider shows (A on the left, B on the right); none when the slice lacks one. */
   compare?: [MethodKey, MethodKey] | null;
 }
 
-export function LayerViewer({ client, sliceId, width, height, available, infos, initial = ['a_dead'], compare = ['b', 'a'] }: Props) {
-  const [cl, cr] = compare ?? ['b', 'a'];
+export function LayerViewer({ client, sliceId, width, height, available, infos, initial = ['a_dead'], compare = ['a', 'b'] }: Props) {
+  const [cl, cr] = compare ?? ['a', 'b'];
   const deadOf = (m: MethodKey) => `${m}_dead` as Layer;
   const [mode, setMode] = useState<ViewMode>('layers');
   const [base, setBase] = useState<'original' | 'corrected'>('corrected');
@@ -289,14 +289,14 @@ export function LayerViewer({ client, sliceId, width, height, available, infos, 
         <input type="range" min={10} max={100} value={Math.round(opacity * 100)} onChange={(e) => setOpacity(Number(e.target.value) / 100)} aria-label="Layer strength" />
         <span className="fine num">{Math.round(opacity * 100)}%</span>
       </label>
-      {mode === 'layers' && on.has('a_probability') && (
+      {mode === 'layers' && (on.has('a_probability') || on.has('b_probability')) && (
         <div className="heat-legend fine" aria-label="Probability of dead, from 0 to 1">
           <span>p = 0 (alive)</span>
           <span className="heat-bar" aria-hidden="true" />
           <span>1 (dead)</span>
         </div>
       )}
-      {mode === 'layers' && on.has('b_stain_missing') && (
+      {mode === 'layers' && on.has('c_stain_missing') && (
         <div className="heat-legend fine" aria-label="Share of the living stain missing, from none to all">
           <span>none missing (red)</span>
           <span className="heat-bar" aria-hidden="true" />

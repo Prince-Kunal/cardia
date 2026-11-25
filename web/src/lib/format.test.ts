@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DASH, bytes, mg, methodOrder, pct, plural, range, shortHash } from './format';
+import { DASH, bytes, mg, methodOrder, missingMethodsNote, pct, plural, range, shortHash } from './format';
 
 describe('format', () => {
   it('shows percentages with one decimal and a dash for missing values', () => {
@@ -22,9 +22,16 @@ describe('format', () => {
   });
 
   it('puts the headline method first', () => {
-    expect(methodOrder('b')).toEqual(['b', 'a']);
-    expect(methodOrder('a')).toEqual(['a', 'b']);
-    // Results stored before pipeline 0.5.0 have no Method B (theirs was the retired a* cut).
-    expect(methodOrder('b', (m) => m !== 'b')).toEqual(['a']);
+    expect(methodOrder('a')).toEqual(['a', 'b', 'c']);
+    expect(methodOrder('b')).toEqual(['b', 'a', 'c']);
+    expect(methodOrder('c')).toEqual(['c', 'a', 'b']);
+    // Results stored before pipeline 0.6.0 have no Method B (DBSCAN + RF).
+    expect(methodOrder('b', (m) => m !== 'b')).toEqual(['a', 'c']);
+  });
+
+  it('says which methods an earlier pipeline left out', () => {
+    expect(missingMethodsNote([])).toBeNull();
+    expect(missingMethodsNote(['b'])).toMatch(/^Analysed with an earlier pipeline, so Method B is not shown\. To get it,/);
+    expect(missingMethodsNote(['b', 'c'])).toMatch(/so Method B and Method C are not shown\. To get them,/);
   });
 });

@@ -39,30 +39,51 @@ export function dateTime(iso: string | null | undefined): string {
     : d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-export const METHOD_LABEL = { b: 'Method B: stain ratio', a: 'Method A: K-Means + RF' } as const;
-export const METHOD_SHORT = { b: 'Method B', a: 'Method A' } as const;
+export const METHOD_LABEL = {
+  a: 'Method A: K-Means + RF',
+  b: 'Method B: DBSCAN + RF',
+  c: 'Method C: stain ratio',
+} as const;
+export const METHOD_SHORT = { a: 'Method A', b: 'Method B', c: 'Method C' } as const;
 export type MethodKey = keyof typeof METHOD_LABEL;
 /** Every method, in the order reports list them after the headline one. */
-export const METHODS: MethodKey[] = ['b', 'a'];
+export const METHODS: MethodKey[] = ['a', 'b', 'c'];
+/** The two machine-learning methods, compared side by side (the same 22 pixel features; K-Means vs DBSCAN teacher). */
+export const COMPARED: [MethodKey, MethodKey] = ['a', 'b'];
+/** The colour rule: no machine learning, so it is shown apart from the compared pair. */
+export const COLOUR_RULE: MethodKey = 'c';
+export const METHOD_KIND_LABEL = {
+  machine_learning: 'Machine learning',
+  colour_rule: 'Colour rule, no machine learning',
+} as const;
+export function methodKind(m: MethodKey): keyof typeof METHOD_KIND_LABEL {
+  return m === COLOUR_RULE ? 'colour_rule' : 'machine_learning';
+}
 
 /**
- * The headline method first, then the others (PLAN.md §2g: one headline, the others always beside it).
- * `has` leaves out a method the results don't carry: Method B is missing from results stored before
- * pipeline 0.5.0 (their Method B was the retired a* cut).
+ * The headline method first, then the others in A, B, C order (PLAN.md §2g: one headline, the others always
+ * beside it). `has` leaves out a method the results don't carry (results stored by an earlier pipeline).
  */
 export function methodOrder(headline: MethodKey, has: (m: MethodKey) => boolean = () => true): MethodKey[] {
   return [headline, ...METHODS.filter((m) => m !== headline)].filter(has);
 }
 
-/** Shown where a result predates pipeline 0.5.0, so it carries no Method B (theirs was the retired a* cut). */
-export const NO_METHOD_B_NOTE =
-  'Analysed with an earlier pipeline, before Method B became the stain ratio, so only Method A is shown. To get Method B, move the heart to the trash, then import its scans again (the trash keeps the old results for 30 days).';
+/**
+ * Shown where results were stored by an earlier pipeline and so lack a method: Method B (DBSCAN + RF) came with
+ * pipeline 0.6.0, Method C (the stain ratio, then called Method B) with 0.5.0.
+ */
+export function missingMethodsNote(missing: MethodKey[]): string | null {
+  if (missing.length === 0) return null;
+  const names = missing.map((m) => METHOD_SHORT[m]).join(' and ');
+  return `Analysed with an earlier pipeline, so ${names} ${missing.length === 1 ? 'is' : 'are'} not shown. To get ${missing.length === 1 ? 'it' : 'them'}, move the heart to the trash, then import its scans again (the trash keeps the old results for 30 days).`;
+}
 
 export const STAGE_LABEL: Record<string, string> = {
   reading: 'Reading the scan',
   front_end: 'Lighting and tissue',
   method_a: 'Method A',
   method_b: 'Method B',
+  method_c: 'Method C',
   layers: 'Saving images',
 };
 

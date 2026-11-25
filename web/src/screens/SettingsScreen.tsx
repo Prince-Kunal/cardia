@@ -7,7 +7,7 @@ import { type MouseEvent, type ReactNode, useState } from 'react';
 import type { AppSettings, RestoreReport, WatchStatus } from '../api/types.gen';
 import { EngineError, saveFile } from '../api/client';
 import { ErrorNote } from '../components/ui';
-import { dateTime, plural, shortHash } from '../lib/format';
+import { METHOD_KIND_LABEL, dateTime, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { href } from '../lib/router';
 import { scrollPageTo } from '../lib/scroll';
@@ -241,7 +241,7 @@ export function SettingsScreen() {
           <Section
             id="reports"
             title="Headline method"
-            intro="Both methods run on every slice and reports always show them side by side. The headline method is the one reports lead with. Method B, the stain ratio, is the default since pipeline 0.5.0: it counts tissue holding less than half the red stain of living muscle, and shadows do not move it."
+            intro="All three methods run on every slice and reports always show them: Methods A and B, the two machine-learning methods, side by side, and Method C, a colour rule with no machine learning, apart. The headline method is the one reports lead with. Method A is the default."
           >
             <div className="choices" role="radiogroup" aria-label="Headline method">
               {info.methods.map((m) => (
@@ -256,6 +256,9 @@ export function SettingsScreen() {
                     <strong>
                       <span className={`dot ${m.key}`} aria-hidden="true" />
                       {m.name}
+                      <span className="badge" style={{ marginInlineStart: 8 }}>
+                        {METHOD_KIND_LABEL[m.kind]}
+                      </span>
                     </strong>
                     <span className="fine">
                       Dead: {m.dead_rule}. {sentence(m.unsure_rule)}.{' '}

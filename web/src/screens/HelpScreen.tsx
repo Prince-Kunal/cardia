@@ -15,13 +15,13 @@ const FLAGS: { flag: string; title: string; means: string; todo: string }[] = [
     title: 'Method A is unsure about more than 15% of the tissue',
     means:
       'For many pixels the random forest gave a probability between 0.35 and 0.65: neither clearly dead nor clearly alive. Pale-pink tissue, uneven staining, shadows and blur cause it.',
-    todo: 'Look at the slice’s probability heatmap. If shadows or glare cover the slice, rescan it flat and evenly lit. Compare with Method B before relying on the number.',
+    todo: 'Look at the slice’s probability heatmap. If shadows or glare cover the slice, rescan it flat and evenly lit. Compare with Methods B and C before relying on the number.',
   },
   {
     flag: 'uncertain_holes',
     title: 'Some dark areas may be holes; they were kept as tissue',
     means:
-      'The hole scorer could not decide whether a dark patch inside the slice is a real hole (the chamber, a tear) or a shadow or crease. Unsure patches stay as tissue, and Method B’s range widens to cover both answers.',
+      'The hole scorer could not decide whether a dark patch inside the slice is a real hole (the chamber, a tear) or a shadow or crease. Unsure patches stay as tissue, and Method C’s range widens to cover both answers.',
     todo: 'Open the “Uncertain holes” layer. If a patch is clearly a hole or clearly tissue, the range tells you how much it can move the result.',
   },
   {
@@ -42,8 +42,8 @@ const FLAGS: { flag: string; title: string; means: string; todo: string }[] = [
 
 const FAQ: { q: string; a: string }[] = [
   {
-    q: 'Why does every heart have two results?',
-    a: 'Cardia measures with two methods, Method A (K-Means + random forest) and Method B (the stain ratio: tissue holding less than half the red stain of living muscle). They draw the line between dead and alive in different places and can differ by tens of percentage points. Until expert tracings show which is closer to the truth, reports show both, leading with the one chosen in Settings. Learn module 10 explains both.',
+    q: 'Why does every heart have three results?',
+    a: 'Cardia measures with three methods. Methods A and B are machine learning: a random forest reads 22 numbers per pixel, and only its teacher differs (K-Means colour groups for A, DBSCAN colour groups for B), so they are shown side by side to compare. Method C is a colour rule with no machine learning: tissue holding less than half the red stain of living muscle. They draw the line between dead and alive in different places and can differ by tens of percentage points. Until expert tracings show which is closer to the truth, reports show all three, leading with the one chosen in Settings. Learn module 10 explains them.',
   },
   {
     q: 'My hand tracing gives a different number. Which is right?',
@@ -51,7 +51,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'What do “unsure” and “borderline” mean?',
-    a: 'Unsure (Method A): the random forest’s probability is between 0.35 and 0.65. Borderline (Method B): tissue holding between 40% and 60% of the red stain of living muscle, not clearly dead or alive. Method B’s range runs from the same rule at 40% of the stain to the rule at 60%.',
+    a: 'Unsure (Methods A and B): the random forest’s probability is between 0.35 and 0.65. Borderline (Method C): tissue holding between 40% and 60% of the red stain of living muscle, not clearly dead or alive. Method C’s range runs from the same rule at 40% of the stain to the rule at 60%.',
   },
   {
     q: 'Does my data leave this computer?',

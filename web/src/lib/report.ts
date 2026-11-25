@@ -34,19 +34,24 @@ export function confidenceOf(reasons: Reason[]): Confidence {
 
 export const CONFIDENCE_LABEL: Record<Confidence, string> = { high: 'High', medium: 'Medium', low: 'Low' };
 
-/** One method's slice result; null for Method B on results stored before pipeline 0.5.0. */
+/** One method's slice result; null for a method the result was stored without (an earlier pipeline). */
 export function methodResult(r: SliceResult, m: MethodKey) {
-  return m === 'a' ? r.method_a : r.method_b;
+  return m === 'a' ? r.method_a : m === 'b' ? (r.method_b ?? null) : (r.method_c ?? null);
 }
 
-/** One method's heart numbers; null for Method B when a slice predates pipeline 0.5.0. */
+/** One method's heart numbers; null when a slice was stored without that method (an earlier pipeline). */
 export function heartMethod(s: HeartSummary, m: MethodKey) {
-  return m === 'a' ? s.method_a : s.method_b;
+  return m === 'a' ? s.method_a : m === 'b' ? (s.method_b ?? null) : (s.method_c ?? null);
 }
 
 /** One method's dead % of a slice, as the heart lists it. */
 export function slicePct(s: HeartSlice, m: MethodKey): number | null {
-  return m === 'a' ? s.method_a_dead_pct : s.method_b_dead_pct;
+  return m === 'a' ? s.method_a_dead_pct : m === 'b' ? (s.method_b_dead_pct ?? null) : (s.method_c_dead_pct ?? null);
+}
+
+/** The methods a slice result lacks because an earlier pipeline stored it. */
+export function sliceMissing(r: SliceResult): MethodKey[] {
+  return (['b', 'c'] as MethodKey[]).filter((m) => methodResult(r, m) == null);
 }
 
 /** The methods a slice result carries, headline first. */
@@ -54,7 +59,7 @@ export function sliceOrder(r: SliceResult, headline: MethodKey): MethodKey[] {
   return methodOrder(headline, (m) => methodResult(r, m) != null);
 }
 
-/** "24.1% of the tissue is dead by Method B, range 21.0–27.3% (Method A: 30.2%)." */
+/** "30.2% of the tissue is dead by Method A (Method B: 28.0%; Method C: 24.1%, range 21.0–27.3%)." */
 export function sliceSummary(r: SliceResult, headline: MethodKey): string {
   const [first, ...others] = sliceOrder(r, headline);
   const withRange = (m: MethodKey) => {
@@ -81,30 +86,31 @@ export interface CompositionRow {
 
 const mm2 = (px: number | null, perPx: number | null) => (px === null || perPx === null ? null : px * perPx);
 
-/** What the slice is made of, for one method (both read the same tissue). */
+/** What the slice is made of, for one method (all three read the same tissue). */
 export function composition(r: SliceResult, m: MethodKey): CompositionRow[] {
   const per = r.mm2_per_px;
-  if (m === 'b') {
-    const b = r.method_b;
-    if (!b) return [];
-    const tissue = r.tissue.tissue_px;
-    const alive = Math.max(0, tissue - b.dead_px);
+  const tissue = r.tissue.tissue_px;
+  if (m === 'c') {
+    const c = r.method_c;
+    if (!c) return [];
+    const alive = Math.max(0, tissue - c.dead_px);
     return [
       { label: 'Tissue', px: tissue, mm2: mm2(tissue, per), pctOfTissue: tissue ? 100 : null },
-      { label: 'Dead', px: b.dead_px, mm2: mm2(b.dead_px, per), pctOfTissue: b.dead_pct },
+      { label: 'Dead', px: c.dead_px, mm2: mm2(c.dead_px, per), pctOfTissue: c.dead_pct },
       { label: 'Alive', px: alive, mm2: mm2(alive, per), pctOfTissue: tissue ? (100 * alive) / tissue : null },
-      { label: 'Borderline (40–60% of the living stain)', px: b.borderline_px, mm2: mm2(b.borderline_px, per), pctOfTissue: b.borderline_pct },
+      { label: 'Borderline (40–60% of the stain)', px: c.borderline_px, mm2: mm2(c.borderline_px, per), pctOfTissue: c.borderline_pct },
     ];
   }
-  const tissue = r.tissue.tissue_px;
+  const x = m === 'a' ? r.method_a : r.method_b;
+  if (!x) return [];
   const share = (p: number | null) => (p === null || tissue === 0 ? null : p);
-  const deadPx = r.method_a.dead_px;
-  const unsurePct = r.method_a.unsure_pct;
+  const deadPx = x.dead_px;
+  const unsurePct = x.unsure_pct;
   const unsurePx = unsurePct === null ? null : Math.round((unsurePct / 100) * tissue);
   const alivePx = Math.max(0, tissue - deadPx);
   return [
     { label: 'Tissue', px: tissue, mm2: mm2(tissue, per), pctOfTissue: tissue ? 100 : null },
-    { label: 'Dead', px: deadPx, mm2: mm2(deadPx, per), pctOfTissue: share(r.method_a.dead_pct) },
+    { label: 'Dead', px: deadPx, mm2: mm2(deadPx, per), pctOfTissue: share(x.dead_pct) },
     { label: 'Alive', px: alivePx, mm2: mm2(alivePx, per), pctOfTissue: tissue ? (100 * alivePx) / tissue : null },
     { label: 'Unsure (inside the above)', px: unsurePx, mm2: mm2(unsurePx, per), pctOfTissue: unsurePct },
   ];

@@ -16,11 +16,12 @@ const STUDY: StudySet = {
     total_weight_mg: 400,
     method_a_dead_pct: v,
     method_b_dead_pct: v / 2,
+    method_c_dead_pct: v / 4,
   })),
 };
 
 const measured = (a: number, b: number) =>
-  heart('206', { summary: summary(a, b, { pipeline_version: '0.3.0', models_manifest_sha256: 'abc123', mock: false }) });
+  heart('206', { summary: summary(a, b, { pipeline_version: '0.3.0', models_manifest_sha256: 'abc123', mock: false }, b / 2) });
 
 describe('Context', () => {
   it('places a heart measured like the study set among the study hearts, headline method first', async () => {
@@ -31,7 +32,9 @@ describe('Context', () => {
     expect(screen.getByText('This heart 35.0%: higher than 3 of 4 study hearts (median 25.0%).')).toBeTruthy();
     const rows = document.querySelectorAll('.context-row');
     expect(rows[0].textContent).toContain('Method B');
-    expect(screen.getAllByRole('img', { name: /^Study heart 100/ })).toHaveLength(2);
+    expect(rows[1].textContent).toContain('Method A');
+    expect(rows[2].textContent).toContain('Method C');
+    expect(screen.getAllByRole('img', { name: /^Study heart 100/ })).toHaveLength(3);
     fireEvent.click(screen.getByText('The study hearts as a table'));
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(5);
   });

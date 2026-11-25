@@ -54,9 +54,11 @@
   --info: #2c5d9a;
   --info-soft: #e7eef8;
 
-  /* Method colours: a colour-blind-safe pair (blue / orange) used wherever A and B sit side by side. */
+  /* Method colours (Okabe-Ito based, colour-blind-safe): blue / orange for the compared pair A and B, bluish
+     green for the colour rule C. */
   --method-a: #2f66b3;
   --method-b: #b8650a;
+  --method-c: #00785e;
   /* Overlay tints for the layer viewer (milestone 3). */
   --dead: #f2c14e;
   --borderline: #d87c2b;
@@ -105,6 +107,7 @@
     --info-soft: rgb(127 169 230 / 0.13);
     --method-a: #6a95dd;
     --method-b: #c58141;
+    --method-c: #3fbf9b;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.3);
     --shadow-raised: 0 8px 28px rgb(0 0 0 / 0.5);
     color-scheme: dark;
@@ -136,6 +139,7 @@
   --info-soft: rgb(127 169 230 / 0.13);
   --method-a: #6a95dd;
   --method-b: #c58141;
+  --method-c: #3fbf9b;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.3);
   --shadow-raised: 0 8px 28px rgb(0 0 0 / 0.5);
   color-scheme: dark;
@@ -952,6 +956,7 @@ select.input {
 .table td.num,
 .table th.num {
   text-align: end;
+  white-space: nowrap;
 }
 .table tr.clickable {
   cursor: pointer;
@@ -986,6 +991,9 @@ select.input {
 .dot.b {
   background: var(--method-b);
 }
+.dot.c {
+  background: var(--method-c);
+}
 
 /* ---------- methods panel ---------- */
 
@@ -1013,6 +1021,33 @@ select.input {
 }
 .method.a {
   border-top-color: var(--method-a);
+}
+.method.c {
+  border-top-color: var(--method-c);
+}
+/* Method C, the colour rule, sits apart from the compared machine-learning pair. */
+.method-group-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.method-group-title .fine {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.method-group + .method-group {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
 }
 .method-name {
   display: flex;
@@ -1462,6 +1497,9 @@ select.input {
 .bar-fill.b {
   background: var(--method-b);
 }
+.bar-fill.c {
+  background: var(--method-c);
+}
 .methods-text {
   line-height: 1.65;
   white-space: pre-wrap;
@@ -1537,6 +1575,9 @@ select.input {
 }
 .context-this.b {
   background: var(--method-b);
+}
+.context-this.c {
+  background: var(--method-c);
 }
 .context-label,
 .context-tip {
