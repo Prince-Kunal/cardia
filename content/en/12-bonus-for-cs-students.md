@@ -32,7 +32,7 @@ At 600 dpi, one inch of slice is [[600]] pixels wide.
 
 RGB is how a scanner sees, not how people judge colour. Living, stained muscle and pale, dead muscle differ mostly in **how red** they are, and in RGB that difference is spread across all three channels and mixed up with brightness.
 
-**[CIE L\*a\*b\*](term:lab-colour)** separates them: L\* is lightness, [a\*](term:a-star) runs from green to red, b\* from blue to yellow. In Lab, "how red is this pixel?" is one number, a\*, nearly independent of how brightly the slice was lit. That is why [Method A](term:method-a) uses Lab among its features. Cardia's [Method B](term:method-b) goes one step further: it converts each channel to the light absorbed (optical density). A shadow adds the same amount to every channel there, so the difference between the green and the red channel measures the stain alone.
+**[CIE L\*a\*b\*](term:lab-colour)** separates them: L\* is lightness, [a\*](term:a-star) runs from green to red, b\* from blue to yellow. In Lab, "how red is this pixel?" is one number, a\*, nearly independent of how brightly the slice was lit. That is why [Methods A and B](term:method-a) use Lab among their features. Cardia's [Method C](term:method-c) goes one step further: it converts each channel to the light absorbed (optical density). A shadow adds the same amount to every channel there, so the difference between the green and the red channel measures the stain alone.
 
 :::quiz{type="multiple-choice" id="m12-lab"}
 Why does Cardia convert pixels from RGB to Lab?
@@ -68,7 +68,21 @@ Match each operation with what it does to a mask.
 
 **[K-Means](term:k-means)** sorts points into k groups without being told the answers. Start with k guesses for the group centres. Then repeat: give each point to its nearest centre, and move each centre to the average of its points, until nothing changes.
 
-On tissue pixels in Lab, with k = 3, the groups come out roughly as red (alive), pink (in between) and cream (dead). Cardia used this once, before the app was built, to label pixels for training.
+On tissue pixels in Lab, with k = 3, the groups come out roughly as red (alive), pink (in between) and cream (dead). Cardia used this once, before the app was built, to label pixels for training Method A's forest.
+
+## Clustering: DBSCAN
+
+**[DBSCAN](term:dbscan)** is not told how many groups to make. It looks for dense crowds: a point with at least *min points* neighbours within a distance *eps* is a core point, core points within eps of each other join one group, and points near no crowd are left out as noise. So it can find two, three or five groups, and it ignores the stragglers between them.
+
+Its answer depends on eps and min points. For [Method B](term:method-b), Cardia tried many combinations on the study hearts and kept the one whose palest and reddest crowds matched a simple reference best; those crowds labelled the pixels that trained Method B's forest.
+
+:::quiz{type="multiple-choice" id="m12-dbscan"}
+What does DBSCAN do with a point that has too few neighbours and is near no dense crowd?
+- [ ] Puts it in the nearest group anyway
+- [x] Leaves it out as noise
+- [ ] Starts a new group of its own
+> Only core points and their close neighbours join groups; isolated points are noise. K-Means, by contrast, gives every point to some group.
+:::
 
 :::quiz{type="order-steps" id="m12-kmeans"}
 Put one run of K-Means in order.
@@ -86,7 +100,7 @@ A **decision tree** asks a series of yes-or-no questions about a pixel ("is a\* 
 
 A **[random forest](term:random-forest)** grows many trees, each on a random sample of the training pixels and allowed only a random few features at each question, and lets them vote. The share of trees voting "dead" is the probability. Averaging many slightly different trees cancels much of their noise.
 
-Method A's forest looks at 22 numbers per pixel: colour, colour averaged over neighbourhoods of four sizes, texture, edge strength and distance from the slice's edge.
+The forests of Methods A and B look at the same 22 numbers per pixel: colour, colour averaged over neighbourhoods of four sizes, texture, edge strength and distance from the slice's edge. They differ only in which clustering labelled their training pixels.
 
 :::quiz{type="true-false" answer="false" id="m12-forest"}
 A random forest is one large decision tree trained on all the data.
