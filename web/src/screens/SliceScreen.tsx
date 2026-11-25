@@ -4,7 +4,19 @@
 import type { HeartSlice, Layer, SliceResult } from '../api/types.gen';
 import { LayerViewer } from '../components/LayerViewer';
 import { ErrorNote } from '../components/ui';
-import { DASH, METHOD_LABEL, type MethodKey, NO_METHOD_B_NOTE, dateTime, pct, range, shortHash } from '../lib/format';
+import {
+  COLOUR_RULE,
+  COMPARED,
+  DASH,
+  METHOD_KIND_LABEL,
+  METHOD_LABEL,
+  type MethodKey,
+  dateTime,
+  missingMethodsNote,
+  pct,
+  range,
+  shortHash,
+} from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import {
   type CompositionRow,
@@ -13,6 +25,7 @@ import {
   confidenceOf,
   methodResult,
   sharedParts,
+  sliceMissing,
   sliceOrder,
   sliceReasons,
   sliceSummary,
@@ -137,7 +150,7 @@ export function SliceScreen({ sliceId, heartKey }: { sliceId: string; heartKey?:
 
       <section className="card summary-line" aria-label="Summary">
         <p className="summary-text">{sliceSummary(r, headline)}</p>
-        {r.method_b === null && <p className="fine">{NO_METHOD_B_NOTE}</p>}
+        {missingMethodsNote(sliceMissing(r)) && <p className="fine">{missingMethodsNote(sliceMissing(r))}</p>}
         <div className="row">
           <span className={`badge confidence ${confidence}`}>Confidence: {CONFIDENCE_LABEL[confidence]}</span>
           {reasons.length === 0 ? (
@@ -161,12 +174,29 @@ export function SliceScreen({ sliceId, heartKey }: { sliceId: string; heartKey?:
           available={r.layers}
           infos={info.layers}
           initial={[`${sliceOrder(r, headline)[0]}_dead` as Layer]}
-          compare={sliceOrder(r, headline).length >= 2 ? (sliceOrder(r, headline).slice(0, 2) as [MethodKey, MethodKey]) : null}
+          compare={COMPARED.every((m) => methodResult(r, m)) ? COMPARED : null}
         />
         <div className="stack">
-          {sliceOrder(r, headline).map((m) => (
-            <MethodBlock key={m} r={r} m={m} headline={m === headline} />
-          ))}
+          <section className="method-group" aria-label="Machine-learning methods, compared">
+            <h2 className="method-group-title">
+              {METHOD_KIND_LABEL.machine_learning}: A vs B
+              <span className="fine">same pixel features; K-Means or DBSCAN taught the forest</span>
+            </h2>
+            <div className="stack">
+              {COMPARED.map((m) => (
+                <MethodBlock key={m} r={r} m={m} headline={m === headline} />
+              ))}
+            </div>
+          </section>
+          {methodResult(r, COLOUR_RULE) && (
+            <section className="method-group" aria-label="Colour rule">
+              <h2 className="method-group-title">
+                {METHOD_KIND_LABEL.colour_rule}
+                <span className="fine">a fixed rule on the red stain</span>
+              </h2>
+              <MethodBlock r={r} m={COLOUR_RULE} headline={COLOUR_RULE === headline} />
+            </section>
+          )}
           <section className="card" aria-label="Holes and gaps">
             <h2 className="section-title">Holes and gaps (every method)</h2>
             <CompositionTable rows={sharedParts(r)} caption="Holes and gaps" />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fileNameOf } from '../api/client';
 import type { HeartSlice, SliceResult } from '../api/types.gen';
-import { composition, confidenceOf, correlation, heartQuality, sharedParts, sliceReasons, sliceSummary } from './report';
+import { composition, confidenceOf, correlation, heartQuality, sharedParts, sliceMissing, sliceReasons, sliceSummary } from './report';
 
 function slice(extra: Partial<SliceResult> = {}): SliceResult {
   return {
@@ -15,13 +15,14 @@ function slice(extra: Partial<SliceResult> = {}): SliceResult {
     dpi: [600, 600],
     mm2_per_px: 0.01,
     analysed_at: '2026-11-23T10:00:00Z',
-    pipeline_version: '0.5.0',
+    pipeline_version: '0.6.0',
     models_manifest_sha256: null,
     models: [],
     mock: false,
     tissue: { tissue_px: 1000, tissue_mm2: 10, holes_removed_px: 50, holes_uncertain_px: 0, filled_px: 20 },
     method_a: { dead_pct: 25, dead_px: 250, dead_mg: 22.25, unsure_pct: 5, many_unsure: false, range: { low_pct: 20, high_pct: 30, shown: false } },
-    method_b: { dead_pct: 20, dead_px: 200, dead_mg: 17.8, borderline_pct: 10, borderline_px: 100, range: { low_pct: 20, high_pct: 30, shown: true } },
+    method_b: { dead_pct: 22, dead_px: 220, dead_mg: 19.58, unsure_pct: 4, many_unsure: false, range: { low_pct: 18, high_pct: 26, shown: false } },
+    method_c: { dead_pct: 20, dead_px: 200, dead_mg: 17.8, borderline_pct: 10, borderline_px: 100, range: { low_pct: 20, high_pct: 30, shown: true } },
     qc_flags: ['holes_removed'],
     layers: ['original', 'corrected'],
     ...extra,
@@ -36,6 +37,7 @@ const hs = (weight: number | null, flags: HeartSlice['qc_flags'] = []): HeartSli
   weight_source: weight === null ? null : 'file_name',
   method_a_dead_pct: 20,
   method_b_dead_pct: 18,
+  method_c_dead_pct: 15,
   qc_flags: flags,
 });
 
@@ -51,18 +53,22 @@ describe('slice report', () => {
 
   it('says it in one line, headline method first, ranges only where shown', () => {
     expect(sliceSummary(slice(), 'a')).toBe(
-      '25.0% of the tissue is dead by Method A (Method B: 20.0%, range 20.0–30.0%). Holes were removed.',
+      '25.0% of the tissue is dead by Method A (Method B: 22.0%; Method C: 20.0%, range 20.0–30.0%). Holes were removed.',
     );
-    expect(sliceSummary(slice(), 'b')).toBe(
-      '20.0% of the tissue is dead by Method B, range 20.0–30.0% (Method A: 25.0%). Holes were removed.',
+    expect(sliceSummary(slice(), 'c')).toBe(
+      '20.0% of the tissue is dead by Method C, range 20.0–30.0% (Method A: 25.0%; Method B: 22.0%). Holes were removed.',
     );
     expect(sliceSummary(slice({ method_a: { ...slice().method_a, dead_pct: null } }), 'a')).toBe('No tissue was found in this scan.');
   });
 
-  it('falls back to Method A on results stored before pipeline 0.5.0 (their Method B was the retired a* cut)', () => {
-    const old = slice({ method_b: null });
-    expect(sliceSummary(old, 'b')).toBe('25.0% of the tissue is dead by Method A. Holes were removed.');
-    expect(composition(old, 'b')).toEqual([]);
+  it('leaves out the methods an earlier pipeline did not store', () => {
+    const v05 = slice({ method_b: null });
+    expect(sliceMissing(v05)).toEqual(['b']);
+    expect(sliceSummary(v05, 'b')).toBe('25.0% of the tissue is dead by Method A (Method C: 20.0%, range 20.0–30.0%). Holes were removed.');
+    expect(composition(v05, 'b')).toEqual([]);
+    const v04 = slice({ method_b: null, method_c: null });
+    expect(sliceMissing(v04)).toEqual(['b', 'c']);
+    expect(sliceSummary(v04, 'c')).toBe('25.0% of the tissue is dead by Method A. Holes were removed.');
   });
 
   it('breaks the slice down per method, in mm² when the scan has a DPI', () => {
@@ -76,9 +82,16 @@ describe('slice report', () => {
     const b = composition(slice(), 'b');
     expect(b.map((r) => [r.label, r.px, r.pctOfTissue])).toEqual([
       ['Tissue', 1000, 100],
+      ['Dead', 220, 22],
+      ['Alive', 780, 78],
+      ['Unsure (inside the above)', 40, 4],
+    ]);
+    const c = composition(slice(), 'c');
+    expect(c.map((r) => [r.label, r.px, r.pctOfTissue])).toEqual([
+      ['Tissue', 1000, 100],
       ['Dead', 200, 20],
       ['Alive', 800, 80],
-      ['Borderline (40–60% of the living stain)', 100, 10],
+      ['Borderline (40–60% of the stain)', 100, 10],
     ]);
     expect(sharedParts(slice({ mm2_per_px: null }))[0]).toEqual({ label: 'Holes removed', px: 50, mm2: null, pctOfTissue: 5 });
   });

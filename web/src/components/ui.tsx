@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import type { EngineError } from '../api/client';
 import type { HeartSummary } from '../api/types.gen';
-import { METHOD_LABEL, type MethodKey, mg, methodOrder, pct, range } from '../lib/format';
+import { COLOUR_RULE, COMPARED, METHOD_KIND_LABEL, METHOD_LABEL, type MethodKey, mg, pct, range } from '../lib/format';
 import { heartMethod } from '../lib/report';
 
 export function Progress({ value, label }: { value: number; label: string }) {
@@ -56,7 +56,7 @@ function MethodNumbers({ method, summary, headline }: { method: MethodKey; summa
           <dd>{mg(m.dead_mg)}</dd>
         </div>
         <div>
-          <dt>{method === 'a' ? 'Unsure' : 'Borderline'}</dt>
+          <dt>{method === COLOUR_RULE ? 'Borderline' : 'Unsure'}</dt>
           <dd>{pct(second)}</dd>
         </div>
       </dl>
@@ -64,13 +64,36 @@ function MethodNumbers({ method, summary, headline }: { method: MethodKey; summa
   );
 }
 
-/** Every method side by side, the headline first (no "methods disagree" flag, PLAN.md §2g). */
+/**
+ * The two machine-learning methods side by side (A vs B), then the colour rule (C) apart, since it learns
+ * nothing from the photos. The headline is badged wherever it sits (no "methods disagree" flag, PLAN.md §2g).
+ */
 export function MethodsPanel({ summary, headline }: { summary: HeartSummary; headline: MethodKey }) {
+  const compared = COMPARED.filter((m) => heartMethod(summary, m) != null);
   return (
-    <div className="methods">
-      {methodOrder(headline, (m) => heartMethod(summary, m) != null).map((m) => (
-        <MethodNumbers key={m} method={m} summary={summary} headline={m === headline} />
-      ))}
+    <div className="stack">
+      <div className="method-group">
+        <h3 className="method-group-title">
+          {METHOD_KIND_LABEL.machine_learning}: A vs B
+          <span className="fine">same pixel features; K-Means or DBSCAN taught the forest</span>
+        </h3>
+        <div className="methods">
+          {compared.map((m) => (
+            <MethodNumbers key={m} method={m} summary={summary} headline={m === headline} />
+          ))}
+        </div>
+      </div>
+      {heartMethod(summary, COLOUR_RULE) != null && (
+        <div className="method-group">
+          <h3 className="method-group-title">
+            {METHOD_KIND_LABEL.colour_rule}
+            <span className="fine">a fixed rule on the red stain</span>
+          </h3>
+          <div className="methods">
+            <MethodNumbers method={COLOUR_RULE} summary={summary} headline={COLOUR_RULE === headline} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,8 +14,9 @@ export const INFO: EngineInfo = {
   models_manifest_sha256: null,
   models: [],
   methods: [
-    { key: 'a', name: 'Method A: K-Means + RF', dead_rule: 'p ≥ 0.5', unsure_rule: 'unsure: 0.35 < p < 0.65', range_shown: false },
-    { key: 'b', name: 'Method B: stain ratio', dead_rule: 'stain log(R/G) < 0.309 and tint < 35.5°', unsure_rule: 'borderline: between 40% and 60% of the living stain', range_shown: true },
+    { key: 'a', name: 'Method A: K-Means + RF', kind: 'machine_learning', dead_rule: 'p ≥ 0.5', unsure_rule: 'unsure: 0.35 < p < 0.65', range_shown: false },
+    { key: 'b', name: 'Method B: DBSCAN + RF', kind: 'machine_learning', dead_rule: 'p ≥ 0.5', unsure_rule: 'unsure: 0.35 < p < 0.65', range_shown: false },
+    { key: 'c', name: 'Method C: stain ratio', kind: 'colour_rule', dead_rule: 'stain log(R/G) < 0.309 and tint < 35.5°', unsure_rule: 'borderline: between 40% and 60% of the living stain', range_shown: true },
   ],
   layers: [],
   accepted_extensions: ['.tif', '.tiff', '.png', '.jpg', '.jpeg'],
@@ -33,7 +34,8 @@ export const SETTINGS: AppSettings = {
   watch_enabled: false,
 };
 
-export function summary(a: number, b: number, extra: Partial<HeartSummary> = {}): HeartSummary {
+/** Heart numbers with Method A at `a`, Method B at `b` and Method C at `c` (only C's range is shown). */
+export function summary(a: number, b: number, extra: Partial<HeartSummary> = {}, c = 10): HeartSummary {
   return {
     heart_id: '206',
     slice_ids: [],
@@ -44,7 +46,8 @@ export function summary(a: number, b: number, extra: Partial<HeartSummary> = {})
     models_manifest_sha256: null,
     mock: true,
     method_a: { dead_pct: a, dead_mg: a * 3, unsure_pct: 1, range: { low_pct: a - 2, high_pct: a + 2, shown: false } },
-    method_b: { dead_pct: b, dead_mg: b * 3, borderline_pct: 2, range: { low_pct: b - 3, high_pct: b + 3, shown: true } },
+    method_b: { dead_pct: b, dead_mg: b * 3, unsure_pct: 2, range: { low_pct: b - 3, high_pct: b + 3, shown: false } },
+    method_c: { dead_pct: c, dead_mg: c * 3, borderline_pct: 2, range: { low_pct: c - 3, high_pct: c + 3, shown: true } },
     ...extra,
   };
 }

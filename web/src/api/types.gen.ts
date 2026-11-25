@@ -1,12 +1,12 @@
 // Generated from engine/cardia_api/openapi.json by `uv run python -m cardia_api.openapi`. Do not edit.
-// Cardia engine API 0.7.0.
+// Cardia engine API 0.8.0.
 
-export const API_VERSION = "0.7.0";
+export const API_VERSION = "0.8.0";
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettingsInput {
-  /** The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0 */
-  headline_method?: "a" | "b";
+  /** The method reports lead with. Default Method A (K-Means + RF) since pipeline 0.6.0 */
+  headline_method?: "a" | "b" | "c";
   theme?: "system" | "light" | "dark";
   /** App language */
   language?: string;
@@ -19,8 +19,8 @@ export interface AppSettingsInput {
 
 /** Settings screen (PLAN.md §9 screen 11). Kept by the engine, so every browser sees the same. */
 export interface AppSettings {
-  /** The method reports lead with. Default Method B (the stain ratio) since pipeline 0.5.0 */
-  headline_method: "a" | "b";
+  /** The method reports lead with. Default Method A (K-Means + RF) since pipeline 0.6.0 */
+  headline_method: "a" | "b" | "c";
   theme: "system" | "light" | "dark";
   /** App language */
   language: string;
@@ -106,6 +106,13 @@ export interface HeartMethodA {
 export interface HeartMethodB {
   dead_pct: number | null;
   dead_mg: number | null;
+  unsure_pct: number | null;
+  range: PctRange;
+}
+
+export interface HeartMethodC {
+  dead_pct: number | null;
+  dead_mg: number | null;
   borderline_pct: number | null;
   range: PctRange;
 }
@@ -120,6 +127,7 @@ export interface HeartSlice {
   weight_source: "typed" | "file_name" | null;
   method_a_dead_pct: number | null;
   method_b_dead_pct: number | null;
+  method_c_dead_pct: number | null;
   qc_flags: ("unvalidated_input" | "many_unsure" | "holes_removed" | "uncertain_holes")[];
 }
 
@@ -146,8 +154,10 @@ export interface HeartSummary {
   models_manifest_sha256: string | null;
   mock: boolean;
   method_a: HeartMethodA;
-  /** Null when any slice was analysed before pipeline 0.5.0 (the retired a* cut) */
+  /** Null when any slice was analysed before pipeline 0.6.0 (no DBSCAN + RF) */
   method_b: HeartMethodB | null;
+  /** Null when any slice was analysed before pipeline 0.5.0 (no stain ratio) */
+  method_c: HeartMethodC | null;
 }
 
 export interface HeartSummaryRequest {
@@ -201,7 +211,7 @@ export interface JobSlice {
   image_sha256: string | null;
   state: "queued" | "running" | "done" | "failed" | "cancelled";
   /** While running: the step in progress */
-  stage: "reading" | "front_end" | "method_a" | "method_b" | "layers" | null;
+  stage: "reading" | "front_end" | "method_a" | "method_b" | "method_c" | "layers" | null;
   progress: number;
   /** Set when done: GET /api/v1/slices/{slice_id} */
   slice_id: string | null;
@@ -214,7 +224,7 @@ export interface JobSlice {
   seconds: number | null;
 }
 
-export type Layer = "original" | "corrected" | "tissue" | "holes_removed" | "holes_uncertain" | "filled" | "a_dead" | "a_unsure" | "a_probability" | "b_dead" | "b_borderline" | "b_stain_missing";
+export type Layer = "original" | "corrected" | "tissue" | "holes_removed" | "holes_uncertain" | "filled" | "a_dead" | "a_unsure" | "a_probability" | "b_dead" | "b_unsure" | "b_probability" | "c_dead" | "c_borderline" | "c_stain_missing";
 
 export interface LayerInfo {
   key: Layer;
@@ -250,6 +260,19 @@ export interface MethodAResult {
 }
 
 export interface MethodBResult {
+  /** Dead share of the shared tissue: p >= 0.5 (DBSCAN + RF forest) */
+  dead_pct: number | null;
+  dead_px: number;
+  /** dead_pct x slice weight; null without a weight */
+  dead_mg: number | null;
+  /** 0.35 < p < 0.65 */
+  unsure_pct: number | null;
+  /** More than 15% of the tissue is unsure */
+  many_unsure: boolean;
+  range: PctRange;
+}
+
+export interface MethodCResult {
   /** Dead share of the shared tissue: less than half the red stain of living muscle, leaning cream */
   dead_pct: number | null;
   dead_px: number;
@@ -261,11 +284,13 @@ export interface MethodBResult {
 }
 
 export interface MethodInfo {
-  key: "a" | "b";
+  key: "a" | "b" | "c";
   /** Label to show, e.g. "Method A: K-Means + RF" */
   name: string;
+  /** Methods A and B learn from the photos (compared side by side); Method C is a colour rule */
+  kind: "machine_learning" | "colour_rule";
   dead_rule: string;
-  /** Method A: unsure tissue; Method B: borderline tissue */
+  /** Methods A and B: unsure tissue; Method C: borderline tissue */
   unsure_rule: string;
   /** Whether reports show this method's range (PLAN.md §2g) */
   range_shown: boolean;
@@ -273,8 +298,8 @@ export interface MethodInfo {
 
 /** A Methods paragraph for one method (PLAN.md §1d): what was done, with versions and model hashes. */
 export interface MethodsParagraph {
-  method: "a" | "b";
-  /** e.g. "Method B: stain ratio" */
+  method: "a" | "b" | "c";
+  /** e.g. "Method B: DBSCAN + RF" */
   name: string;
   /** English. For demo (--mock) results, a warning instead of a paragraph */
   text: string;
@@ -291,7 +316,7 @@ export interface ModelFile {
 export interface PctRange {
   low_pct: number | null;
   high_pct: number | null;
-  /** Show this range in reports. Method B shows its range; Method A's is hidden (PLAN.md §2g) */
+  /** Show this range in reports. Method C shows its range; Methods A and B hide theirs (PLAN.md §2g) */
   shown: boolean;
 }
 
@@ -332,8 +357,10 @@ export interface SliceResult {
   mock: boolean;
   tissue: TissueResult;
   method_a: MethodAResult;
-  /** Method B, the stain ratio (pipeline 0.5.0 on); null for results stored by an earlier pipeline, whose Method B was the retired a* cut */
+  /** Method B, DBSCAN + RF (pipeline 0.6.0 on); null for results stored by an earlier pipeline */
   method_b: MethodBResult | null;
+  /** Method C, the stain ratio (pipeline 0.5.0 on, where it was called Method B); null for results stored by an earlier pipeline */
+  method_c: MethodCResult | null;
   qc_flags: ("unvalidated_input" | "many_unsure" | "holes_removed" | "uncertain_holes")[];
   layers: Layer[];
 }
@@ -344,6 +371,7 @@ export interface StudyHeart {
   total_weight_mg: number | null;
   method_a_dead_pct: number | null;
   method_b_dead_pct: number | null;
+  method_c_dead_pct: number | null;
 }
 
 /** The hearts the pipeline was checked on (PLAN.md §1d), as context for a report. Compare a heart with them only when it was measured with the same pipeline version and model files. */

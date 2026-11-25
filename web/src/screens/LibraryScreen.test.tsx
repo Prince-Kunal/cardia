@@ -15,10 +15,12 @@ describe('LibraryScreen', () => {
       .getAllByRole('columnheader')
       .map((th) => th.textContent);
     expect(headers.indexOf('Method B dead')).toBeLessThan(headers.indexOf('Method A dead'));
+    expect(headers.indexOf('Method A dead')).toBeLessThan(headers.indexOf('Method C dead'));
     expect(within(table).getByText('Heart 206')).toBeTruthy();
     expect(within(table).getAllByText('20.0%')).toHaveLength(2);
-    // Method B's range is shown; Method A's is not (PLAN.md §2g).
-    expect(within(table).getAllByText('17.0–23.0%')).toHaveLength(2);
+    // Method C's range is shown; the forests' (A and B) are not (PLAN.md §2g).
+    expect(within(table).getAllByText('7.0–13.0%')).toHaveLength(2);
+    expect(within(table).queryByText('17.0–23.0%')).toBeNull();
     expect(within(table).queryByText('28.0–32.0%')).toBeNull();
     expect(screen.getByRole('button', { name: 'Remove heart 206 from favourites' })).toBeTruthy();
     expect(screen.getByText('2 hearts analysed on this computer.')).toBeTruthy();

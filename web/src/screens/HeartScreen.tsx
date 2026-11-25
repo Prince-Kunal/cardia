@@ -1,4 +1,4 @@
-// A heart in the library: both methods side by side (PLAN.md §2g), its slices in order with their
+// A heart in the library: the methods side by side (PLAN.md §2g), its slices in order with their
 // weights, and the experiment details (§1b). The full heart and slice reports and export are milestone 3.
 
 import { type FormEvent, type InputHTMLAttributes, useState } from 'react';
@@ -6,10 +6,10 @@ import type { Heart, HeartSlice, HeartUpdate } from '../api/types.gen';
 import { EngineError } from '../api/client';
 import { Context, ExportCard, MethodsText, PrintDetails, Quality, Strip } from '../components/HeartReport';
 import { ErrorNote, MethodsPanel } from '../components/ui';
-import { DASH, METHOD_SHORT, NO_METHOD_B_NOTE, QC_LABEL, date, mg, methodOrder, pct, plural, shortHash } from '../lib/format';
+import { DASH, METHOD_SHORT, QC_LABEL, date, mg, methodOrder, missingMethodsNote, pct, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { typedWeight } from '../lib/filenames';
-import { slicePct } from '../lib/report';
+import { heartMethod, slicePct } from '../lib/report';
 import { href, navigate } from '../lib/router';
 import { useApp, useResource } from '../state';
 
@@ -259,7 +259,7 @@ function WeightCell({ s, onSave }: { s: HeartSlice; onSave: (weight: number | nu
 function Slices({ heart, onSaved }: { heart: Heart; onSaved: (h: Heart) => void }) {
   const { client, settings } = useApp();
   const [error, setError] = useState<string>();
-  const order = methodOrder(settings.headline_method, (m) => m !== 'b' || heart.slices.some((s) => s.method_b_dead_pct !== null));
+  const order = methodOrder(settings.headline_method, (m) => m === 'a' || heart.slices.some((s) => slicePct(s, m) !== null));
   const n = heart.slices.length;
 
   async function send(slices: ReturnType<typeof sliceUpdate>) {
@@ -475,7 +475,9 @@ export function HeartScreen({ heartKey }: { heartKey: string }) {
       {s ? (
         <section className="stack" aria-label="Heart numbers" data-tour="numbers">
           <MethodsPanel summary={s} headline={settings.headline_method} />
-          {s.method_b === null && <p className="fine">{NO_METHOD_B_NOTE}</p>}
+          {missingMethodsNote((['b', 'c'] as const).filter((m) => heartMethod(s, m) === null)) && (
+            <p className="fine">{missingMethodsNote((['b', 'c'] as const).filter((m) => heartMethod(s, m) === null))}</p>
+          )}
           <p className="fine">
             {s.weighting === 'slice_weight'
               ? 'Heart percentages are the slice percentages weighted by slice weight.'

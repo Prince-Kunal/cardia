@@ -4,8 +4,8 @@
 import { useEffect, useState } from 'react';
 import { EngineError, saveFile } from '../api/client';
 import type { Heart, SliceResult, StudyHeart, StudySet } from '../api/types.gen';
-import { DASH, METHOD_SHORT, type MethodKey, date, methodOrder, pct, shortHash } from '../lib/format';
-import { AREA_WEIGHT_R, CONFIDENCE_LABEL, confidenceOf, heartQuality, slicePct } from '../lib/report';
+import { DASH, METHOD_SHORT, METHODS, type MethodKey, date, methodOrder, pct, shortHash } from '../lib/format';
+import { AREA_WEIGHT_R, CONFIDENCE_LABEL, confidenceOf, heartMethod, heartQuality, slicePct } from '../lib/report';
 import { href } from '../lib/router';
 import { useApp, useResource } from '../state';
 import { ErrorNote } from './ui';
@@ -53,10 +53,10 @@ function Bar({ m, value }: { m: MethodKey; value: number | null }) {
   );
 }
 
-/** Slices from apex to base, each with both methods' dead %, so it shows where the damage is. */
+/** Slices from apex to base, each with every method's dead %, so it shows where the damage is. */
 export function Strip({ heart }: { heart: Heart }) {
   const { settings } = useApp();
-  const order = methodOrder(settings.headline_method, (m) => m !== 'b' || heart.slices.some((s) => s.method_b_dead_pct !== null));
+  const order = methodOrder(settings.headline_method, (m) => m === 'a' || heart.slices.some((s) => slicePct(s, m) !== null));
   return (
     <section className="card stack" aria-labelledby="strip-title" data-tour="strip">
       <div className="card-head" style={{ marginBottom: 0 }}>
@@ -136,7 +136,11 @@ export function Context({ heart }: { heart: Heart }) {
   // A heart that is one of the study hearts (same ID, same results) is compared with the others only.
   const close = (x: number | null, y: number | null) => x !== null && y !== null && Math.abs(x - y) < 0.01;
   const itself = same
-    ? set.hearts.find((h) => h.heart_id === heart.label && close(h.method_a_dead_pct, s.method_a.dead_pct) && close(h.method_b_dead_pct, s.method_b?.dead_pct ?? null))
+    ? set.hearts.find(
+        (h) =>
+          h.heart_id === heart.label &&
+          METHODS.every((m) => heartMethod(s, m) === null || close(studyValue(h, m), heartMethod(s, m)?.dead_pct ?? null)),
+      )
     : undefined;
   const others = set ? set.hearts.filter((h) => h !== itself) : [];
   return (
@@ -159,8 +163,8 @@ export function Context({ heart }: { heart: Heart }) {
       )}
       {set && same && (
         <>
-          {methodOrder(settings.headline_method, (m) => m === 'a' || s.method_b !== null).map((m) => (
-            <ContextRow key={m} method={m} value={m === 'a' ? s.method_a.dead_pct : (s.method_b?.dead_pct ?? null)} hearts={others} />
+          {methodOrder(settings.headline_method, (m) => heartMethod(s, m) !== null).map((m) => (
+            <ContextRow key={m} method={m} value={heartMethod(s, m)?.dead_pct ?? null} hearts={others} />
           ))}
           <StudyTable set={set} />
         </>
@@ -169,7 +173,8 @@ export function Context({ heart }: { heart: Heart }) {
   );
 }
 
-const studyValue = (h: StudyHeart, m: MethodKey) => (m === 'a' ? h.method_a_dead_pct : h.method_b_dead_pct);
+const studyValue = (h: StudyHeart, m: MethodKey) =>
+  m === 'a' ? h.method_a_dead_pct : m === 'b' ? h.method_b_dead_pct : (h.method_c_dead_pct ?? null);
 
 /** One method's strip: the study hearts in grey, this heart in the method's colour, on 0–100%. */
 function ContextRow({ method, value, hearts }: { method: MethodKey; value: number | null; hearts: StudyHeart[] }) {
@@ -255,12 +260,11 @@ function StudyTable({ set }: { set: StudySet }) {
               <th scope="col" className="num">
                 Weight
               </th>
-              <th scope="col" className="num">
-                {METHOD_SHORT.a}
-              </th>
-              <th scope="col" className="num">
-                {METHOD_SHORT.b}
-              </th>
+              {METHODS.map((m) => (
+                <th key={m} scope="col" className="num">
+                  {METHOD_SHORT[m]}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -269,8 +273,11 @@ function StudyTable({ set }: { set: StudySet }) {
                 <th scope="row">{h.heart_id}</th>
                 <td className="num">{h.slices}</td>
                 <td className="num">{h.total_weight_mg === null ? DASH : `${h.total_weight_mg} mg`}</td>
-                <td className="num">{pct(h.method_a_dead_pct)}</td>
-                <td className="num">{pct(h.method_b_dead_pct)}</td>
+                {METHODS.map((m) => (
+                  <td key={m} className="num">
+                    {pct(studyValue(h, m))}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
