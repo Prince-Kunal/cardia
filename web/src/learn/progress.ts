@@ -32,6 +32,8 @@ export interface Progress {
   quizzes: Record<string, QuizRecord>;
   /** Local dates (YYYY-MM-DD) with any learning, newest last; the last 60 are kept. */
   days: string[];
+  /** XP earned per local date (learn/game.ts). Absent in progress saved before XP existed. */
+  xp?: Record<string, number>;
 }
 
 const KEY = 'cardia.learn.v1';
@@ -44,7 +46,7 @@ function read(): Progress {
     const raw = localStorage.getItem(KEY);
     if (!raw) return EMPTY;
     const p = JSON.parse(raw) as Partial<Progress>;
-    return { track: p.track ?? null, lessons: p.lessons ?? {}, quizzes: p.quizzes ?? {}, days: p.days ?? [] };
+    return { track: p.track ?? null, lessons: p.lessons ?? {}, quizzes: p.quizzes ?? {}, days: p.days ?? [], ...(p.xp ? { xp: p.xp } : {}) };
   } catch {
     return EMPTY;
   }
@@ -96,6 +98,24 @@ function withDay(p: Progress, now: Date): string[] {
   return p.days.at(-1) === day ? p.days : [...p.days, day].slice(-60);
 }
 
+/** XP for what learners had done before XP existed: it all counts, on the first day they learned. */
+export function baselineXp(p: Progress): number {
+  let xp = 0;
+  for (const l of Object.values(p.lessons)) if (l.done) xp += XP.lesson;
+  for (const q of Object.values(p.quizzes)) xp += q.firstTry ? XP.firstTry : q.correct ? XP.retry : 0;
+  return xp;
+}
+
+function withXp(p: Progress, gained: number, now: Date): Record<string, number> | undefined {
+  if (gained <= 0) return p.xp;
+  const day = localDay(now);
+  const log = p.xp ?? (baselineXp(p) > 0 ? { [p.days[0] ?? day]: baselineXp(p) } : {});
+  return { ...log, [day]: (log[day] ?? 0) + gained };
+}
+
+/** How much XP each thing earns. */
+export const XP = { firstTry: 10, retry: 5, review: 5, practice: 2, lesson: 20, replay: 5 } as const;
+
 export function chooseTrack(track: Track): void {
   write({ ...current, track });
 }
@@ -113,19 +133,27 @@ export function visitStep(module: number, step: number, steps: number, now = new
   });
 }
 
-export function finishLesson(module: number, steps: number, now = new Date()): void {
+/** Finish a lesson; returns the XP it earned (a lesson done again earns a little). */
+export function finishLesson(module: number, steps: number, now = new Date()): number {
+  const gained = current.lessons[module]?.done ? XP.replay : XP.lesson;
+  const xp = withXp(current, gained, now);
   write({
     ...current,
     lessons: { ...current.lessons, [module]: { step: steps, steps, done: true, at: now.toISOString() } },
     days: withDay(current, now),
+    ...(xp ? { xp } : {}),
   });
+  return gained;
 }
 
-/** Record an answer. Wrong answers come back for review; right answers in review move up a box. */
-export function answerQuiz(id: string, correct: boolean, now = new Date()): void {
+/** Record an answer. Wrong answers come back for review; right answers in review move up a box.
+ *  Returns the XP the answer earned. */
+export function answerQuiz(id: string, correct: boolean, now = new Date()): number {
   const old = current.quizzes[id];
   let box = old?.box ?? 0;
   let due: string | null = old?.due ?? null;
+  let gained = 0;
+  if (correct) gained = !old ? XP.firstTry : due !== null ? XP.review : old.correct ? XP.practice : XP.retry;
   if (!correct) {
     box = 0;
     due = now.toISOString();
@@ -133,6 +161,7 @@ export function answerQuiz(id: string, correct: boolean, now = new Date()): void
     box += 1;
     due = box < REVIEW_DAYS.length ? new Date(now.getTime() + REVIEW_DAYS[box] * 86_400_000).toISOString() : null;
   }
+  const xp = withXp(current, gained, now);
   write({
     ...current,
     quizzes: {
@@ -140,7 +169,9 @@ export function answerQuiz(id: string, correct: boolean, now = new Date()): void
       [id]: { firstTry: old ? old.firstTry : correct, correct, attempts: (old?.attempts ?? 0) + 1, at: now.toISOString(), box, due },
     },
     days: withDay(current, now),
+    ...(xp ? { xp } : {}),
   });
+  return gained;
 }
 
 export function dueForReview(p: Progress, now = new Date()): string[] {
@@ -203,18 +234,25 @@ export function mergeProgress(a: Progress, b: Progress): Progress {
   for (const id of new Set([...Object.keys(a.lessons), ...Object.keys(b.lessons)])) lessons[id] = later(a.lessons[id], b.lessons[id])!;
   const quizzes: Record<string, QuizRecord> = {};
   for (const id of new Set([...Object.keys(a.quizzes), ...Object.keys(b.quizzes)])) quizzes[id] = later(a.quizzes[id], b.quizzes[id])!;
-  return {
+  const merged: Progress = {
     track: a.track ?? b.track,
     lessons,
     quizzes,
     days: [...new Set([...a.days, ...b.days])].sort().slice(-60),
   };
+  // XP per day: each computer logs its own; the larger count for a day wins (never double counted).
+  if (a.xp || b.xp) {
+    const xp: Record<string, number> = { ...(a.xp ?? {}) };
+    for (const [day, n] of Object.entries(b.xp ?? {})) xp[day] = Math.max(xp[day] ?? 0, n);
+    merged.xp = xp;
+  }
+  return merged;
 }
 
 function normalise(raw: unknown): Progress | null {
   if (!raw || typeof raw !== 'object') return null;
   const p = raw as Partial<Progress>;
-  return { track: p.track ?? null, lessons: p.lessons ?? {}, quizzes: p.quizzes ?? {}, days: p.days ?? [] };
+  return { track: p.track ?? null, lessons: p.lessons ?? {}, quizzes: p.quizzes ?? {}, days: p.days ?? [], ...(p.xp ? { xp: p.xp } : {}) };
 }
 
 /** Keep progress in step with the engine's copy (and so with cloud sync): pull and merge once, then
