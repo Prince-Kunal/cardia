@@ -40,3 +40,6 @@ outputs/
 .env.*
 .claude/settings.local.json
 *.log
+
+# Raw 3D model downloads (the compressed copies live in web/public/models)
+heart_model/
