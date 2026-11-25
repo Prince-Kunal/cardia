@@ -12,6 +12,11 @@
 /engine/training/*method_a*.py                @MeloveGupta
 /engine/tests/test_method_a*.py               @MeloveGupta @Prince-Kunal
 /engine/models/kmeans_rf/                     @MeloveGupta @Prince-Kunal
+# Method B (DBSCAN + RF) comes from the same notebook as Method A
+/engine/ttc_pipeline/method_b.py              @MeloveGupta
+/engine/training/*method_b*.py                @MeloveGupta
+/engine/tests/test_method_b*.py               @MeloveGupta @Prince-Kunal
+/engine/models/dbscan_rf/                     @MeloveGupta @Prince-Kunal
 /engine/tests/golden/           @MeloveGupta @Prince-Kunal
 /engine/tests/test_golden*.py   @MeloveGupta @Prince-Kunal
 /engine/tests/test_api_golden*.py @MeloveGupta @Prince-Kunal
