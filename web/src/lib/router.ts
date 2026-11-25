@@ -1,4 +1,4 @@
-// A small hash router: #/library, #/import, #/jobs/<id>, #/hearts/<key>, #/hearts/<key>/slices/<id> (or
+// A small hash router: #/ (the landing page), #/library, #/import, #/jobs/<id>, #/hearts/<key>, #/hearts/<key>/slices/<id> (or
 // #/slices/<id> outside a heart), #/settings, #/sync (cloud sync), #/help, and Learn:
 // #/learn (the course), #/learn/<module>[/<step>|/done] (a lesson), #/learn/glossary[/<term>], #/learn/review.
 // The hash also carries the engine link the first time (#engine=…&token=…); connection.ts reads that
@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react';
 import { markForwardNavigation } from './scroll';
 
 export type Route =
+  | { name: 'home' }
   | { name: 'library' }
   | { name: 'import' }
   | { name: 'job'; id: string }
@@ -23,8 +24,8 @@ export type Route =
 
 /** The routes that belong to Learn, which works without the engine. */
 export const LEARN_ROUTES: Route['name'][] = ['learn', 'lesson', 'glossary', 'review'];
-/** Everything that works without the engine: Learn and Help. */
-export const OFFLINE_ROUTES: Route['name'][] = [...LEARN_ROUTES, 'help'];
+/** Everything that works without the engine: the landing page, Learn and Help. */
+export const OFFLINE_ROUTES: Route['name'][] = ['home', ...LEARN_ROUTES, 'help'];
 
 function learnRoute(parts: string[]): Route {
   const [first, second] = parts;
@@ -40,6 +41,7 @@ function learnRoute(parts: string[]): Route {
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (parts.length === 0) return { name: 'home' };
   switch (parts[0]) {
     case 'import':
       return { name: 'import' };
@@ -65,6 +67,8 @@ export function parseRoute(hash: string): Route {
 
 export function href(route: Route): string {
   switch (route.name) {
+    case 'home':
+      return '#/';
     case 'job':
       return `#/jobs/${route.id}`;
     case 'heart':

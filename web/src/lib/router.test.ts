@@ -22,8 +22,13 @@ describe('router', () => {
     expect(parseRoute('#/learn/nope')).toEqual({ name: 'learn' });
   });
 
+  it('opens the landing page at the root', () => {
+    expect(parseRoute('')).toEqual({ name: 'home' });
+    expect(parseRoute('#/')).toEqual({ name: 'home' });
+    expect(href({ name: 'home' })).toBe('#/');
+  });
+
   it('falls back to the library', () => {
-    expect(parseRoute('')).toEqual({ name: 'library' });
     expect(parseRoute('#/jobs')).toEqual({ name: 'library' });
     expect(parseRoute('#engine=x&token=y')).toEqual({ name: 'library' });
   });
