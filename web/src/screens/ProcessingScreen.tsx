@@ -1,13 +1,31 @@
 // Screen 3, Processing (PLAN.md §9): each slice's progress while the engine works in the background.
 // Leaving the page doesn't stop anything; the job keeps running in the engine.
 
-import { useState } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
 import type { Job, JobSlice } from '../api/types.gen';
 import { ErrorNote, Progress } from '../components/ui';
 import { DASH, SLICE_STATE_LABEL, STAGE_LABEL, dateTime, plural, seconds } from '../lib/format';
 import { useTitle } from '../lib/hooks';
 import { href } from '../lib/router';
+import { markBusy } from '../lib/pulse';
 import { useApp, useResource } from '../state';
+
+/** The staining bath: one well per slice. A well blooms from pale to red as its analysis runs, like a
+ *  slice taking up TTC, and settles when the slice is done. */
+function Bath({ slices }: { slices: JobSlice[] }) {
+  return (
+    <div className="bath" aria-hidden="true">
+      {slices.map((s) => {
+        const p = s.state === 'done' ? 1 : s.state === 'running' ? Math.max(0.04, s.progress) : 0;
+        return (
+          <span key={s.index} className={`well ${s.state}`} style={{ '--p': p } as CSSProperties} title={`${s.file_name}: ${SLICE_STATE_LABEL[s.state]}`}>
+            <i />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 const UNTIL_FINISHED = { ms: 500, while: (job: Job | undefined) => !job?.finished_at };
 
@@ -53,6 +71,8 @@ export function ProcessingScreen({ jobId }: { jobId: string }) {
   const j = job.data;
   const finished = !!j?.finished_at;
   useTitle(finished ? 'Analysis finished' : 'Analysing');
+  // The header's pulse quickens while the engine works.
+  useEffect(() => (j && !finished ? markBusy() : undefined), [j, finished]);
 
   if (job.error?.status === 404) {
     return (
@@ -143,6 +163,7 @@ export function ProcessingScreen({ jobId }: { jobId: string }) {
       <ErrorNote error={cancelError} />
 
       <div className="card stack" data-tour="progress">
+        <Bath slices={j.slices} />
         <Progress value={j.progress} label="Overall progress" />
         <div className="job-summary">
           {(

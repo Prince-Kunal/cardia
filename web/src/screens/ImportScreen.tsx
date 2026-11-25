@@ -213,7 +213,7 @@ export function ImportScreen() {
             ← Library
           </a>
           <h1>New analysis</h1>
-          <p className="subtitle">Scans are analysed on this computer by both methods. Nothing is uploaded anywhere else.</p>
+          <p className="subtitle">Scans are analysed on this computer by all three methods. Nothing is uploaded anywhere else.</p>
         </div>
       </div>
 
