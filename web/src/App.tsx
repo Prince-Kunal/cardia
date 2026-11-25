@@ -16,6 +16,7 @@ import { SyncScreen } from './screens/SyncScreen';
 import { HelpScreen } from './screens/HelpScreen';
 import { connectProgress } from './learn/progress';
 import { LearnApp } from './learn/LearnApp';
+import { Landing } from './landing/Landing';
 import { OFFLINE_ROUTES, type Route, useRoute } from './lib/router';
 import { AppContext, type AppState } from './state';
 
@@ -141,6 +142,9 @@ export default function App({ initial }: { initial?: Connection | null }) {
       disconnect,
     };
   }, [status, client, disconnect]);
+
+  // The landing page has its own frame and needs no engine.
+  if (route.name === 'home') return <Landing />;
 
   if (status.kind === 'needs-link' || status.kind === 'offline' || status.kind === 'connecting' || !state) {
     // Learn and Help need no engine: show them while there is none.

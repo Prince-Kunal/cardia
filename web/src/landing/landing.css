@@ -1,0 +1,796 @@
+/* The landing page: a darkroom theatre whatever the app's theme. The 3D stage is fixed behind the
+   story; chapters scroll over it; --u (the story, in chapters) and --c (each chapter, 0 → 1) come
+   from Landing.tsx. */
+
+.landing {
+  --bg: #0a0607;
+  --surface: #150e10;
+  --surface-2: #1f1517;
+  --surface-3: #2a1e20;
+  --border: rgb(255 230 220 / 0.1);
+  --border-strong: rgb(255 230 220 / 0.22);
+  --text: #f4ece2;
+  --text-muted: #bfb0a6;
+  --text-faint: #a08f86;
+  --accent: #f07383;
+  --accent-hover: #f6909c;
+  --accent-soft: rgb(240 115 131 / 0.14);
+  --accent-contrast: #1b0b0e;
+  --focus: #f07383;
+  --formazan: #ea5b6e;
+  --rose: #f08893;
+  --rose-soft: rgb(240 136 147 / 0.2);
+  --ivory: #efe3c4;
+  --method-a: #7aa2ea;
+  --method-b: #d08d4d;
+  --method-c: #45c7a2;
+  --shadow: none;
+  color-scheme: dark;
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: clip;
+}
+.landing .eyebrow {
+  color: var(--rose);
+}
+
+/* ---------- the stage ---------- */
+
+.landing-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+.landing-canvas {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+}
+.landing-canvas canvas {
+  transition: opacity 0.2s linear;
+}
+/* Darken the text's side, and the corners, so words always read over the heart. */
+.landing-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(10 6 7 / 0.82) 0%, rgb(10 6 7 / 0.45) 30%, transparent 52%),
+    radial-gradient(130% 90% at 65% 50%, transparent 45%, rgb(4 2 3 / 0.7) 100%);
+}
+.no-gl .landing-stage {
+  background:
+    radial-gradient(60% 50% at 70% 45%, rgb(179 57 75 / 0.35), transparent 70%),
+    var(--bg);
+}
+
+.landing-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.slice-label,
+.part-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.slice-label {
+  translate: -50% 0;
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.part-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  translate: -6px -50%;
+  padding: 3px 12px 3px 4px;
+  border-radius: 999px;
+  background: rgb(10 6 7 / 0.62);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  font-size: var(--t-small);
+  font-weight: 560;
+  color: var(--text);
+}
+.part-label i,
+.micro-label i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: var(--text-faint);
+  box-shadow: 0 0 0 3px rgb(10 6 7 / 0.6);
+}
+.part-label.living i,
+.micro-label.living i {
+  background: #d4515f;
+}
+.part-label.dead i,
+.micro-label.dead i {
+  background: var(--ivory);
+}
+
+/* Under the microscope: labels either side of the eyepiece, shown while it is. */
+.micro-label {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 220px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgb(10 6 7 / 0.7);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  font-size: var(--t-small);
+  line-height: 1.35;
+  opacity: calc(clamp(0, (var(--u, 0) - 7.32) * 7, 1) * clamp(0, (7.9 - var(--u, 0)) * 8, 1));
+}
+.micro-label i {
+  flex: none;
+}
+.micro-label.dead {
+  left: calc(61% - 40vh);
+  translate: -100% -140%;
+}
+.micro-label.living {
+  left: calc(61% + 40vh);
+  translate: 0 80%;
+}
+
+/* ---------- the header ---------- */
+
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: 18px clamp(20px, 5vw, 72px);
+  background: linear-gradient(180deg, rgb(10 6 7 / 0.75), transparent);
+}
+.landing-nav .brand {
+  color: var(--text);
+}
+.landing-links {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+}
+
+/* ---------- the chapter rail ---------- */
+
+.landing-rail {
+  position: fixed;
+  z-index: 15;
+  left: clamp(12px, 2vw, 28px);
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 0;
+}
+.landing-rail::before,
+.rail-fill {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 1px;
+  translate: -50% 0;
+  background: rgb(255 255 255 / 0.14);
+  height: calc(100% - 24px);
+}
+.rail-fill {
+  background: linear-gradient(180deg, var(--rose), var(--formazan));
+  height: calc((100% - 24px) * min(1, var(--u, 0) / 9));
+  box-shadow: 0 0 8px var(--formazan);
+}
+.rail-dot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.rail-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.3);
+  transition:
+    transform var(--m-out) var(--ease),
+    background-color var(--m-out) var(--ease);
+}
+.rail-dot[aria-current='step']::before {
+  background: var(--formazan);
+  transform: scale(1.6);
+  box-shadow: 0 0 12px var(--formazan);
+}
+.rail-dot:hover::before {
+  background: var(--text);
+}
+.rail-tip {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  translate: 0 -50%;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition:
+    opacity var(--m-out) var(--ease),
+    transform var(--m-out) var(--ease);
+}
+.rail-dot:hover .rail-tip,
+.rail-dot:focus-visible .rail-tip {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- the story ---------- */
+
+.landing-story {
+  position: relative;
+  z-index: 2;
+}
+.chapter {
+  position: relative;
+  min-height: 170vh;
+  padding: 0 clamp(24px, 7vw, 120px);
+}
+.chapter-card {
+  position: sticky;
+  top: 22vh;
+  max-width: 470px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  opacity: calc(clamp(0, (var(--e, 1) - 0.6) * 4, 1) * clamp(0, (0.94 - var(--c, 0)) * 7, 1));
+  transform: translateY(calc((1 - clamp(0, (var(--e, 1) - 0.6) * 4, 1)) * 24px));
+}
+.chapter-card h2 {
+  font-size: clamp(2.2rem, 1.4rem + 2.6vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-variation-settings: 'SOFT' 80, 'WONK' 0;
+  font-weight: 430;
+}
+.chapter-card p {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+.chapter-card p:first-of-type {
+  color: var(--text);
+}
+.chapter-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 6px 0 0;
+  border-top: 1px solid var(--border);
+}
+.chapter-facts div {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.chapter-facts dt {
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.chapter-facts dd {
+  margin: 4px 0 0;
+  font-family: var(--display);
+  font-size: 1.3rem;
+  font-variation-settings: 'SOFT' 60;
+}
+
+/* The hero. */
+.chapter.hero {
+  min-height: 135vh;
+  display: flex;
+  flex-direction: column;
+}
+.hero-copy {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 26px;
+  max-width: 720px;
+  padding-top: 40px;
+  opacity: clamp(0, (0.9 - var(--c, 0)) * 3.5, 1);
+  transform: translateY(calc(var(--c, 0) * -60px));
+}
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(3.2rem, 1.5rem + 6.2vw, 7.4rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  font-weight: 380;
+  font-variation-settings: 'SOFT' 100, 'WONK' 0;
+  max-width: 10ch;
+  animation: title-in 1.6s var(--ease) both;
+}
+.hero-title em {
+  display: inline-block;
+  color: var(--rose);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  text-shadow: 0 0 40px rgb(240 115 131 / 0.45);
+}
+.hero-lede {
+  font-size: clamp(1.1rem, 1rem + 0.4vw, 1.3rem);
+  line-height: 1.55;
+  color: var(--text-muted);
+  max-width: 34ch;
+  animation: title-in 1.6s 0.2s var(--ease) both;
+}
+.hero-copy .row {
+  animation: title-in 1.6s 0.35s var(--ease) both;
+}
+@keyframes title-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(8px);
+  }
+}
+.scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: calc(35vh + 28px);
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: clamp(0, (0.25 - var(--c, 0)) * 6, 1);
+}
+.scroll-cue i {
+  position: relative;
+  width: 1px;
+  height: 46px;
+  background: rgb(255 255 255 / 0.18);
+  overflow: hidden;
+}
+.scroll-cue i::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 40%;
+  background: var(--rose);
+  animation: drip 1.8s var(--ease-in-out) infinite;
+}
+@keyframes drip {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(260%);
+  }
+}
+
+/* ---------- the finale: a real slice, read ---------- */
+
+.chapter.finale {
+  min-height: 260vh;
+  padding: 0;
+}
+.finale-panel {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(300px, 470px) auto;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(32px, 7vw, 120px);
+  padding: 80px clamp(24px, 7vw, 120px) 40px;
+  --s1: clamp(0, (var(--c, 0) - 0.06) / 0.3, 1);
+  --s2: clamp(0, (var(--c, 0) - 0.3) / 0.25, 1);
+  opacity: clamp(0, var(--c, 0) * 14, 1);
+}
+.finale .chapter-card {
+  position: static;
+  opacity: 1;
+}
+.finale-methods {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+}
+.finale-method {
+  --m: var(--method-a);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.finale-method.b {
+  --m: var(--method-b);
+}
+.finale-method.c {
+  --m: var(--method-c);
+}
+.finale-method dt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.finale-method dt::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--m);
+  box-shadow: 0 0 10px var(--m);
+}
+.finale-method dt span {
+  font-weight: 400;
+  color: var(--text-faint);
+}
+.finale-method dd {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 2rem;
+  font-weight: 420;
+  letter-spacing: -0.03em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.finale-method.a dd {
+  font-size: 2.8rem;
+  color: var(--text);
+}
+.finale-method:not(.a) dd {
+  color: var(--text-muted);
+}
+
+.scan {
+  position: relative;
+  margin: 0;
+  width: min(62vh, 44vw);
+  aspect-ratio: 492 / 508;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f4f3ef;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 0 0 10px rgb(255 255 255 / 0.03),
+    0 50px 100px -30px rgb(0 0 0 / 0.9),
+    0 0 120px -20px rgb(240 115 131 / 0.25);
+  transform: perspective(1400px) rotateY(calc((1 - var(--s1)) * -14deg)) scale(calc(0.94 + 0.06 * var(--s1)));
+}
+.scan img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-mask {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.scan-outline {
+  -webkit-mask-image: url('/landing/210IS109-outline.png');
+  mask-image: url('/landing/210IS109-outline.png');
+  background: #fff8e8;
+  filter: drop-shadow(0 0 3px rgb(255 240 200 / 0.9));
+  clip-path: inset(0 0 calc((1 - var(--s1)) * 100%) 0);
+}
+.scan-dead {
+  -webkit-mask-image: url('/landing/210IS109-dead-a.png');
+  mask-image: url('/landing/210IS109-dead-a.png');
+  background:
+    repeating-linear-gradient(135deg, rgb(47 102 179 / 0.85) 0 2px, transparent 2px 7px),
+    rgb(47 102 179 / 0.28);
+  clip-path: inset(0 0 calc((1 - var(--s2)) * 100%) 0);
+}
+.scan-dead-edge {
+  -webkit-mask-image: url('/landing/210IS109-dead-edge.png');
+  mask-image: url('/landing/210IS109-dead-edge.png');
+  background: #2f66b3;
+  clip-path: inset(0 0 calc((1 - var(--s2)) * 100%) 0);
+}
+.scan-line {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  top: calc(var(--s1) * 100%);
+  height: 70px;
+  translate: 0 -100%;
+  background: linear-gradient(180deg, transparent, rgb(255 150 165 / 0.18) 70%, rgb(255 190 200 / 0.9) 98%, #fff 100%);
+  box-shadow: 0 1px 18px rgb(255 120 140 / 0.9);
+  opacity: calc(clamp(0, var(--s1) * 20, 1) * clamp(0, (1 - var(--s1)) * 20, 1));
+  mix-blend-mode: screen;
+}
+.scan figcaption {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.04em;
+  color: #2a2223;
+}
+.scan figcaption span {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.8);
+}
+
+/* ---------- the doors ---------- */
+
+.chapter.doors {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 48px;
+  padding-top: 120px;
+  padding-bottom: 32px;
+  background:
+    radial-gradient(70% 60% at 50% 0%, rgb(179 57 75 / 0.18), transparent 70%),
+    var(--bg);
+}
+.doors-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.doors-head h2 {
+  font-size: clamp(2.6rem, 1.5rem + 4vw, 5rem);
+  letter-spacing: -0.04em;
+}
+.doors-head h2 em {
+  color: var(--rose);
+}
+.door-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+}
+@media (max-width: 760px) {
+  .door-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.door {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px;
+  min-height: 380px;
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgb(240 115 131 / 0.12), transparent 60%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0)),
+    var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  overflow: hidden;
+  transition:
+    transform var(--m-image) var(--ease),
+    border-color var(--m-out) var(--ease),
+    box-shadow var(--m-image) var(--ease);
+}
+.door.course {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgb(141 158 240 / 0.14), transparent 60%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0)),
+    var(--surface);
+}
+.door:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+@media (hover: hover) and (pointer: fine) {
+  .door:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 40px 80px -30px rgb(0 0 0 / 0.8), 0 0 60px -20px rgb(240 115 131 / 0.4);
+  }
+}
+.door strong {
+  font-family: var(--display);
+  font-size: 2.2rem;
+  font-weight: 430;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variation-settings: 'SOFT' 80;
+}
+.door-text {
+  color: var(--text-muted);
+  max-width: 40ch;
+}
+.door-go {
+  margin-top: auto;
+  font-weight: 600;
+  color: var(--rose);
+}
+.door-art {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 120px;
+  margin-bottom: 8px;
+}
+/* The lab's door: six slices, apex to base, blooming red one after another. */
+.door.lab .door-art i {
+  width: calc(64px * var(--s));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, var(--bg) 0 28%, transparent 29%),
+    conic-gradient(from 200deg, #efe3c4 0 26%, #c24c5a 30% 100%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 24px -10px rgb(0 0 0 / 0.8);
+  transition: transform var(--m-image) var(--ease);
+  transition-delay: calc(var(--k) * 40ms);
+}
+@media (hover: hover) and (pointer: fine) {
+  .door.lab:hover .door-art i {
+    transform: translateY(-6px) rotate(-12deg);
+  }
+}
+/* The course's door: a path with milestones. */
+.door.course .door-art svg {
+  width: 220px;
+  height: 120px;
+  overflow: visible;
+}
+.door.course .door-art path {
+  fill: none;
+  stroke: rgb(141 158 240 / 0.5);
+  stroke-width: 3;
+  stroke-dasharray: 6 8;
+  stroke-linecap: round;
+}
+.door.course .door-art circle {
+  fill: var(--surface-3);
+  stroke: #8d9ef0;
+  stroke-width: 3;
+  transition: fill var(--m-image) var(--ease);
+}
+.door.course .door-art circle:nth-of-type(-n + 2) {
+  fill: #8d9ef0;
+}
+.door.course .door-art circle:last-of-type {
+  fill: #f2c14e;
+  stroke: #f2c14e;
+}
+@media (hover: hover) and (pointer: fine) {
+  .door.course:hover .door-art circle:nth-of-type(3) {
+    fill: #8d9ef0;
+  }
+}
+
+.landing-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px 24px;
+  max-width: 1120px;
+  width: 100%;
+  margin: 24px auto 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: var(--t-small);
+  color: var(--text-faint);
+}
+.landing-foot span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+.landing-foot span:first-child svg {
+  color: var(--formazan);
+}
+
+/* ---------- small screens: the text sits low, over a darker band ---------- */
+
+@media (max-width: 760px) {
+  .landing-vignette {
+    background:
+      linear-gradient(0deg, rgb(10 6 7 / 0.9) 0%, rgb(10 6 7 / 0.6) 38%, transparent 60%),
+      radial-gradient(130% 90% at 50% 40%, transparent 45%, rgb(4 2 3 / 0.7) 100%);
+  }
+  .chapter-card {
+    top: 55vh;
+    margin-top: 55vh;
+    gap: 12px;
+  }
+  .chapter-card h2 {
+    font-size: 2rem;
+  }
+  .chapter-card p {
+    font-size: 1rem;
+  }
+  .landing-rail {
+    display: none;
+  }
+  .landing-links .nav-link {
+    display: none;
+  }
+  .finale-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-content: center;
+    gap: 24px;
+  }
+  .scan {
+    width: min(70vw, 40vh);
+  }
+  .micro-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan {
+    transform: none;
+  }
+}

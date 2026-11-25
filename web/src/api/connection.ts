@@ -45,12 +45,13 @@ export function saveConnection(c: Connection | null): void {
   }
 }
 
-/** At start-up: take a link from the address bar (and remove the token from it), else the stored one. */
+/** At start-up: take a link from the address bar (and remove the token from it), else the stored one.
+ *  The engine's link opens the landing page, the app's front door; the lab is one click from there. */
 export function connectionAtStartup(): Connection | null {
   const fromHash = window.location.hash.includes('token=') ? parseLink(window.location.hash) : null;
   if (fromHash) {
     saveConnection(fromHash);
-    history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/library`);
+    history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`);
     return fromHash;
   }
   return loadConnection();
