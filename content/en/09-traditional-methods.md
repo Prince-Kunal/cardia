@@ -47,7 +47,7 @@ What is planimetry?
 
 To save time, many labs let the computer pick the pale area: every pixel lighter, or less red, than a chosen value counts as dead. This is **thresholding**.
 
-It is fast, but the right cut-off depends on the stain, the lighting and the scanner, so it often has to be re-chosen by eye for each batch, and shadows or uneven lighting can fool it. Cardia's [Method B](term:method-b) is a careful version of this idea: it corrects the lighting first, measures the red stain itself rather than brightness, so shadows don't change it, and reports the uncertain pixels as a range.
+It is fast, but the right cut-off depends on the stain, the lighting and the scanner, so it often has to be re-chosen by eye for each batch, and shadows or uneven lighting can fool it. Cardia's [Method C](term:method-c) is a careful version of this idea: it corrects the lighting first, measures the red stain itself rather than brightness, so shadows don't change it, and reports the uncertain pixels as a range.
 
 ::scene{camera="short-axis" highlight="myocardium" labels="none"}
 

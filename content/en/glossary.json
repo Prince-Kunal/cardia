@@ -1,7 +1,7 @@
 {
   "a-star": {
     "title": "a* (redness)",
-    "short": "The red–green number in Lab colour. TTC-stained living muscle has a high a*; pale dead muscle has a low a*. Method A uses it among its features.",
+    "short": "The red–green number in Lab colour. TTC-stained living muscle has a high a*; pale dead muscle has a low a*. Methods A and B use it among their features.",
     "lesson": 10
   },
   "aorta": {
@@ -40,8 +40,8 @@
     "lesson": 11
   },
   "borderline-tissue": {
-    "title": "Borderline tissue (Method B)",
-    "short": "Pixels holding between 40% and 60% of the red stain of living muscle: not clearly dead, not clearly alive. They make up Method B's range.",
+    "title": "Borderline tissue (Method C)",
+    "short": "Pixels holding between 40% and 60% of the red stain of living muscle: not clearly dead, not clearly alive. They make up Method C's range.",
     "lesson": 10
   },
   "cardiac-cycle": {
@@ -63,6 +63,11 @@
     "title": "Coronary arteries",
     "short": "The arteries that feed the heart muscle itself. They branch off the aorta just above the aortic valve: the right coronary artery (RCA) and the left, which splits into the LAD and the LCx.",
     "lesson": 5
+  },
+  "dbscan": {
+    "title": "DBSCAN",
+    "short": "A clustering method that finds dense crowds of similar points and leaves stragglers out, without being told how many groups to make. Method B used it once, during training, to find the palest and reddest pixel colours.",
+    "lesson": 10
   },
   "dead-mass": {
     "title": "Dead mass",
@@ -156,12 +161,17 @@
   },
   "method-a": {
     "title": "Method A: K-Means + RF",
-    "short": "One of Cardia's two ways of deciding dead or alive: a random forest looks at 22 numbers per pixel and calls it dead when the probability is 0.5 or more.",
+    "short": "One of Cardia's two machine-learning methods: a random forest, taught by K-Means colour groups, looks at 22 numbers per pixel and calls it dead when the probability is 0.5 or more.",
     "lesson": 10
   },
   "method-b": {
-    "title": "Method B: stain ratio",
-    "short": "Cardia's other way of deciding dead or alive: a pixel is dead when it holds less than half the red stain of living muscle and its colour leans cream. Shadows don't change it.",
+    "title": "Method B: DBSCAN + RF",
+    "short": "Cardia's other machine-learning method: the same 22 numbers per pixel and the same kind of random forest as Method A, but taught by DBSCAN colour groups. Shown side by side with Method A.",
+    "lesson": 10
+  },
+  "method-c": {
+    "title": "Method C: stain ratio",
+    "short": "Cardia's colour rule, with no machine learning: a pixel is dead when it holds less than half the red stain of living muscle and its colour leans cream. Shadows don't change it.",
     "lesson": 10
   },
   "myocardial-infarction": {
@@ -196,7 +206,7 @@
   },
   "random-forest": {
     "title": "Random forest",
-    "short": "A machine-learning model made of many decision trees that vote. Method A's forest gives every tissue pixel a probability of being dead.",
+    "short": "A machine-learning model made of many decision trees that vote. The forests of Methods A and B give every tissue pixel a probability of being dead.",
     "lesson": 10
   },
   "range": {
@@ -275,8 +285,8 @@
     "lesson": 8
   },
   "unsure-tissue": {
-    "title": "Unsure tissue (Method A)",
-    "short": "Pixels whose probability of being dead is between 0.35 and 0.65. If more than 15% of a slice is unsure, Cardia flags the slice.",
+    "title": "Unsure tissue (Methods A and B)",
+    "short": "Pixels whose probability of being dead is between 0.35 and 0.65. If more than 15% of a slice is unsure by Method A, Cardia flags the slice.",
     "lesson": 10
   },
   "valve": {

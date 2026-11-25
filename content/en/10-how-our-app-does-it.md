@@ -88,31 +88,49 @@ A **[random forest](term:random-forest)**, many small decision trees that vote, 
 
 The forest was trained once, before the app was built, on pixels that **[K-Means](term:k-means)** had sorted into red, pink and cream groups. The app only uses the saved forest; it never learns from your scans.
 
-## 5b. Method B: the stain ratio
+## 5b. Method B: DBSCAN + random forest
 
-[Method B](term:method-b) asks one question of every pixel: **does it hold less than half the red stain of living muscle?**
+[Method B](term:method-b) works exactly like Method A when it runs: the same 22 numbers per pixel go into a random forest, which gives a probability that the pixel is dead. Dead and unsure mean the same as for Method A.
 
-The red stain absorbs green light and lets red light through. So Method B compares how much green and how much red comes back from each pixel: the more stain, the less green. A shadow dims every colour alike, so it leaves that comparison, and Method B's answer, unchanged.
+Only the forest's teacher is different. Instead of K-Means, **[DBSCAN](term:dbscan)** sorted the pixels for training. K-Means always makes the number of groups it is asked for; DBSCAN looks for dense crowds of similar colours and leaves the stragglers out. The palest crowd taught the forest "dead", the reddest "alive".
+
+DBSCAN needs a few settings, such as how close two colours must be to count as neighbours. They were chosen by trying many combinations and keeping the one whose groups matched a simple grey-level reference best on the study hearts. Like Method A's, the forest was trained once and never learns from your scans.
+
+Because Methods A and B read the same numbers and differ only in their teacher, Cardia shows them **side by side** to compare.
+
+:::quiz{type="multiple-choice" id="m10-teacher"}
+What is the difference between Method A and Method B?
+- [ ] Method B reads different numbers from each pixel
+- [x] The same forest recipe, taught by different clustering: K-Means for A, DBSCAN for B
+- [ ] Method B learns from your scans while you use it
+> Both forests read the same 22 numbers per pixel. Only the clustering that labelled their training pixels differs.
+:::
+
+## 5c. Method C: the stain ratio, no machine learning
+
+[Method C](term:method-c) learns nothing from the photos. It asks one question of every pixel: **does it hold less than half the red stain of living muscle?**
+
+The red stain absorbs green light and lets red light through. So Method C compares how much green and how much red comes back from each pixel: the more stain, the less green. A shadow dims every colour alike, so it leaves that comparison, and Method C's answer, unchanged.
 
 Two reference colours were taken once from the study scans: fully stained muscle and unstained tissue. A pixel holding less than half the stain, and leaning towards the cream of unstained tissue, counts as dead. Pixels holding between 40% and 60% of the stain are [borderline](term:borderline-tissue): not clearly dead, not clearly alive.
 
-Method B's [range](term:range) runs from the same rule at 40% of the stain to the rule at 60%.
+Method C's [range](term:range) runs from the same rule at 40% of the stain to the rule at 60%. Because it is a fixed colour rule rather than a trained model, Cardia shows it apart from the two machine-learning methods.
 
 ::scene{camera="ttc" highlight="infarct"}
 
-## Why two numbers?
+## Why three numbers?
 
-The two methods draw the line between dead and alive in different places. Method A learned it from the colour groups K-Means found; Method B puts it at half the stain of living muscle. On the same heart they can differ by 5 to 26 [percentage points](term:percentage-points), most where there is a lot of pale pink tissue.
+The three methods draw the line between dead and alive in different places. Method A learned it from the colour groups K-Means found, Method B from the groups DBSCAN found; Method C puts it at half the stain of living muscle. On the same heart they can differ by tens of [percentage points](term:percentage-points), most where there is a lot of pale pink tissue.
 
-Nobody knows yet which is closer to the truth: that needs careful tracings by experts, which the team has asked for. Until then Cardia shows **both methods side by side**, leading with the one chosen in Settings, and shows Method B's range.
+Nobody knows yet which is closer to the truth: that needs careful tracings by experts, which the team has asked for. Until then Cardia shows **all three**: Methods A and B side by side, Method C apart, leading with the one chosen in Settings (Method A unless you change it), and shows Method C's range.
 
-> Known limits. Method A reads the control hearts higher than Method B and the references do, and shadows on the slice can change its answer, so Cardia warns about shadows. Method B counts pale tissue that is not muscle (valves, fat) as dead, so it reads control hearts a few points high.
+> Known limits. Methods A and B read the control hearts higher than Method C and the references do, and shadows on the slice can change their answers, so Cardia warns about shadows. DBSCAN's settings were chosen to match a simple grey-level reference, so Method B leans towards that reference's view. Method C counts pale tissue that is not muscle (valves, fat) as dead, so it reads control hearts a few points high.
 
 :::quiz{type="multiple-choice" id="m10-two"}
-Why does Cardia show two results for every heart?
-- [ ] One is for the left ventricle, the other for the right
-- [x] The two methods can disagree, and until experts' tracings show which is closer, both are shown
-- [ ] One is a quick estimate and the other the final answer
+Why does Cardia show three results for every heart?
+- [ ] One for each chamber of the heart
+- [x] The methods can disagree, and until experts' tracings show which is closer, all three are shown
+- [ ] One is a quick estimate and the others are the final answer
 > Each method agrees best with a different set of reference measurements. Expert tracings will decide between them.
 :::
 
