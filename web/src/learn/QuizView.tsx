@@ -4,6 +4,8 @@
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import { HeartDiagram } from '../heart/HeartDiagram';
 import { partName } from '../heart/parts';
+import { praise, play, recordAnswer } from './game';
+import { Confetti, Icon, Tetra } from './GameParts';
 import { DEFAULT_SCENE, type Quiz, plainText } from './lesson';
 import { answerQuiz } from './progress';
 import { blankRight, choiceRight, positionsRight, scrambled, shuffled } from './quizLogic';
@@ -19,7 +21,7 @@ const KIND: Record<Quiz['type'], string> = {
   'label-diagram': 'Label the heart',
 };
 
-type Result = { correct: boolean } | null;
+type Result = { correct: boolean; xp: number; tries: number } | null;
 
 function Shell({
   quiz,
@@ -40,6 +42,7 @@ function Shell({
   return (
     <section className={`quiz ${result ? (result.correct ? 'is-right' : 'is-wrong') : ''}`} aria-labelledby={titleId}>
       <div className="quiz-kind" id={titleId}>
+        <Icon name="bolt" size={16} />
         {KIND[quiz.type]}
       </div>
       {quiz.prompt.length > 0 && (
@@ -50,21 +53,32 @@ function Shell({
       {children}
       <div className="quiz-actions">
         {!result && onCheck && (
-          <button type="button" className="button primary" onClick={onCheck} disabled={!canCheck}>
+          <button type="button" className="chunky primary" onClick={onCheck} disabled={!canCheck}>
             Check
-          </button>
-        )}
-        {result && !result.correct && (
-          <button type="button" className="button" onClick={onRetry}>
-            Try again
           </button>
         )}
       </div>
       {result && (
-        <div className="quiz-feedback" role="status">
-          <strong>{result.correct ? 'Right.' : 'Not quite.'}</strong>{' '}
-          {quiz.explanation.length > 0 && <Inlines content={quiz.explanation} />}
-          {!result.correct && <span className="fine"> It will come back in your review.</span>}
+        <div className="quiz-feedback" role="status" key={result.tries}>
+          {result.correct && <Confetti pieces={18} spread={0.7} />}
+          <Tetra mood={result.correct ? 'happy' : 'sad'} size={64} className="feedback-tetra" />
+          <div className="feedback-text">
+            <strong className="feedback-title">
+              {praise(quiz.id + result.tries, result.correct)}
+              {result.correct && result.xp > 0 && <span className="xp-pop">+{result.xp} XP</span>}
+            </strong>
+            {quiz.explanation.length > 0 && (
+              <span>
+                <Inlines content={quiz.explanation} />
+              </span>
+            )}
+            {!result.correct && <span className="fine">It will come back in your review.</span>}
+          </div>
+          {!result.correct && (
+            <button type="button" className="chunky danger" onClick={onRetry}>
+              Try again
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -73,9 +87,14 @@ function Shell({
 
 function useResult(id: string) {
   const [result, setResult] = useState<Result>(null);
+  const [tries, setTries] = useState(0);
   const answer = (correct: boolean) => {
-    answerQuiz(id, correct);
-    setResult({ correct });
+    const xp = answerQuiz(id, correct);
+    const before = recordAnswer(correct, xp);
+    play(correct ? 'right' : 'wrong');
+    if (!correct && before.hearts >= 0) window.setTimeout(() => play('heart'), 260);
+    setTries((t) => t + 1);
+    setResult({ correct, xp, tries: tries + 1 });
   };
   return { result, answer, reset: () => setResult(null) };
 }
@@ -142,7 +161,7 @@ function TrueFalse({ quiz }: { quiz: Extract<Quiz, { type: 'true-false' }> }) {
           <button
             key={String(v)}
             type="button"
-            className={`button quiz-tf ${result && picked === v ? (result.correct ? 'right' : 'wrong') : ''}`}
+            className={`chunky quiz-tf ${result && picked === v ? (result.correct ? 'right' : 'wrong') : ''}`}
             aria-pressed={picked === v}
             disabled={!!result}
             onClick={() => {

@@ -1,188 +1,278 @@
-// Screen 7, Learn home (PLAN.md §9): the course map for the chosen track, progress, the next lesson,
-// review, streak and badges.
+// Screen 7, Learn home (PLAN.md §9), as a game: the course is a path of lessons through four units,
+// drawn as a vessel that fills with red as the learner goes. Beside it: the streak, XP, the daily
+// goal, the week, review and badges.
 
-import { useMemo } from 'react';
+import { type CSSProperties, useId, useMemo, useState } from 'react';
 import { href } from '../lib/router';
 import { useTitle } from '../lib/hooks';
-import { allLessons, lessonFor } from './content';
+import { lessonFor } from './content';
 import { COURSE, type ModuleInfo, TRACK_INFO, modulesFor } from './course';
-import { TRACKS, type Track, quizzesOf } from './lesson';
-import { badges, chooseTrack, dueForReview, streak, useProgress } from './progress';
+import { GOALS, UNITS, dailyGoal, soundSetting, totalXp, xpOn, xpWeek } from './game';
+import { GoalRing, Icon, Tetra } from './GameParts';
+import { TRACKS, type Track } from './lesson';
+import { type Progress, badges, chooseTrack, dueForReview, localDay, streak, useProgress } from './progress';
 
-function status(m: ModuleInfo, lessons: ReturnType<typeof useProgress>['lessons']) {
+type Kind = 'done' | 'current' | 'open' | 'later';
+
+/** Node positions: a gentle zigzag, like a vessel winding down the page. */
+const OFFSETS = [0, 58, 82, 58, 0, -58, -82, -58];
+const ROW = 118;
+const WIDTH = 340;
+
+function kindOf(m: ModuleInfo, p: Progress, current: number | undefined): Kind {
+  if (!lessonFor(m.module)) return 'later';
+  if (p.lessons[m.module]?.done) return 'done';
+  if (m.module === current) return 'current';
+  return 'open';
+}
+
+function statusText(kind: Kind, m: ModuleInfo, p: Progress): string {
   const lesson = lessonFor(m.module);
-  if (!lesson) return { kind: 'later' as const, label: 'Coming later' };
-  const rec = lessons[m.module];
-  if (rec?.done) return { kind: 'done' as const, label: 'Done' };
-  if (rec) return { kind: 'started' as const, label: `Step ${rec.step} of ${lesson.steps.length}` };
-  return { kind: 'new' as const, label: `${lesson.steps.length} steps${lesson.meta.minutes ? ` · ${lesson.meta.minutes} min` : ''}` };
+  if (kind === 'later' || !lesson) return 'Coming later';
+  if (kind === 'done') return 'Done';
+  const rec = p.lessons[m.module];
+  if (rec) return `Step ${rec.step} of ${lesson.steps.length}`;
+  return `${lesson.steps.length} steps${lesson.meta.minutes ? ` · ${lesson.meta.minutes} min` : ''}`;
+}
+
+/** The vessel behind a unit's nodes: pale all the way, red up to where the learner is. */
+function Vessel({ count, filled }: { count: number; filled: number }) {
+  const pts = Array.from({ length: count }, (_, i) => [WIDTH / 2 + OFFSETS[i % OFFSETS.length], i * ROW + 44] as const);
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    d += ` C${x0} ${y0 + ROW * 0.5}, ${x1} ${y1 - ROW * 0.5}, ${x1} ${y1}`;
+  }
+  const len = Math.max(0, count - 1);
+  const f = len ? Math.min(1, filled / len) : 0;
+  const mask = `vessel-${useId().replace(/:/g, '')}`;
+  return (
+    <svg className="vessel" viewBox={`0 0 ${WIDTH} ${Math.max(1, (count - 1) * ROW + 88)}`} width={WIDTH} aria-hidden="true">
+      <defs>
+        <mask id={mask} maskUnits="userSpaceOnUse">
+          <path d={d} stroke="#fff" strokeWidth="20" fill="none" pathLength={1} strokeDasharray={`${f} 1`} />
+        </mask>
+      </defs>
+      <path d={d} className="vessel-wall" />
+      <path d={d} className="vessel-blood" pathLength={1} strokeDasharray={`${f} 1`} />
+      {f > 0 && <path d={d} className="vessel-flow" mask={`url(#${mask})`} />}
+    </svg>
+  );
+}
+
+function PathUnit({ unit, modules, progress, current }: { unit: (typeof UNITS)[number]; modules: ModuleInfo[]; progress: Progress; current: number | undefined }) {
+  const kinds = modules.map((m) => kindOf(m, progress, current));
+  const reached = kinds.lastIndexOf('done') + (kinds.includes('current') ? 1 : 0);
+  const allDone = kinds.every((k) => k === 'done' || k === 'later') && kinds.includes('done');
+  return (
+    <section className={`unit tone-${unit.tone}`} aria-labelledby={`unit-${unit.n}`}>
+      <header className="unit-banner">
+        <div className="stack tight">
+          <span className="unit-eyebrow">Unit {unit.n}</span>
+          <h2 id={`unit-${unit.n}`}>{unit.title}</h2>
+          <p>{unit.description}</p>
+        </div>
+        <a className="chunky ghost on-tone" href="#/learn/glossary">
+          <Icon name="book" size={18} />
+          Guidebook
+        </a>
+      </header>
+      <div className="path-wrap" style={{ height: (modules.length - 1) * ROW + 96 }}>
+        <Vessel count={modules.length} filled={Math.max(0, reached)} />
+        <ol className="path">
+          {modules.map((m, i) => {
+            const kind = kinds[i];
+            const off = OFFSETS[i % OFFSETS.length];
+            const lesson = lessonFor(m.module);
+            const rec = progress.lessons[m.module];
+            const frac = kind === 'current' && rec && lesson ? rec.step / lesson.steps.length : 0;
+            const status = statusText(kind, m, progress);
+            const icon = kind === 'done' ? <Icon name="check" size={30} /> : kind === 'later' ? <Icon name="lock" size={24} /> : kind === 'current' ? <Icon name="star" size={30} /> : <span className="node-num">{m.module}</span>;
+            const style = { '--x': `${off}px`, top: i * ROW } as CSSProperties;
+            return (
+              <li key={m.module} className={`node ${kind} ${off < 0 ? 'label-right' : 'label-left'}`} style={style}>
+                {kind === 'current' && (
+                  <span className="node-bubble" aria-hidden="true">
+                    {rec ? 'Continue' : 'Start'}
+                  </span>
+                )}
+                {lesson ? (
+                  <a
+                    className="node-btn"
+                    href={href({ name: 'lesson', module: m.module, step: kind === 'current' && rec ? rec.step : 1 })}
+                    aria-label={`Module ${m.module}: ${m.title}. ${status}`}
+                  >
+                    {kind === 'current' && <span className="node-ring" style={{ '--f': frac } as CSSProperties} />}
+                    {icon}
+                  </a>
+                ) : (
+                  <span className="node-btn" role="img" aria-label={`Module ${m.module}: ${m.title}. Coming later`}>
+                    {icon}
+                  </span>
+                )}
+                <span className="node-label" aria-hidden="true">
+                  <strong>{m.title}</strong>
+                  <span>{status}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <span className="path-mascot" style={{ top: Math.min(1, modules.length - 1) * ROW - 6 }}>
+          <Tetra mood={allDone ? 'cheer' : 'idle'} size={84} />
+        </span>
+      </div>
+    </section>
+  );
 }
 
 export function LearnHome() {
   const progress = useProgress();
   useTitle('Learn');
+  const goal = Number(dailyGoal.use());
+  const sound = soundSetting.use();
   const track: Track = progress.track ?? 'no-biology';
   const modules = modulesFor(track);
-  const lessons = useMemo(() => allLessons(), []);
   const available = modules.filter((m) => lessonFor(m.module)).map((m) => m.module);
-  const done = available.filter((m) => progress.lessons[m]?.done).length;
   const due = dueForReview(progress).length;
   const days = streak(progress);
+  const [today0] = useState(() => localDay(new Date()));
+  const learnedToday = progress.days.at(-1) === today0;
   const earned = badges(progress, available);
-  const totalQuizzes = lessons.filter((l) => available.includes(l.meta.module)).flatMap(quizzesOf).length;
-  const firstTry = Object.values(progress.quizzes).filter((q) => q.firstTry).length;
+  const xp = totalXp(progress);
+  const today = xpOn(progress);
+  const week = useMemo(() => xpWeek(progress), [progress]);
+  const weekMax = Math.max(goal, ...week.map((d) => d.xp));
 
   // Carry on where the learner was, else the first lesson on the track not yet done.
   const started = available.find((m) => progress.lessons[m] && !progress.lessons[m].done);
-  const nextModule = started ?? available.find((m) => !progress.lessons[m]?.done);
-  const next = COURSE.find((m) => m.module === nextModule);
-  const nextStep = nextModule ? Math.min(progress.lessons[nextModule]?.step ?? 1, lessonFor(nextModule)?.steps.length ?? 1) : 1;
+  const current = started ?? available.find((m) => !progress.lessons[m]?.done);
+  const next = COURSE.find((m) => m.module === current);
 
   return (
-    <div className="stack loose learn-home">
-      <div className="page-head">
-        <div>
-          <h1>Learn</h1>
-          <p className="subtitle">From no biology at all to how Cardia measures a heart attack, with the heart beside every lesson.</p>
-        </div>
-        <div className="row">
-          <a className="button" href="#/learn/glossary">
-            Glossary
-          </a>
-          <a className="button" href="#/learn/review">
-            Review{due > 0 && <span className="badge accent">{due}</span>}
-          </a>
-        </div>
-      </div>
-
-      <section className="continue card" aria-label="Continue">
-        {next ? (
-          <>
-            <div className="stack tight grow">
-              <span className="section-title">{started ? 'Carry on' : done === 0 ? 'Start here' : 'Up next'}</span>
-              <h2>
-                {next.module}. {next.title}
-              </h2>
-              <p className="muted">{next.summary}</p>
-            </div>
-            <a className="button primary" href={href({ name: 'lesson', module: next.module, step: nextStep })}>
-              {started ? `Continue at step ${nextStep}` : 'Start the lesson'}
-            </a>
-          </>
-        ) : (
-          <div className="stack tight grow">
-            <span className="section-title">All done</span>
-            <h2>You have finished every lesson written so far</h2>
-            <p className="muted">More modules are on the way. Your review keeps what you learned fresh.</p>
+    <div className="learn-home game">
+      <div className="path-col">
+        <div className="learn-hello">
+          <Tetra mood={today >= goal ? 'cheer' : 'happy'} size={72} />
+          <div className="stack tight">
+            <h1>Learn</h1>
+            <p className="muted">
+              {next
+                ? `${started ? 'Pick up' : 'Up next'}: ${next.module}. ${next.title}.`
+                : 'You have finished every lesson written so far. Review keeps it fresh.'}
+            </p>
           </div>
-        )}
-      </section>
+        </div>
 
-      <div className="learn-stats">
-        <div className="stat">
-          <div className="stat-value">
-            {done}/{available.length}
-          </div>
-          <div className="stat-label">lessons done</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value">
-            {firstTry}/{totalQuizzes}
-          </div>
-          <div className="stat-label">questions right first time</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value">{days}</div>
-          <div className="stat-label">{days === 1 ? 'day' : 'days'} in a row</div>
-        </div>
-        <a className="stat card-link" href="#/learn/review">
-          <div className="stat-value">{due}</div>
-          <div className="stat-label">to review</div>
-        </a>
-      </div>
-
-      <section className="stack" aria-labelledby="track-title">
-        <h2 id="track-title">Your track</h2>
-        <div className="tracks" role="radiogroup" aria-labelledby="track-title">
+        <div className="track-switch" role="radiogroup" aria-label="Your track">
           {TRACKS.map((t) => (
-            <label key={t} className="choice">
+            <label key={t} className="track-pill" title={TRACK_INFO[t].description}>
               <input type="radio" name="track" checked={track === t} onChange={() => chooseTrack(t)} />
-              <span>
-                <strong>{TRACK_INFO[t].name}</strong>
-                <span className="fine">{TRACK_INFO[t].description}</span>
-              </span>
+              <span>{TRACK_INFO[t].name}</span>
             </label>
           ))}
         </div>
-      </section>
+        <p className="fine track-note">{TRACK_INFO[track].description}</p>
 
-      <section className="stack" aria-labelledby="course-title">
-        <h2 id="course-title">The course</h2>
-        <ol className="course-map">
-          {modules.map((m) => {
-            const st = status(m, progress.lessons);
-            const lesson = lessonFor(m.module);
-            const body = (
-              <>
-                <span className={`module-number ${st.kind}`} aria-hidden="true">
-                  {st.kind === 'done' ? '✓' : m.module}
-                </span>
-                <span className="grow stack tight" style={{ gap: 2 }}>
-                  <span className="module-title">
-                    {m.title}
-                    {track === 'student' && m.basics && <span className="badge">Basics: skip if you know them</span>}
-                  </span>
-                  <span className="fine">{m.summary}</span>
-                </span>
-                <span className={`module-status ${st.kind}`}>{st.label}</span>
-              </>
-            );
-            return (
-              <li key={m.module} className={`module ${st.kind}`}>
-                {lesson ? (
-                  <a
-                    className="module-link card-link"
-                    href={href({ name: 'lesson', module: m.module, step: st.kind === 'started' ? progress.lessons[m.module].step : 1 })}
-                    aria-label={`Module ${m.module}: ${m.title}. ${st.label}`}
-                  >
-                    {body}
-                  </a>
-                ) : (
-                  <div className="module-link" aria-label={`Module ${m.module}: ${m.title}. Coming later`}>
-                    {body}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+        {UNITS.map((u) => {
+          const mods = modules.filter((m) => u.modules.includes(m.module));
+          if (mods.length === 0) return null;
+          return <PathUnit key={u.n} unit={u} modules={mods} progress={progress} current={current} />;
+        })}
+      </div>
 
-      <section className="stack" aria-labelledby="badges-title">
-        <h2 id="badges-title">Badges</h2>
-        <ul className="badges">
-          {earned.map((b) => (
-            <li key={b.id} className={b.earned ? 'earned' : ''}>
-              <span className="badge-icon" aria-hidden="true">
-                {b.earned ? '★' : '☆'}
+      <aside className="game-side" aria-label="Your progress">
+        <div className="side-stats">
+          <span className={`stat-chip flame ${learnedToday ? 'lit' : ''}`} title={`${days} ${days === 1 ? 'day' : 'days'} in a row`}>
+            <Icon name="flame" />
+            <strong>{days}</strong>
+            <span className="sr-only">{days === 1 ? 'day' : 'days'} in a row</span>
+          </span>
+          <span className="stat-chip xp" title="Total XP">
+            <Icon name="drop" />
+            <strong>{xp}</strong>
+            <span className="sr-only">XP</span>
+          </span>
+          <a className="stat-chip review" href="#/learn/review" title="Questions to review">
+            <Icon name="review" />
+            <strong>{due}</strong>
+            <span className="sr-only">to review</span>
+          </a>
+          <button
+            type="button"
+            className="stat-chip sound"
+            aria-pressed={sound === 'on'}
+            aria-label={sound === 'on' ? 'Sounds on' : 'Sounds off'}
+            onClick={() => soundSetting.set(sound === 'on' ? 'off' : 'on')}
+          >
+            <Icon name={sound === 'on' ? 'sound' : 'mute'} />
+          </button>
+        </div>
+
+        <section className="side-card goal-card" aria-labelledby="goal-title">
+          <div className="goal-head">
+            <GoalRing value={today} goal={goal} />
+            <div className="stack tight">
+              <h2 id="goal-title">Daily goal</h2>
+              <p>
+                <strong className="num">{Math.min(today, goal)}</strong> / {goal} XP today
+                {today >= goal && <span className="badge ok">Done</span>}
+              </p>
+            </div>
+          </div>
+          <div className="goal-choices" role="radiogroup" aria-label="Daily goal">
+            {GOALS.map((g) => (
+              <label key={g.xp} className="goal-choice">
+                <input type="radio" name="goal" checked={String(goal) === g.xp} onChange={() => dailyGoal.set(g.xp)} />
+                <span>
+                  {g.name}
+                  <small>{g.xp} XP</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="week" aria-label="XP over the last seven days">
+            {week.map((d) => (
+              <span key={d.day} className={`week-day ${d.xp >= goal ? 'met' : ''}`} title={`${d.day}: ${d.xp} XP`}>
+                <i style={{ height: `${Math.max(4, (d.xp / weekMax) * 100)}%` }} />
+                <small>{d.label}</small>
               </span>
-              <span>
+            ))}
+          </div>
+        </section>
+
+        <a className={`side-card review-card ${due ? 'due' : ''}`} href="#/learn/review">
+          <Tetra mood={due ? 'think' : 'happy'} size={52} />
+          <span className="stack tight">
+            <strong>{due ? `${due} ${due === 1 ? 'question' : 'questions'} to review` : 'Nothing to review'}</strong>
+            <span className="fine">{due ? 'Practise them to make them stick.' : 'Missed questions come back here.'}</span>
+          </span>
+        </a>
+
+        <section className="side-card" aria-labelledby="badges-title">
+          <h2 id="badges-title">Badges</h2>
+          <ul className="medals">
+            {earned.map((b) => (
+              <li key={b.id} className={b.earned ? 'earned' : ''} title={b.description}>
+                <span className="medal" aria-hidden="true">
+                  <Icon name={b.id === 'streak' ? 'flame' : b.id === 'sharp' ? 'target' : b.id === 'comeback' ? 'review' : 'star'} size={22} />
+                </span>
                 <strong>{b.name}</strong>
                 <span className="fine">
                   {b.description}
                   {b.earned ? '' : ' (not yet)'}
                 </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <p className="fine">
-        Your progress is kept in this browser. Lessons are drafts until a cardiology or physiology teacher has checked them.
-        Each lesson shows the heart in 3D where your browser can draw it, with a switch to the flat 2D diagram. Both are
-        schematic, not to scale. The lab uses guinea pig hearts, which have the same four chambers as the human heart shown here.
-      </p>
+        <p className="fine side-note">
+          Your progress is kept in this browser, and syncs when the engine is connected. Lessons are drafts until a cardiology or physiology
+          teacher has checked them. The heart is schematic, not to scale; the lab uses guinea pig hearts, which have the same four chambers.
+        </p>
+      </aside>
     </div>
   );
 }
