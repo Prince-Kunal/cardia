@@ -24,9 +24,13 @@ NUMBERS = (
     "a_low_pct",
     "a_high_pct",
     "b_dead_pct",
-    "b_borderline_pct",
+    "b_unsure_pct",
     "b_low_pct",
     "b_high_pct",
+    "c_dead_pct",
+    "c_borderline_pct",
+    "c_low_pct",
+    "c_high_pct",
 )
 
 
@@ -60,6 +64,7 @@ def load(golden: Path = GOLDEN) -> StudySet | None:
                 total_weight_mg=hn.total_weight_mg,
                 method_a_dead_pct=hn.pct["a_dead_pct"],
                 method_b_dead_pct=hn.pct["b_dead_pct"],
+                method_c_dead_pct=hn.pct["c_dead_pct"],
             )
         )
     return StudySet(

@@ -27,15 +27,23 @@ def heatmap_png(p: np.ndarray, tissue: np.ndarray, path: Path) -> None:
 
 
 def write_layers(
-    out_dir: Path, rgb: np.ndarray, corrected: np.ndarray, masks: dict, p: np.ndarray, missing: np.ndarray
+    out_dir: Path,
+    rgb: np.ndarray,
+    corrected: np.ndarray,
+    masks: dict,
+    p_a: np.ndarray,
+    p_b: np.ndarray,
+    missing: np.ndarray,
 ) -> list[str]:
     """Write every layer of one slice into `out_dir`; returns their keys in Layer order.
 
-    `p`: Method A's probability of dead; `missing`: Method B's share of the living stain missing (0-1)."""
+    `p_a`, `p_b`: Methods A's and B's probability of dead; `missing`: Method C's share of the living stain
+    missing (0-1)."""
     _save(np.ascontiguousarray(rgb), out_dir / f"{Layer.original}.png")
     _save(np.ascontiguousarray(corrected), out_dir / f"{Layer.corrected}.png")
     for key, mask in masks.items():
         mask_png(mask, out_dir / f"{Layer(key)}.png")
-    heatmap_png(p, masks["tissue"], out_dir / f"{Layer.a_probability}.png")
-    heatmap_png(missing, masks["tissue"], out_dir / f"{Layer.b_stain_missing}.png")
+    heatmap_png(p_a, masks["tissue"], out_dir / f"{Layer.a_probability}.png")
+    heatmap_png(p_b, masks["tissue"], out_dir / f"{Layer.b_probability}.png")
+    heatmap_png(missing, masks["tissue"], out_dir / f"{Layer.c_stain_missing}.png")
     return [layer.value for layer in Layer]

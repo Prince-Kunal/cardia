@@ -1,0 +1,168 @@
+{
+  "model": "dbscan_rf",
+  "model_version": "1.0.0",
+  "trained": "2026-11-25",
+  "pipeline_version": "0.6.0",
+  "method": "Method B: DBSCAN + RF (the notebook's Tuned DBSCAN + RF)",
+  "source": "GVSU_Infarct_Pipeline_dbscan_search.ipynb Steps 36-37 and fit_model (Step 48), ported in training/method_b.py; trained on the 30 study slices (8 hearts) with the notebook's tissue masks",
+  "features": [
+    "L",
+    "a",
+    "b",
+    "S",
+    "V",
+    "r_chrom",
+    "g_chrom",
+    "L_s1",
+    "a_s1",
+    "b_s1",
+    "L_s2",
+    "a_s2",
+    "b_s2",
+    "L_s4",
+    "a_s4",
+    "b_s4",
+    "L_s8",
+    "a_s8",
+    "b_s8",
+    "L_std3",
+    "grad1.5",
+    "rim_dist"
+  ],
+  "dead_class": 1,
+  "cut": 0.5,
+  "dbscan": {
+    "colour_scale": "s1",
+    "eps_percentile": 2,
+    "min_points": 40,
+    "groups": "extremes",
+    "matching": "group centre",
+    "example_rule": "margin 0.6",
+    "cut": 0.5,
+    "eps": 1.705,
+    "tuned_on": "all 8 hearts, by average Dice per heart against Ref-1 (training/method_b.py tune_dbscan)",
+    "groups_found": [
+      {
+        "mean_L_a_b": [
+          61.47999954223633,
+          30.799999237060547,
+          19.93000030517578
+        ],
+        "role": "unlabelled"
+      },
+      {
+        "mean_L_a_b": [
+          86.93000030517578,
+          4.150000095367432,
+          19.59000015258789
+        ],
+        "role": "dead"
+      },
+      {
+        "mean_L_a_b": [
+          52.68000030517578,
+          32.88999938964844,
+          18.790000915527344
+        ],
+        "role": "alive"
+      }
+    ],
+    "same_as_notebook": true
+  },
+  "leave_one_heart_out": {
+    "108": {
+      "space": "s1",
+      "q": 5,
+      "ms": 25,
+      "mode": "extremes",
+      "base": "core",
+      "rule": "reach",
+      "val": 3.0,
+      "cut": 0.45
+    },
+    "109": {
+      "space": "s2",
+      "q": 15,
+      "ms": 40,
+      "mode": "split",
+      "base": "centre",
+      "rule": "margin",
+      "val": 0.7,
+      "cut": 0.5
+    },
+    "119": {
+      "space": "s4",
+      "q": 20,
+      "ms": 40,
+      "mode": "split",
+      "base": "centre",
+      "rule": "margin",
+      "val": 0.8,
+      "cut": 0.4
+    },
+    "129": {
+      "space": "s1",
+      "q": 5,
+      "ms": 40,
+      "mode": "extremes",
+      "base": "core",
+      "rule": "reach",
+      "val": 3.0,
+      "cut": 0.45
+    },
+    "206": {
+      "space": "s1",
+      "q": 20,
+      "ms": 40,
+      "mode": "split",
+      "base": "centre",
+      "rule": "margin",
+      "val": 0.7,
+      "cut": 0.5
+    },
+    "207": {
+      "space": "s1",
+      "q": 10,
+      "ms": 40,
+      "mode": "extremes",
+      "base": "centre",
+      "rule": "margin",
+      "val": 0.8,
+      "cut": 0.15
+    },
+    "208": {
+      "space": "s4",
+      "q": 20,
+      "ms": 40,
+      "mode": "split",
+      "base": "centre",
+      "rule": "margin",
+      "val": 0.6,
+      "cut": 0.5
+    },
+    "210": {
+      "space": "s2",
+      "q": 10,
+      "ms": 10,
+      "mode": "extremes",
+      "base": "core",
+      "rule": "reach",
+      "val": 3.0,
+      "cut": 0.4
+    }
+  },
+  "forest": {
+    "n_estimators": 150,
+    "min_samples_leaf": 10,
+    "max_features": "sqrt",
+    "class_weight": "balanced_subsample",
+    "random_state": 42
+  },
+  "training_pixels": {
+    "examples_per_class_per_slice": 2000
+  },
+  "notes": "Ref-1 only picks DBSCAN's settings; the forest learns from DBSCAN's labels. The engine predicts with one thread so p is bit-identical between runs.",
+  "sklearn_version": "1.9.1",
+  "numpy_version": "2.5.5",
+  "joblib_sha256": "32a1e3e7738180d09b6cf6c8fd87aa3247e2e015048665180458f0cee6f16935"
+}

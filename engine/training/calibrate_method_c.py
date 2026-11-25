@@ -1,6 +1,6 @@
-"""Fix Method B's numbers from the 30 study slices, without any label or reference (2026-11-24).
+"""Fix Method C's numbers from the 30 study slices, without any label or reference (2026-11-24).
 
-Method B "stain ratio" (ttc_pipeline/method_b.py): dead = less than half the red stain of living muscle, and
+Method C "stain ratio" (ttc_pipeline/method_c.py): dead = less than half the red stain of living muscle, and
 leaning cream. Each number below comes from the pooled study photos by a recipe fixed while designing; no
 reference or label sets any of them.
 
@@ -17,7 +17,7 @@ Each slice gives the same number of pixels (6,000, seed 0), so large slices do n
 recomputed with each heart left out (stored for the scorecard's held-out check). The YHS lab values are read
 only afterwards, to record how the frozen rule does on the 11 time-control slices.
 
-Rejected while designing (2026-11-24; README "Method B"): a* with a hue gate (old Method C: a* shrinks in dark
+Rejected while designing (2026-11-24; README "Method C"): a* with a hue gate (the short-lived "stain hue" method: a* shrinks in dark
 pixels and the gate missed near-white cream), s alone (counts whitish-pink pale tissue, as common on normal
 hearts as on infarct hearts), a lightness term (blurs the cream/red split; shadows move it), the valley of s
 (shallow: moved from 0.19 to 0.30 with the hearts used), the valley of theta (a 3% dip that moved with the
@@ -25,7 +25,7 @@ pixel sample), half-unstained by area (linear-light mixing; reads specks, not th
 pink tissue), a classifier of control vs infarct hearts' colours (learned heart-to-heart colour differences:
 95-99% dead on infarct hearts) and a neighbourhood rule for pale pixels next to cream (under 3 points).
 
-    cd engine && uv run python -m training.calibrate_method_b
+    cd engine && uv run python -m training.calibrate_method_c
 """
 
 import datetime
@@ -36,7 +36,7 @@ from scipy.signal import argrelextrema
 from scipy.stats import gaussian_kde
 
 from ttc_pipeline import PIPELINE_VERSION, parse_name, read_rgb, run_front_end
-from ttc_pipeline.method_b import (
+from ttc_pipeline.method_c import (
     STAIN_RATIO_JSON,
     StainRatioModel,
     edge_distance,

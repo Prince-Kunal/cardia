@@ -88,7 +88,7 @@ def write_bundle(
     heart: dict,
     results: dict[str, dict],
     images: dict[str, Path | None],
-    layers: dict[str, list[Path]],
+    layers: dict[str, list[tuple[str, Path]]],
     methods: list[dict],
     settings: dict,
     engine: dict,
@@ -97,7 +97,7 @@ def write_bundle(
     """Write the bundle to `path`; returns the folder name inside it.
 
     `heart`: Heart record; `results`: SliceResult by slice_id; `images`: stored original by image SHA-256;
-    `layers`: layer PNG paths by slice_id; `methods`: methods_paragraphs(); `engine`: EngineInfo fields.
+    `layers`: (layer key, PNG path) pairs by slice_id; `methods`: methods_paragraphs(); `engine`: EngineInfo fields.
     """
     now = now or datetime.now(UTC)
     root = f"cardia-heart-{safe_name(heart['label'])}"
@@ -135,8 +135,8 @@ def write_bundle(
                 files.append(name)
             z.json(f"{folder}/result.json", r)
             files.append(f"{folder}/result.json")
-            for layer in layers.get(s["slice_id"], []):
-                name = f"{folder}/layers/{layer.name}"
+            for key, layer in layers.get(s["slice_id"], []):
+                name = f"{folder}/layers/{key}.png"
                 z.file(name, layer)
                 files.append(name)
             slices_manifest.append(

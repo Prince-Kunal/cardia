@@ -9,7 +9,8 @@ import math
 from dataclasses import dataclass
 
 A_COLUMNS = ("a_dead_pct", "a_unsure_pct", "a_low_pct", "a_high_pct")
-B_COLUMNS = ("b_dead_pct", "b_borderline_pct", "b_low_pct", "b_high_pct")  # both methods read the shared tissue
+B_COLUMNS = ("b_dead_pct", "b_unsure_pct", "b_low_pct", "b_high_pct")
+C_COLUMNS = ("c_dead_pct", "c_borderline_pct", "c_low_pct", "c_high_pct")  # all three methods read the shared tissue
 
 
 @dataclass(frozen=True)
@@ -17,9 +18,10 @@ class HeartNumbers:
     weighting: str  # "slice_weight" or "tissue_area"
     total_weight_mg: float | None  # None unless every slice has a weight
     flags: tuple[str, ...]  # "weights_missing"
-    pct: dict[str, float | None]  # every column of A_COLUMNS and B_COLUMNS
+    pct: dict[str, float | None]  # every column of A_COLUMNS, B_COLUMNS and C_COLUMNS
     a_dead_mg: float | None
     b_dead_mg: float | None
+    c_dead_mg: float | None
 
 
 def _weighted(values, weights) -> float | None:
@@ -36,7 +38,7 @@ def heart_numbers(slices: list[dict]) -> HeartNumbers:
     weights = [s["weight_mg"] for s in slices]
     by_weight = all(w is not None for w in weights)
     w = [float(x) for x in weights] if by_weight else [float(s["tissue_px"]) for s in slices]
-    pct = {c: _weighted([s[c] for s in slices], w) for c in A_COLUMNS + B_COLUMNS}
+    pct = {c: _weighted([s[c] for s in slices], w) for c in A_COLUMNS + B_COLUMNS + C_COLUMNS}
     total = sum(weights) if by_weight else None
 
     def dead_mg(col):
@@ -52,4 +54,5 @@ def heart_numbers(slices: list[dict]) -> HeartNumbers:
         pct=pct,
         a_dead_mg=dead_mg("a_dead_pct"),
         b_dead_mg=dead_mg("b_dead_pct"),
+        c_dead_mg=dead_mg("c_dead_pct"),
     )

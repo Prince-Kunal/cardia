@@ -63,8 +63,10 @@ SLICE_COLUMNS = (
         "a_unsure_pct",
     ]
     + _range_columns("a")
-    + ["b_dead_pct", "b_dead_mg", "b_borderline_pct"]
+    + ["b_dead_pct", "b_dead_mg", "b_unsure_pct"]
     + _range_columns("b")
+    + ["c_dead_pct", "c_dead_mg", "c_borderline_pct"]
+    + _range_columns("c")
     + [
         "qc_flags",
         "dpi",
@@ -87,7 +89,7 @@ def slice_rows(heart: dict, results: dict[str, dict]) -> list[dict]:
     rows = []
     for i, s in enumerate(heart["slices"]):
         r = results[s["slice_id"]]
-        a, b, t = r["method_a"], r["method_b"] or {}, r["tissue"]
+        a, b, c, t = r["method_a"], r["method_b"] or {}, r.get("method_c") or {}, r["tissue"]
         weight = s["weight_mg"]
         dpi = r.get("dpi")
         rows.append(
@@ -109,9 +111,14 @@ def slice_rows(heart: dict, results: dict[str, dict]) -> list[dict]:
                 "a_high_pct": a["range"]["high_pct"],
                 "b_dead_pct": b.get("dead_pct"),
                 "b_dead_mg": _dead_mg(b.get("dead_pct"), weight),
-                "b_borderline_pct": b.get("borderline_pct"),
+                "b_unsure_pct": b.get("unsure_pct"),
                 "b_low_pct": (b.get("range") or {}).get("low_pct"),
                 "b_high_pct": (b.get("range") or {}).get("high_pct"),
+                "c_dead_pct": c.get("dead_pct"),
+                "c_dead_mg": _dead_mg(c.get("dead_pct"), weight),
+                "c_borderline_pct": c.get("borderline_pct"),
+                "c_low_pct": (c.get("range") or {}).get("low_pct"),
+                "c_high_pct": (c.get("range") or {}).get("high_pct"),
                 "qc_flags": r["qc_flags"],
                 "dpi": "x".join(_num(v) for v in dpi) if dpi else None,
                 "pipeline_version": r["pipeline_version"],
@@ -148,15 +155,17 @@ HEART_COLUMNS = (
         "a_unsure_pct",
     ]
     + _range_columns("a")
-    + ["b_dead_pct", "b_dead_mg", "b_borderline_pct"]
+    + ["b_dead_pct", "b_dead_mg", "b_unsure_pct"]
     + _range_columns("b")
+    + ["c_dead_pct", "c_dead_mg", "c_borderline_pct"]
+    + _range_columns("c")
     + ["pipeline_version", "models_manifest_sha256", "demo_data", "notes", "heart_key"]
 )
 
 
 def heart_row(heart: dict) -> dict:
     s = heart.get("summary") or {}
-    a, b = s.get("method_a") or {}, s.get("method_b") or {}
+    a, b, c = s.get("method_a") or {}, s.get("method_b") or {}, s.get("method_c") or {}
     return {
         "heart": heart["label"],
         "group": heart["group"],
@@ -178,9 +187,14 @@ def heart_row(heart: dict) -> dict:
         "a_high_pct": (a.get("range") or {}).get("high_pct"),
         "b_dead_pct": b.get("dead_pct"),
         "b_dead_mg": b.get("dead_mg"),
-        "b_borderline_pct": b.get("borderline_pct"),
+        "b_unsure_pct": b.get("unsure_pct"),
         "b_low_pct": (b.get("range") or {}).get("low_pct"),
         "b_high_pct": (b.get("range") or {}).get("high_pct"),
+        "c_dead_pct": c.get("dead_pct"),
+        "c_dead_mg": c.get("dead_mg"),
+        "c_borderline_pct": c.get("borderline_pct"),
+        "c_low_pct": (c.get("range") or {}).get("low_pct"),
+        "c_high_pct": (c.get("range") or {}).get("high_pct"),
         "pipeline_version": s.get("pipeline_version"),
         "models_manifest_sha256": s.get("models_manifest_sha256"),
         "demo_data": s.get("mock") if s else None,

@@ -37,7 +37,7 @@ The engine refuses requests whose `Origin` is not an allowed UI origin (403) and
 | Import | `POST /api/v1/jobs` (multipart, field `files`, one or more; optional field `meta`) | Returns `202` and a `Job` right away. Heart ID and weight come from names like `206IS89mg.tif`; `meta` is a JSON list, one `{"heart_id"?, "weight_mg"?}` per file, for what the user typed where the name had nothing |
 | Progress | `GET /api/v1/jobs/{job_id}` every ~0.5 s until `finished_at` is set | Each slice has `state`, `stage` and `progress` (0–1); the job has `progress` and `counts` |
 | Cancel | `POST /api/v1/jobs/{job_id}/cancel` | Slices not yet started are cancelled; running ones (a few seconds each) finish and are kept |
-| Slice report | `GET /api/v1/slices/{slice_id}` | `SliceResult`: tissue, Method A, Method B, QC flags, versions, layer names |
+| Slice report | `GET /api/v1/slices/{slice_id}` | `SliceResult`: tissue, Methods A, B and C, QC flags, versions, layer names |
 | Layers | `GET /api/v1/slices/{slice_id}/layers/{layer}` | PNG at full resolution; see below |
 | Library | `GET /api/v1/hearts?q=&group=&tag=&favourite=&trash=` | Hearts with their slices and numbers, most recently changed first. When a job finishes, its slices are filed into the heart with the same heart ID (made if needed), in upload order; each job slice then has `heart_key` |
 | Heart report | `GET /api/v1/hearts/{heart_key}` | Details, slices in order (each with its weight and where it came from) and `summary`, the heart numbers |
@@ -75,15 +75,17 @@ Uploading a scan that was already analysed returns the stored result at once (`c
 ## Numbers
 
 * Percentages are 0–100; `null` means the method found no tissue. mm² values are `null` when the image has no DPI; mg values are `null` without a weight.
-* `method_a.range` and `method_b.range` carry `shown`. **Show a range only when `shown` is true.** Method B shows its range (PLAN.md §2g, §2i).
-* `method_b` (API 0.6.0, pipeline 0.5.0) is the stain ratio and the default headline method. It is `null` on results stored by pipeline 0.3.0 or 0.4.0, whose Method B was the retired a\* cut (their Method C is dropped too, with the layers of both); a heart summary's `method_b` is `null` when any of its slices is, and the UI then shows Method A only. To get Method B, move the heart to the trash and import its scans again (otherwise the new slices join the old heart, and a heart with mixed pipeline versions has no summary).
+* Three methods (API 0.8.0, pipeline 0.6.0; PLAN.md D13). `GET /api/v1/engine` lists them with a `kind`: **Method A** "K-Means + RF" and **Method B** "DBSCAN + RF" are `machine_learning` (the same 22 pixel features and forest recipe, taught by different clustering) and are shown side by side; **Method C** "stain ratio" is a `colour_rule` and is shown apart. Method A is the default headline method.
+* `method_a`, `method_b` and `method_c` each carry `range.shown`. **Show a range only when `shown` is true.** Only Method C shows its range (PLAN.md §2g, §2i).
+* `method_b` and `method_c` may be `null` on stored results: pipeline 0.5.x stored the stain ratio as `method_b`, so its results show it as `method_c` (layers `c_dead`, `c_borderline`, `c_stain_missing`) with `method_b` null; pipelines 0.3.0 and 0.4.0 stored the retired a\* cut, so both are null. A heart summary's `method_b` or `method_c` is `null` when any of its slices lacks it. To get every method, move the heart to the trash and import its scans again (otherwise the new slices join the old heart, and a heart with mixed pipeline versions has no summary).
+* A headline method saved before API 0.8.0 meant another method under the same letter, so it falls back to Method A.
 * `qc_flags`: `unvalidated_input` (not a TIFF), `many_unsure` (Method A: > 15% unsure), `holes_removed`, `uncertain_holes`.
 * A heart summary's `weighting` is `slice_weight`, or `tissue_area` when any weight is missing. The `weights_missing` flag marks the second case. `mixed_heart_ids` means the slices came from different heart IDs.
 * Every result names the `pipeline_version`, the model files with their SHA-256, and the image's SHA-256. Show them in reports and exports (PLAN.md §1e).
 
 ## Layers
 
-`GET /api/v1/engine` lists the 12 layers with a title, a description and a `kind`:
+`GET /api/v1/engine` lists the 13 layers with a title, a description and a `kind`:
 
 | kind | PNG | How to show it |
 |---|---|---|

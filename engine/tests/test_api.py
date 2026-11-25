@@ -52,8 +52,13 @@ def test_every_other_route_needs_the_token(client):
     assert client.get("/api/v1/slices").status_code == 401
     assert client.post("/api/v1/jobs", files=[("files", ("a.tif", scan()))]).status_code == 401
     info = client.get("/api/v1/engine", headers=AUTH).json()
-    assert [m["key"] for m in info["methods"]] == ["b", "a"]
-    assert {m["key"]: m["range_shown"] for m in info["methods"]} == {"a": False, "b": True}
+    assert [m["key"] for m in info["methods"]] == ["a", "b", "c"]
+    assert {m["key"]: m["range_shown"] for m in info["methods"]} == {"a": False, "b": False, "c": True}
+    assert {m["key"]: m["kind"] for m in info["methods"]} == {
+        "a": "machine_learning",
+        "b": "machine_learning",
+        "c": "colour_rule",
+    }
     assert [layer["key"] for layer in info["layers"]] == [layer.value for layer in Layer]
 
 
@@ -86,9 +91,10 @@ def test_a_job_analyses_every_slice(client, heart_206):
     assert s["mock"] and s["pipeline_version"] == "mock" and s["dpi"] == [1200.0, 1200.0]
     assert s["mm2_per_px"] == pytest.approx((25.4 / 1200) ** 2)
     assert s["tissue"]["tissue_mm2"] == pytest.approx(s["tissue"]["tissue_px"] * s["mm2_per_px"])
-    assert 10 < s["method_a"]["dead_pct"] < 60 and 10 < s["method_b"]["dead_pct"] < 60
+    assert all(10 < s[f"method_{m}"]["dead_pct"] < 60 for m in "abc")
     assert s["method_a"]["dead_mg"] == pytest.approx(s["method_a"]["dead_pct"] / 100 * 89.0)
-    assert s["method_a"]["range"]["shown"] is False and s["method_b"]["range"]["shown"] is True
+    assert s["method_b"]["dead_mg"] == pytest.approx(s["method_b"]["dead_pct"] / 100 * 89.0)
+    assert [s[f"method_{m}"]["range"]["shown"] for m in "abc"] == [False, False, True]
     assert s["qc_flags"] == [] and s["layers"] == [layer.value for layer in Layer]
     assert client.get(f"/api/v1/slices/{c['slice_id']}", headers=AUTH).json()["qc_flags"] == ["unvalidated_input"]
     listed = {r["slice_id"] for r in client.get("/api/v1/slices", headers=AUTH).json()}
@@ -152,9 +158,10 @@ def test_heart_numbers_come_from_the_slices(client, heart_206):
     r = client.post("/api/v1/hearts/summary", headers=AUTH, json={"slices": [{"slice_id": a}, {"slice_id": b}]})
     h = r.json()
     assert r.status_code == 200 and h["heart_id"] == "206" and h["weighting"] == "slice_weight" and h["flags"] == []
-    want = (sa["method_b"]["dead_pct"] * 89 + sb["method_b"]["dead_pct"] * 95.5) / (89 + 95.5)
-    assert h["method_b"]["dead_pct"] == pytest.approx(want)
-    assert h["total_weight_mg"] == 184.5 and h["method_b"]["range"]["shown"] is True
+    for m in "bc":
+        want = (sa[f"method_{m}"]["dead_pct"] * 89 + sb[f"method_{m}"]["dead_pct"] * 95.5) / (89 + 95.5)
+        assert h[f"method_{m}"]["dead_pct"] == pytest.approx(want)
+    assert h["total_weight_mg"] == 184.5 and h["method_c"]["range"]["shown"] is True
 
     typed = {"slices": [{"slice_id": a, "weight_mg": 100}, {"slice_id": b}]}
     assert client.post("/api/v1/hearts/summary", headers=AUTH, json=typed).json()["total_weight_mg"] == 195.5
@@ -209,14 +216,60 @@ def test_results_stored_before_pipeline_0_5_still_open(tmp_path):
             got = c.get(f"/api/v1/slices/{sid}", headers=AUTH)
             assert got.status_code == 200, got.text
             body = got.json()
-            assert body["method_b"] is None and "method_c" not in body
+            assert body["method_b"] is None and body["method_c"] is None
             assert not any(k.startswith(("b_", "c_")) for k in body["layers"])
             assert c.get(f"/api/v1/slices/{sid}/layers/b_dead", headers=AUTH).status_code == 404
         key = job["slices"][0]["heart_key"]
         heart = c.get(f"/api/v1/hearts/{key}", headers=AUTH).json()
-        assert heart["summary"]["method_b"] is None and heart["summary"]["method_a"]["dead_pct"] is not None
-        assert all(s["method_b_dead_pct"] is None for s in heart["slices"])
+        assert heart["summary"]["method_b"] is None and heart["summary"]["method_c"] is None
+        assert heart["summary"]["method_a"]["dead_pct"] is not None
+        assert all(s["method_b_dead_pct"] is None and s["method_c_dead_pct"] is None for s in heart["slices"])
         methods = c.get(f"/api/v1/hearts/{key}/methods", headers=AUTH).json()
         assert [m["method"] for m in methods] == ["a"]
         assert c.get(f"/api/v1/hearts/{key}/slices.csv", headers=AUTH).status_code == 200
         assert c.get(f"/api/v1/hearts/{key}/export.zip", headers=AUTH).status_code == 200
+
+
+def test_results_stored_by_pipeline_0_5_show_the_stain_ratio_as_method_c(tmp_path):
+    """Pipeline 0.5.x stored the stain ratio as "method_b", with layers b_dead, b_borderline, b_stain_missing.
+    Since 0.6.0 they show as Method C (the layer files keep their names on disk) and Method B is null until the
+    scan is re-imported (2026-11-25)."""
+    import json
+
+    with make_client(tmp_path) as c:
+        job = wait(c, upload(c, [("402IS90mg.tif", scan(seed=43)), ("402IS100mg.tif", scan(seed=44))])["job_id"])
+        ids = [s["slice_id"] for s in job["slices"]]
+        stain = {}
+        for sid in ids:  # make them look like results of pipeline 0.5.0
+            folder = tmp_path / "slices" / sid
+            r = json.loads((folder / "result.json").read_text())
+            stain[sid] = r["method_c"]
+            r["method_b"] = r.pop("method_c")
+            for new, old in (
+                ("c_dead", "b_dead"),
+                ("c_borderline", "b_borderline"),
+                ("c_stain_missing", "b_stain_missing"),
+            ):
+                (folder / f"{old}.png").write_bytes((folder / f"{new}.png").read_bytes())
+                (folder / f"{new}.png").unlink()
+            (folder / "b_unsure.png").unlink()
+            (folder / "b_probability.png").unlink()
+            r["layers"] = [k for k in r["layers"] if not k.startswith(("b_", "c_"))]
+            r["layers"] += ["b_dead", "b_borderline", "b_stain_missing"]
+            (folder / "result.json").write_text(json.dumps(r))
+        for sid in ids:
+            body = c.get(f"/api/v1/slices/{sid}", headers=AUTH).json()
+            assert body["method_b"] is None and body["method_c"] == stain[sid]
+            assert [k for k in body["layers"] if k.startswith(("b_", "c_"))] == [
+                "c_dead",
+                "c_borderline",
+                "c_stain_missing",
+            ]
+            got = c.get(f"/api/v1/slices/{sid}/layers/c_dead", headers=AUTH)
+            assert got.status_code == 200 and got.content == (tmp_path / "slices" / sid / "b_dead.png").read_bytes()
+            assert c.get(f"/api/v1/slices/{sid}/layers/b_dead", headers=AUTH).status_code == 404
+        key = job["slices"][0]["heart_key"]
+        heart = c.get(f"/api/v1/hearts/{key}", headers=AUTH).json()
+        assert heart["summary"]["method_b"] is None and heart["summary"]["method_c"]["dead_pct"] is not None
+        methods = c.get(f"/api/v1/hearts/{key}/methods", headers=AUTH).json()
+        assert [m["method"] for m in methods] == ["a", "c"]

@@ -1,11 +1,12 @@
 {
-  "pipeline_version": "0.5.0",
+  "pipeline_version": "0.6.0",
   "models": {
     "hole_model": "1.0.0",
     "kmeans_rf": "1.0.0",
+    "dbscan_rf": "1.0.0",
     "stain_ratio": "1.0.0"
   },
-  "models_manifest_sha256": "8cac01009776820de17e9ade4c8a80e261fe78c7a77de43a6a9dca2afb376988",
+  "models_manifest_sha256": "232bc9a925b7cbdb5478925446ecf5429e2ec98533bb196321060476b213d2e1",
   "platform": "Linux-x86_64",
   "models_platform": "Darwin-arm64",
   "python": "3.14.4",
