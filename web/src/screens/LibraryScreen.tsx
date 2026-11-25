@@ -1,7 +1,7 @@
 // Screen 1, Home / Library (PLAN.md §9): every heart analysed on this computer, search and filters,
 // favourites, the 30-day trash, and any import still running.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { EngineError, saveFile } from '../api/client';
 import type { Heart, Job } from '../api/types.gen';
 import { Empty, ErrorNote, Progress } from '../components/ui';
@@ -102,6 +102,7 @@ function HeartRow({ heart, onChanged }: { heart: Heart; onChanged: () => void })
         />
       </td>
       <td className="primary-cell">
+        <span className="specimen" aria-hidden="true" style={{ '--dead': `${Math.min(100, Math.max(0, headline?.dead_pct ?? 0))}%` } as CSSProperties} />
         <a href={href({ name: 'heart', key: heart.heart_key })} onClick={(e) => e.stopPropagation()}>
           Heart {heart.label}
         </a>
@@ -326,7 +327,7 @@ export function LibraryScreen() {
         ) : (
           <Empty title="No hearts yet">
             <p>
-              Drop the scanned slices of a heart into Cardia. Each slice is analysed on this computer by both methods,
+              Drop the scanned slices of a heart into Cardia. Each slice is analysed on this computer by all three methods,
               and the slices are filed into their heart by the heart ID in their file names.
             </p>
             <div className="row center">

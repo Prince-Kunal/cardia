@@ -4,7 +4,9 @@ import { scrollPageTo, takeForwardNavigation } from '../lib/scroll';
 import { useShortcuts } from '../lib/shortcuts';
 import { SYNC_LABEL, SYNC_TONE, signedIn } from '../lib/sync';
 import { AppContext, useApp, useResource } from '../state';
+import { BrandMark } from './BrandMark';
 import { Tour } from './Tour';
+import { VitalLine } from './VitalLine';
 
 /** How sync is going, in the header, once signed in (a link to the Cloud sync screen). */
 function SyncBadge({ current }: { current: boolean }) {
@@ -44,13 +46,8 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
         Skip to content
       </a>
       <header className="topbar">
-        <a className="brand" href="#/library" aria-label="Cardia, library">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path
-              d="M12 21s-7.5-4.6-9.3-9.6C1.4 7.6 4 4 7.6 4c1.9 0 3.3 1 4.4 2.5C13.1 5 14.5 4 16.4 4 20 4 22.6 7.6 21.3 11.4 19.5 16.4 12 21 12 21z"
-              fill="currentColor"
-            />
-          </svg>
+        <a className="brand" href="#/" aria-label="Cardia, home">
+          <BrandMark size={30} />
           Cardia
         </a>
         <div className="switch" role="group" aria-label="Part of the app">
@@ -87,6 +84,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             Demo data
           </span>
         )}
+        <VitalLine />
       </header>
       <main id="main" className="content">
         {children}

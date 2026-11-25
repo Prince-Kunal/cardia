@@ -2,6 +2,17 @@
 
 import { useState } from 'react';
 import { type Connection, parseLink } from '../api/connection';
+import { BrandMark } from '../components/BrandMark';
+import { VitalLine } from '../components/VitalLine';
+
+/** Behind the card, a monitor: no pulse until the engine answers. */
+function Monitor({ state }: { state: 'flat' | 'beating' }) {
+  return (
+    <div className="connect-monitor" aria-hidden="true">
+      <VitalLine state={state} />
+    </div>
+  );
+}
 
 interface Props {
   status: 'needs-link' | 'offline' | 'connecting' | 'ready';
@@ -17,8 +28,12 @@ export function ConnectScreen({ status, reason, onConnect, onRetry }: Props) {
   if (status === 'connecting' || status === 'ready') {
     return (
       <main className="connect" aria-busy="true">
+        <Monitor state="beating" />
         <div className="connect-card">
-          <h1 className="brand">Cardia</h1>
+          <h1 className="brand">
+            <BrandMark size={40} />
+            Cardia
+          </h1>
           <p>Connecting to the engine…</p>
         </div>
       </main>
@@ -27,8 +42,15 @@ export function ConnectScreen({ status, reason, onConnect, onRetry }: Props) {
 
   return (
     <main className="connect">
+      <Monitor state="flat" />
       <div className="connect-card">
-        <h1 className="brand">Cardia</h1>
+        <a className="back" href="#/">
+          ← Cardia home
+        </a>
+        <h1 className="brand">
+          <BrandMark size={40} />
+          Cardia
+        </h1>
         {status === 'offline' ? (
           <>
             <h2>The engine isn't running</h2>

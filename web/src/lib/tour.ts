@@ -43,7 +43,7 @@ export const TOUR: TourStep[] = [
   {
     id: 'processing',
     title: 'The analysis runs here',
-    body: 'Each slice goes through both methods on this computer, a few seconds each and several at once. You could leave this page and it would keep running. When it is finished, press Open heart.',
+    body: 'Each slice goes through all three methods on this computer, a few seconds each and several at once. You could leave this page and it would keep running. When it is finished, press Open heart.',
     on: ['job'],
     target: ['filed', 'progress'],
     advanceOn: 'heart',
@@ -59,7 +59,7 @@ export const TOUR: TourStep[] = [
   {
     id: 'report',
     title: 'Apex to base, quality, context',
-    body: 'The strip shows every slice from apex to base with both methods’ %. Further down, Quality lists anything that lowers confidence, and Context places this heart among the eight study hearts.',
+    body: 'The strip shows every slice from apex to base with every method’s %. Further down, Quality lists anything that lowers confidence, and Context places this heart among the eight study hearts.',
     on: ['heart'],
     target: ['strip'],
   },
