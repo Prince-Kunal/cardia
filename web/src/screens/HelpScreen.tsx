@@ -8,6 +8,7 @@ import { SHORTCUTS } from '../lib/shortcuts';
 import { startTour } from '../lib/tour';
 import { useTitle } from '../lib/hooks';
 import { AppContext } from '../state';
+import { CREDITS, type RealHeartKind } from '../heart3d/credits';
 
 const FLAGS: { flag: string; title: string; means: string; todo: string }[] = [
   {
@@ -170,7 +171,7 @@ export function HelpScreen() {
             slice is filed into its heart.
           </li>
           <li>
-            <strong>Read the heart’s report</strong>: both methods, the apex-to-base strip, quality, context against the study
+            <strong>Read the heart’s report</strong>: all three methods, the apex-to-base strip, quality, context against the study
             hearts, and the Methods paragraph for your paper. Open any slice to see its layers.
           </li>
           <li>
@@ -268,12 +269,24 @@ export function HelpScreen() {
           and checked on.
         </p>
         <p className="muted">
-          The heart in Learn, in 3D and 2D, was drawn in code by the team: no third-party model. The lessons cite their sources
-          and are drafts until a cardiology or physiology teacher has reviewed them.
+          The 2D heart diagrams, the slices and the parts that light up in lessons were drawn in code by the team. The lessons cite
+          their sources and are drafts until a cardiology or physiology teacher has reviewed them.
         </p>
+        <h3>3D heart models</h3>
+        <ul className="help-list">
+          {(Object.keys(CREDITS) as RealHeartKind[]).map((k) => (
+            <li key={k}>
+              This work is based on “<a href={CREDITS[k].url}>{CREDITS[k].title}</a>” by {CREDITS[k].author}, licensed under{' '}
+              <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Compressed for the web; otherwise unchanged.
+            </li>
+          ))}
+        </ul>
         <h3>Open-source software</h3>
         <ul className="help-list">
-          <li>App: React (MIT), three.js (MIT), React Three Fiber (MIT), Lenis (MIT), fflate (MIT), Vite (MIT).</li>
+          <li>
+            App: React (MIT), three.js (MIT), React Three Fiber (MIT), Lenis (MIT), fflate (MIT), Vite (MIT). Fonts: Fraunces,
+            Instrument Sans, JetBrains Mono and Bricolage Grotesque (SIL Open Font License).
+          </li>
           <li>
             Engine: FastAPI (MIT), Uvicorn (BSD-3-Clause), NumPy, SciPy, pandas, scikit-learn, scikit-image and joblib
             (BSD-3-Clause), OpenCV (Apache-2.0), Pillow (MIT-CMU), python-multipart (Apache-2.0).
