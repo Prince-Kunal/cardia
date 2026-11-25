@@ -7,6 +7,10 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { slab as tissueSlab } from '../landing/geometry';
+import { type Shared, ownUniforms, realHeartMaterial, tissueMaterial } from '../landing/tissue';
+import { CREDITS, type RealHeartKind, loadRealHeart } from './realHeart';
 import type { Scene } from '../learn/lesson';
 import { type Anim, LOOPING, VIEW_NAMES, VIEW_PARTS, shortName, viewOf } from '../heart/parts';
 import { captionOf, clamp, ease, reducedMotion, useTimeline } from '../heart/timeline';
@@ -16,6 +20,7 @@ import {
   LAD_BLOCK,
   SLAB_CUTS,
   SLICE_LABEL_AT,
+  SLICE_T,
   buildHeart,
   buildSlice,
   infarctGeometry,
@@ -47,16 +52,114 @@ const COLOURS = {
   coronary: '#d8372d',
   starved: '#9d8f8b',
   highlight: '#f4b400',
-  pale: '#efdfbc',
-  unstained: '#dec4ba',
-  stained: '#a42e28',
+  pale: '#ecdcb8',
+  unstained: '#c9a9a3',
+  stained: '#b23a4b',
 };
+
+// ---------------------------------------------------------------------------------------------
+// The real hearts (realHeart.ts) as the visible skin: the realistic heart outside, the cut-open one
+// for inside views. Each is placed over the drawn model (whose parts stay, unseen, for pointing,
+// clicking and glowing highlights). Tuned by eye against model.ts.
+
+const SKIN_ALIGN: Record<'realistic' | 'interior', THREE.Matrix4> = {
+  realistic: new THREE.Matrix4().compose(
+    new THREE.Vector3(0.15, 1.76, -0.12),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, THREE.MathUtils.degToRad(-12))),
+    new THREE.Vector3(2.25, 2.25, 2.25),
+  ),
+  interior: new THREE.Matrix4().compose(
+    new THREE.Vector3(0, 1.55, 0),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0, 'ZYX')),
+    new THREE.Vector3(3.2, 3.2, 3.2),
+  ),
+};
+
+/** The skin for this view, once loaded (null before, and if it can't load: the drawn heart shows). */
+function useSkin(kind: 'realistic' | 'interior' | null, own: Shared): THREE.Mesh | null {
+  const [skins, setSkins] = useState<Partial<Record<'realistic' | 'interior', THREE.Mesh>>>({});
+  const made = useRef<THREE.Mesh[]>([]);
+  useEffect(() => {
+    if (!kind || skins[kind]) return;
+    let live = true;
+    loadRealHeart(kind)
+      .then((loaded) => {
+        if (!live) return;
+        const mesh = makeSkin(loaded, kind, own);
+        made.current.push(mesh);
+        setSkins((prev) => ({ ...prev, [kind]: mesh }));
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [kind, skins, own]);
+  useEffect(() => () => made.current.forEach(disposeSkin), []);
+  return kind ? (skins[kind] ?? null) : null;
+}
+
+function makeSkin(loaded: THREE.Mesh, kind: 'realistic' | 'interior', own: Shared): THREE.Mesh {
+  const mesh = new THREE.Mesh(loaded.geometry, realHeartMaterial(loaded.material as THREE.MeshStandardMaterial, SKIN_ALIGN[kind], undefined, undefined, own));
+  mesh.matrixAutoUpdate = false;
+  mesh.matrix.copy(SKIN_ALIGN[kind]);
+  // The skin never takes the pointer: clicks go through to the parts beneath.
+  mesh.raycast = () => undefined;
+  return mesh;
+}
+
+function disposeSkin(mesh: THREE.Mesh): void {
+  (mesh.material as THREE.Material).dispose();
+}
+
+/** Set the skin's and the slice's story values (outside the components, which only pass them on). */
+function setStory(own: Shared, values: Partial<Record<keyof Shared, number>>): void {
+  for (const [k, v] of Object.entries(values)) own[k as keyof Shared].value = v;
+}
+
+/** Soft studio reflections for the wet surfaces. */
+function useRoomEnvironment() {
+  const gl = useThree((st) => st.gl);
+  const scene = useThree((st) => st.scene);
+  useEffect(() => lightRoom(gl, scene), [gl, scene]);
+}
+function lightRoom(gl: THREE.WebGLRenderer, scene: THREE.Scene): () => void {
+  const pmrem = new THREE.PMREMGenerator(gl);
+  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environment = env;
+  scene.environmentIntensity = 0.5;
+  return () => {
+    scene.environment = null;
+    env.dispose();
+  };
+}
+function RoomEnvironmentLight() {
+  useRoomEnvironment();
+  return null;
+}
 
 /** Parts drawn only by the slice, and the slice cameras. */
 const SLICE_CAMERAS = new Set(['short-axis', 'slice', 'ttc']);
 
 type Kind = 'solid' | 'shell' | 'overlay' | 'line';
-type Entry = { mat: THREE.Material; ids: string[]; kind: Kind; base: THREE.Color };
+type Entry = { mat: THREE.Material; ids: string[]; kind: Kind; base: THREE.Color; rim: THREE.IUniform<number> };
+
+/** Over a real skin, a highlighted part is drawn as a glowing outline: strong at its silhouette,
+ *  clear in its middle, so the real anatomy shows through. */
+function withRim(mat: THREE.Material, rim: THREE.IUniform<number>): void {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uRim = rim;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uRim;').replace(
+      '#include <opaque_fragment>',
+      `#include <opaque_fragment>
+if (uRim > 0.5) {
+  float facing = abs(dot(normalize(normal), normalize(vViewPosition)));
+  gl_FragColor.a *= clamp(pow(1.0 - facing, 1.6) * 1.7 + 0.06, 0.0, 1.0);
+}`,
+    );
+  };
+  mat.customProgramCacheKey = () => 'cardia-rim';
+}
 type Registry = Map<string, Entry>;
 
 /** One material per drawn piece, registered so the frame loop can highlight it without a render. */
@@ -82,7 +185,9 @@ function useMaterials() {
               polygonOffsetFactor: -2,
               ...extra,
             });
-      reg.set(key, { mat, ids, kind, base: new THREE.Color(colour) });
+      const rim = { value: 0 };
+      if (kind !== 'line') withRim(mat, rim);
+      reg.set(key, { mat, ids, kind, base: new THREE.Color(colour), rim });
       return mat;
     };
     return { reg, make };
@@ -100,6 +205,7 @@ function Highlighter({
   xray,
   still,
   speed,
+  skin,
 }: {
   reg: Registry;
   highlighted: Set<string>;
@@ -108,10 +214,12 @@ function Highlighter({
   xray: boolean;
   still: boolean;
   speed: number;
+  /** A real skin is showing: parts are unseen, except as a glow when highlighted or pointed at. */
+  skin: boolean;
 }) {
   const hl = useMemo(() => new THREE.Color(COLOURS.highlight), []);
   const invalidate = useThree((s) => s.invalidate);
-  useEffect(() => invalidate(), [highlighted, focus, hover, xray, invalidate]);
+  useEffect(() => invalidate(), [highlighted, focus, hover, xray, skin, invalidate]);
   useFrame(({ clock }) => {
     const time = clock.getElapsedTime();
     const pulse = still ? 0.6 : 0.45 + 0.3 * Math.sin((time * Math.PI * 2 * speed) / 1.6);
@@ -128,6 +236,29 @@ function Highlighter({
         continue;
       }
       const m = e.mat as THREE.MeshStandardMaterial;
+      if (skin) {
+        // Over a real skin a highlighted part glows through it; the rest stay unseen.
+        m.visible = level > 0;
+        m.transparent = true;
+        m.depthTest = false;
+        m.depthWrite = false;
+        m.color.copy(hl);
+        m.emissive.copy(hl);
+        m.emissiveIntensity = 0.9 * level;
+        // Territories are thin layers on the surface: a soft fill. Everything else: an outline.
+        e.rim.value = e.kind === 'overlay' ? 0 : 1;
+        m.opacity = level ? (e.kind === 'overlay' ? 0.22 + 0.25 * level : 0.75 + 0.25 * level) : 0;
+        continue;
+      }
+      e.rim.value = 0;
+      m.visible = true;
+      m.depthTest = true;
+      m.transparent = e.kind !== 'solid';
+      if (e.kind !== 'overlay') m.color.copy(e.base);
+      if (e.kind === 'solid') {
+        m.opacity = 1;
+        m.depthWrite = true;
+      }
       m.emissive.copy(hl);
       m.emissiveIntensity = e.kind === 'overlay' ? 0 : level * (e.kind === 'shell' && xray ? 0.25 : 0.6);
       if (e.kind === 'shell') m.opacity = xray ? (level ? 0.24 : 0.13) : 1;
@@ -238,6 +369,10 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
   const highlighted = useMemo(() => new Set(scene.highlight), [scene.highlight]);
   const hidden = useMemo(() => new Set(scene.hide), [scene.hide]);
   const { reg, make } = useMaterials();
+  const [own] = useState(ownUniforms);
+  const skinKind = sliceMode || anim === 'slicing' ? null : xray ? 'interior' : 'realistic';
+  const skin = useSkin(skinKind, own);
+  const skinned = sliceMode || !!skin;
 
   // Back to the lesson's view when the step changes.
   const [lastCamera, setLastCamera] = useState(scene.camera);
@@ -298,7 +433,8 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
           <directionalLight position={[-4, 6, 5]} intensity={2.1} />
           <directionalLight position={[5, 1, 3]} intensity={0.55} />
           <directionalLight position={[0, -3, -5]} intensity={0.4} />
-          <Highlighter reg={reg} highlighted={highlighted} focus={focus} hover={hover} xray={xray && !sliceMode} still={still} speed={scene.speed} />
+          <RoomEnvironmentLight />
+          <Highlighter reg={reg} highlighted={highlighted} focus={focus} hover={hover} xray={xray && !sliceMode} still={still} speed={scene.speed} skin={skinned} />
           {sliceMode ? (
             <SliceModel
               groupRef={model}
@@ -309,9 +445,22 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
               stained={scene.camera === 'ttc'}
               highlighted={highlighted}
               pointer={pointer}
+              own={own}
             />
           ) : (
-            <HeartModel groupRef={model} make={make} hidden={hidden} anim={anim} t={t} xray={xray} speed={scene.speed} still={still} pointer={pointer} />
+            <HeartModel
+              groupRef={model}
+              make={make}
+              hidden={hidden}
+              anim={anim}
+              t={t}
+              xray={xray}
+              speed={scene.speed}
+              still={still}
+              pointer={pointer}
+              skin={skin}
+              own={own}
+            />
           )}
           <LabelProjector ids={labelled} anchors={anchors} group={model} els={labelEls} />
           <Controls controlsRef={controls} still={still} onStart={() => setTurned(true)} />
@@ -335,6 +484,11 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
       {caption && <p className="heart3d-caption">{caption}</p>}
       <div className="heart3d-tools">
         <span className="fine">Drag to turn, scroll to zoom.</span>
+        {skin && skinKind && (
+          <a className="fine heart3d-credit" href={CREDITS[skinKind as RealHeartKind].url} target="_blank" rel="noreferrer">
+            Model: {CREDITS[skinKind as RealHeartKind].author}, CC BY 4.0
+          </a>
+        )}
         {turned && (
           <button
             type="button"
@@ -435,6 +589,8 @@ function HeartModel({
   speed,
   still,
   pointer,
+  skin,
+  own,
 }: {
   groupRef: MutableRefObject<THREE.Group | null>;
   make: Make;
@@ -445,6 +601,8 @@ function HeartModel({
   speed: number;
   still: boolean;
   pointer: Pointer;
+  skin: THREE.Mesh | null;
+  own: Shared;
 }) {
   const { curves, geometries: g } = useMemo(() => buildHeart(), []);
   const m = useMemo(
@@ -505,6 +663,7 @@ function HeartModel({
     if (anim !== 'heartbeat' || still) {
       ventricles.current?.scale.set(1, 1, 1);
       atria.current?.scale.set(1, 1, 1);
+      setStory(own, { uBeatA: 0, uBeatV: 0, uIsch: pale, uStain: 0, uReach: 0 });
       return;
     }
     const phase = ((clock.getElapsedTime() * speed) / 0.9) % 1;
@@ -514,11 +673,13 @@ function HeartModel({
     const v = 1 - 0.06 * squeeze(0.25, 0.45, 0.7);
     atria.current?.scale.set(a, a, a);
     ventricles.current?.scale.set(v, 1 - (1 - v) * 0.5, v);
+    setStory(own, { uBeatA: (1 - a) / 0.07, uBeatV: (1 - v) / 0.06, uIsch: pale, uStain: 0, uReach: 0 });
     invalidate();
   });
 
   return (
     <group ref={groupRef} rotation={[0.12, -0.26, 0.42]} position={[0.55, -1.45, 0]}>
+      {skin && <primitive object={skin} />}
       {/* The ventricles, scaled about the base for the heartbeat. */}
       <group position={[0, H, 0]}>
         <group ref={ventricles}>
@@ -534,7 +695,7 @@ function HeartModel({
                 <Piece geometry={g.ladTerritory} material={m.ladTerritory} ids={['lad-territory', 'lv-anterior-wall']} hidden={hidden} />
                 <Piece geometry={g.lcxTerritory} material={m.lcxTerritory} ids={['lcx-territory']} hidden={hidden} />
                 <Piece geometry={g.rcaTerritory} material={m.rcaTerritory} ids={['rca-territory']} hidden={hidden} />
-                {pale > 0 && (
+                {pale > 0 && !skin && (
                   <mesh geometry={g.ladTerritory} raycast={() => null}>
                     <meshStandardMaterial
                       color={COLOURS.pale}
@@ -549,12 +710,12 @@ function HeartModel({
                 )}
                 {!hidden.has('lad') &&
                   g.lad.map((geo, i) => <mesh key={i} geometry={geo} material={m.lad} userData={{ part: 'lad' }} {...pointer} />)}
-                {occluded && distal.map((geo, i) => <mesh key={i} geometry={geo} material={m.starved} userData={{ part: 'lad' }} />)}
+                {occluded && !skin && distal.map((geo, i) => <mesh key={i} geometry={geo} material={m.starved} userData={{ part: 'lad' }} />)}
                 {!hidden.has('lcx') &&
                   g.lcx.map((geo, i) => <mesh key={i} geometry={geo} material={m.lcx} userData={{ part: 'lcx' }} {...pointer} />)}
                 {!hidden.has('rca') &&
                   g.rca.map((geo, i) => <mesh key={i} geometry={geo} material={m.rca} userData={{ part: 'rca' }} {...pointer} />)}
-                <mesh geometry={g.leftMain} material={m.leftMain} />
+                {!skin && <mesh geometry={g.leftMain} material={m.leftMain} />}
                 {occluded && (
                   <mesh position={clot}>
                     <sphereGeometry args={[0.055, 16, 12]} />
@@ -573,7 +734,7 @@ function HeartModel({
       </group>
       {/* Above the ventricles: atria, valves and great vessels (lifted with the top slice while slicing). */}
       <group position={[0, gap * (slabs.length - 1), 0]}>
-        <mesh geometry={g.base} material={m.base} />
+        {!skin && <mesh geometry={g.base} material={m.base} />}
         <Piece geometry={g.baseRing} material={m.baseRing} ids={['base']} hidden={hidden} />
         <group position={[0, 2.15, 0]}>
           <group ref={atria}>
@@ -676,6 +837,7 @@ function SliceModel({
   stained,
   highlighted,
   pointer,
+  own,
 }: {
   groupRef: MutableRefObject<THREE.Group | null>;
   make: Make;
@@ -685,8 +847,18 @@ function SliceModel({
   stained: boolean;
   highlighted: Set<string>;
   pointer: Pointer;
+  own: Shared;
 }) {
   const s = useMemo(() => buildSlice(), []);
+  // The slice itself: real-looking tissue, stained by the same shader as the landing page's slices.
+  const tissue = useMemo(() => ({ geometry: tissueSlab(SLICE_T, SLICE_T + 0.06, { rvScale: 1, rvWall: 0.07 }), material: tissueMaterial(undefined, own) }), [own]);
+  useEffect(
+    () => () => {
+      tissue.geometry.dispose();
+      tissue.material.dispose();
+    },
+    [tissue],
+  );
   const m = useMemo(
     () => ({
       lv: make('s-lv', ['lv', 'myocardium'], COLOURS.stained, 'solid', { side: THREE.DoubleSide }),
@@ -720,9 +892,14 @@ function SliceModel({
   const infarct = useMemo(() => infarctGeometry(step), [step]);
   useEffect(() => () => infarct.dispose(), [infarct]);
   const risk = anim === 'wavefront' || anim === 'occlusion' || anim === 'reperfusion';
+  useEffect(() => {
+    setStory(own, { uStain: stain, uFix: 1, uReach: showInfarct ? reach : 0, uBeatA: 0, uBeatV: 0, uIsch: 0, uFrost: 0 });
+    invalidate();
+  }, [own, stain, showInfarct, reach, invalidate]);
 
   return (
     <group ref={groupRef} rotation={[-Math.PI / 2, 0, 0]} scale={0.95}>
+      <mesh geometry={tissue.geometry} material={tissue.material} position={[0, -SLICE_T * H, 0]} raycast={() => undefined} />
       <mesh geometry={s.rim} material={m.rim} position={[0, 0.06, 0]} userData={{ part: 'myocardium' }} />
       <Piece geometry={s.lvWall} material={m.lv} ids={['lv', 'myocardium']} hidden={hidden} pointer={pointer} />
       <Piece geometry={s.septum} material={m.septum} ids={['septum', 'myocardium']} hidden={hidden} pointer={pointer} />
