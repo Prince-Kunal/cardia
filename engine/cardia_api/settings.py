@@ -41,6 +41,11 @@ class Settings:
     mock: bool = False  # fake analysis for building the UI: no models, no lab data (cardia_api/mock.py)
     mock_delay_s: float = 0.4  # per stage, so the UI sees progress
     max_upload_bytes: int = 200 * 2**20
+    # Deployed on a server behind a reverse proxy (deploy/): the engine still listens on 127.0.0.1 only, the proxy
+    # faces the internet. No per-launch token, any Host the proxy forwards, and the UI is the same origin.
+    # One shared library for every visitor; the watch folder, backup and restore are switched off.
+    public: bool = False
+    web_dir: Path | None = None  # the built web app (web/dist), served at / when set
     models_dir: Path = MODELS_DIR
     watch_interval_s: float = 3.0  # how often the watch folder is looked at
     # Cloud sync (PLAN.md §5): off unless the Supabase project's URL and anon key are given

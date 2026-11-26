@@ -1,0 +1,8 @@
+# {$CARDIA_SITE} is replaced by setup.sh with <server ip>.sslip.io (free name that points at the IP).
+{$CARDIA_SITE} {
+	encode gzip
+	request_body {
+		max_size 110MB
+	}
+	reverse_proxy 127.0.0.1:8765
+}

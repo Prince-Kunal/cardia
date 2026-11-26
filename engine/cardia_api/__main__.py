@@ -38,6 +38,13 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--data-dir", type=Path, help=f"where results are kept (default {default_data_dir()})")
     ap.add_argument("--workers", type=int, default=default_workers(), help="slices analysed at once")
+    ap.add_argument(
+        "--public",
+        action="store_true",
+        help="run as a public site behind a reverse proxy (deploy/README.md): no token, one shared library",
+    )
+    ap.add_argument("--web-dir", type=Path, help="serve this built web app (web/dist) at /")
+    ap.add_argument("--max-upload-mb", type=int, help="largest file accepted (default 200)")
     ap.add_argument("--mock", action="store_true", help="fake analysis for UI work: no model files or lab data needed")
     ap.add_argument("--open", action="store_true", help="open the UI in the browser with the engine address and token")
     ap.add_argument(
@@ -54,6 +61,10 @@ def main(argv=None) -> int:
         allowed_origins=origins,
         workers=max(1, args.workers),
         mock=args.mock,
+        public=args.public,
+        web_dir=args.web_dir,
+        allowed_hosts=("*",) if args.public else (HOST, "localhost"),
+        **({"max_upload_bytes": args.max_upload_mb * 2**20} if args.max_upload_mb else {}),
         cloud_url=os.environ.get("CARDIA_SUPABASE_URL") or None,
         cloud_anon_key=os.environ.get("CARDIA_SUPABASE_ANON_KEY") or None,
         fake_cloud=args.fake_cloud,

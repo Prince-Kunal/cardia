@@ -48,6 +48,8 @@ export function saveConnection(c: Connection | null): void {
 /** At start-up: take a link from the address bar (and remove the token from it), else the stored one.
  *  The engine's link opens the landing page, the app's front door; the lab is one click from there. */
 export function connectionAtStartup(): Connection | null {
+  // A public deployment: this page came from the engine itself, so the engine is here and needs no token.
+  if (import.meta.env.VITE_CARDIA_PUBLIC === '1') return { url: window.location.origin, token: '' };
   const fromHash = window.location.hash.includes('token=') ? parseLink(window.location.hash) : null;
   if (fromHash) {
     saveConnection(fromHash);

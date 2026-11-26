@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import TypeAdapter, ValidationError
 from starlette.background import BackgroundTask
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.staticfiles import StaticFiles
 
 from ttc_pipeline import PIPELINE_VERSION, Models, parse_name
 from ttc_pipeline.method_c import StainRatioModel
@@ -149,7 +150,8 @@ def create_app(settings: Settings) -> FastAPI:
         store.open()
         library.open()
         manager.start()
-        watcher.start()
+        if not settings.public:  # a server must not read folders a visitor names
+            watcher.start()
         sync.start()
         try:
             yield
@@ -179,7 +181,7 @@ def create_app(settings: Settings) -> FastAPI:
         expose_headers=["Content-Disposition"],  # so downloads keep the file name the engine gives them
         max_age=600,
     )
-    app.add_middleware(OriginGuard, allowed_origins=settings.allowed_origins)
+    app.add_middleware(OriginGuard, allowed_origins=settings.allowed_origins, same_host=settings.public)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
 
     public = APIRouter(prefix="/api/v1", tags=["engine"])
@@ -484,6 +486,7 @@ def create_app(settings: Settings) -> FastAPI:
         """The whole library as one ZIP: every heart and its details, every slice result and image layer,
         every original scan, and a manifest with the SHA-256 of each file. Restore it with POST
         /library/restore, here or on another computer."""
+        _not_public(settings)
         fd, tmp = tempfile.mkstemp(prefix="cardia-backup-", suffix=".zip")
         os.close(fd)
         try:
@@ -510,6 +513,7 @@ def create_app(settings: Settings) -> FastAPI:
     ) -> RestoreReport:
         """Add a backup's hearts to this library. Nothing here is overwritten: hearts already here are
         skipped, and a damaged backup is refused before anything changes."""
+        _not_public(settings)
         fd, tmp = tempfile.mkstemp(prefix="cardia-restore-", suffix=".zip")
         try:
             with os.fdopen(fd, "wb") as out:
@@ -596,7 +600,14 @@ def create_app(settings: Settings) -> FastAPI:
 
     app.include_router(public)
     app.include_router(api)
+    if settings.web_dir is not None:  # last, so it never hides an API route
+        app.mount("/", StaticFiles(directory=settings.web_dir, html=True), name="web")
     return app
+
+
+def _not_public(settings: Settings) -> None:
+    if settings.public:
+        raise HTTPException(403, "Not available on the public site.")
 
 
 def _error(code: str, message: str) -> dict:
