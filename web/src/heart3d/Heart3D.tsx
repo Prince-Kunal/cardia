@@ -11,6 +11,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { slab as tissueSlab } from '../landing/geometry';
 import { type Shared, ownUniforms, realHeartMaterial, tissueMaterial } from '../landing/tissue';
 import { CREDITS, type RealHeartKind, loadRealHeart } from './realHeart';
+import { MAX_FLAGS, MAX_PARTS, labelSkin, partAt, skinLevels } from './skinParts';
 import type { Scene } from '../learn/lesson';
 import { type Anim, LOOPING, VIEW_NAMES, VIEW_PARTS, shortName, viewOf } from '../heart/parts';
 import { captionOf, clamp, ease, reducedMotion, useTimeline } from '../heart/timeline';
@@ -99,11 +100,19 @@ function useSkin(kind: 'realistic' | 'interior' | null, own: Shared): THREE.Mesh
 }
 
 function makeSkin(loaded: THREE.Mesh, kind: 'realistic' | 'interior', own: Shared): THREE.Mesh {
-  const mesh = new THREE.Mesh(loaded.geometry, realHeartMaterial(loaded.material as THREE.MeshStandardMaterial, SKIN_ALIGN[kind], undefined, undefined, own));
+  // Which part each point of the model is, so highlights, pointing and labels use its own shape.
+  const { anchors } = labelSkin(loaded.geometry, SKIN_ALIGN[kind], kind);
+  const levels = { value: new Array<number>(MAX_PARTS).fill(0) };
+  const flags = { value: new Array<number>(MAX_FLAGS).fill(0) };
+  const material = realHeartMaterial(loaded.material as THREE.MeshStandardMaterial, SKIN_ALIGN[kind], undefined, undefined, own, {
+    levels,
+    flags,
+    colour: new THREE.Color(COLOURS.highlight),
+  });
+  const mesh = new THREE.Mesh(loaded.geometry, material);
   mesh.matrixAutoUpdate = false;
   mesh.matrix.copy(SKIN_ALIGN[kind]);
-  // The skin never takes the pointer: clicks go through to the parts beneath.
-  mesh.raycast = () => undefined;
+  mesh.userData = { anchors, levels, flags };
   return mesh;
 }
 
@@ -205,6 +214,7 @@ function Highlighter({
   xray,
   still,
   speed,
+  mode,
   skin,
 }: {
   reg: Registry;
@@ -214,40 +224,51 @@ function Highlighter({
   xray: boolean;
   still: boolean;
   speed: number;
-  /** A real skin is showing: parts are unseen, except as a glow when highlighted or pointed at. */
-  skin: boolean;
+  /** 'real': a real model shows, and highlights tint its own regions (the drawn parts stay unseen).
+   *  'slice': drawn bands glow over the stained slice. 'none': the drawn heart as it always was. */
+  mode: 'none' | 'slice' | 'real';
+  skin: THREE.Mesh | null;
 }) {
   const hl = useMemo(() => new THREE.Color(COLOURS.highlight), []);
   const invalidate = useThree((s) => s.invalidate);
-  useEffect(() => invalidate(), [highlighted, focus, hover, xray, skin, invalidate]);
+  useEffect(() => invalidate(), [highlighted, focus, hover, xray, mode, skin, invalidate]);
   useFrame(({ clock }) => {
     const time = clock.getElapsedTime();
     const pulse = still ? 0.6 : 0.45 + 0.3 * Math.sin((time * Math.PI * 2 * speed) / 1.6);
     const fast = still ? 0.8 : 0.55 + 0.35 * Math.sin(time * Math.PI * 2 * 1.25);
     let moving = false;
+    if (mode === 'real' && skin) {
+      const level = (ids: string[]) =>
+        (focus && ids.includes(focus)) || (hover && ids[0] === hover) ? fast : ids.some((id) => highlighted.has(id)) ? pulse : 0;
+      moving = skinLevels(level, skin.userData.levels.value, skin.userData.flags.value);
+      for (const e of reg.values()) e.mat.visible = false;
+      if (moving && !still) invalidate();
+      return;
+    }
     for (const e of reg.values()) {
       const on = e.ids.some((id) => highlighted.has(id));
       const pointed = (focus && e.ids.includes(focus)) || (hover && e.ids[0] === hover);
       const level = pointed ? fast : on ? pulse : 0;
       if (level) moving = true;
       if (e.mat instanceof THREE.LineBasicMaterial) {
+        e.mat.visible = true;
         e.mat.opacity = level ? 1 : 0;
         e.mat.color.copy(level ? hl : e.base);
         continue;
       }
       const m = e.mat as THREE.MeshStandardMaterial;
-      if (skin) {
-        // Over a real skin a highlighted part glows through it; the rest stay unseen.
+      if (mode === 'slice') {
+        // Over the stained slice, a highlighted band glows; the rest stay unseen. The bands are the
+        // slice's own outline, so their shapes match it.
         m.visible = level > 0;
         m.transparent = true;
         m.depthTest = false;
         m.depthWrite = false;
         m.color.copy(hl);
         m.emissive.copy(hl);
-        m.emissiveIntensity = 0.9 * level;
-        // Territories are thin layers on the surface: a soft fill. Everything else: an outline.
-        e.rim.value = e.kind === 'overlay' ? 0 : 1;
-        m.opacity = level ? (e.kind === 'overlay' ? 0.22 + 0.25 * level : 0.75 + 0.25 * level) : 0;
+        m.emissiveIntensity = 0.6 * level;
+        e.rim.value = 0;
+        m.opacity = level ? 0.25 + 0.3 * level : 0;
         continue;
       }
       e.rim.value = 0;
@@ -372,7 +393,7 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
   const [own] = useState(ownUniforms);
   const skinKind = sliceMode || anim === 'slicing' ? null : xray ? 'interior' : 'realistic';
   const skin = useSkin(skinKind, own);
-  const skinned = sliceMode || !!skin;
+  const mode = sliceMode ? 'slice' : skin ? 'real' : 'none';
 
   // Back to the lesson's view when the step changes.
   const [lastCamera, setLastCamera] = useState(scene.camera);
@@ -386,8 +407,9 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
   const described = scene.highlight.map((p) => shortName(p));
   const label = `3D heart, ${VIEW_NAMES[view].toLowerCase()}.${described.length ? ` Highlighted: ${described.join(', ')}.` : ''}${caption ? ` ${caption}.` : ''}`;
 
-  // Which labels to show (the same rules as the 2D diagram).
-  const anchors = sliceMode ? SLICE_LABEL_AT : LABEL_AT;
+  // Which labels to show (the same rules as the 2D diagram). Over a real model, each label sits on
+  // that model's own part.
+  const anchors: Record<string, THREE.Vector3> = sliceMode ? SLICE_LABEL_AT : skin ? skin.userData.anchors : LABEL_AT;
   const available = VIEW_PARTS[view].filter((p) => anchors[p] && !hidden.has(p));
   let labelled: string[] =
     scene.labels === 'all'
@@ -414,6 +436,22 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
       }
     },
   };
+  // Over a real model, the pointer reads the part from the model itself: what you point at is what lights up.
+  const partUnder = (e: ThreeEvent<PointerEvent | MouseEvent>) => (skin && e.face ? partAt(skin.geometry, e.face.a) : null);
+  const skinPointer = {
+    onPointerMove: (e: ThreeEvent<PointerEvent>) => {
+      e.stopPropagation();
+      setHover(partUnder(e));
+    },
+    onPointerOut: () => setHover(null),
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      const id = partUnder(e);
+      if (id && onPartClick) {
+        e.stopPropagation();
+        onPartClick(id);
+      }
+    },
+  };
 
   return (
     <div className="heart3d">
@@ -434,7 +472,17 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
           <directionalLight position={[5, 1, 3]} intensity={0.55} />
           <directionalLight position={[0, -3, -5]} intensity={0.4} />
           <RoomEnvironmentLight />
-          <Highlighter reg={reg} highlighted={highlighted} focus={focus} hover={hover} xray={xray && !sliceMode} still={still} speed={scene.speed} skin={skinned} />
+          <Highlighter
+            reg={reg}
+            highlighted={highlighted}
+            focus={focus}
+            hover={hover}
+            xray={xray && !sliceMode}
+            still={still}
+            speed={scene.speed}
+            mode={mode}
+            skin={skin}
+          />
           {sliceMode ? (
             <SliceModel
               groupRef={model}
@@ -457,8 +505,9 @@ export default function Heart3D({ scene, focus = null, replay = 0, onPartClick }
               xray={xray}
               speed={scene.speed}
               still={still}
-              pointer={pointer}
+              pointer={skin ? undefined : pointer}
               skin={skin}
+              skinPointer={skinPointer}
               own={own}
             />
           )}
@@ -525,15 +574,26 @@ function LabelProjector({
     const g = group.current;
     if (!g) return;
     g.updateWorldMatrix(true, false);
+    const placed: { el: HTMLSpanElement; x: number; y: number; w: number; h: number; shown: boolean }[] = [];
     for (const id of ids) {
       const el = els.current.get(id);
       const anchor = anchors[id];
       if (!el || !anchor) continue;
       v.copy(anchor).applyMatrix4(g.matrixWorld).project(camera);
-      const x = ((v.x + 1) / 2) * size.width;
-      const y = ((1 - v.y) / 2) * size.height;
-      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
-      el.style.opacity = v.z < 1 ? '1' : '0';
+      placed.push({ el, x: ((v.x + 1) / 2) * size.width, y: ((1 - v.y) / 2) * size.height, w: el.offsetWidth, h: el.offsetHeight, shown: v.z < 1 });
+    }
+    // Labels never sit on each other: one that would overlap a label above it moves down below it.
+    placed.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = 0; j < i; j++) {
+        const a = placed[j];
+        const b = placed[i];
+        if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 4 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 + 2) b.y = a.y + (a.h + b.h) / 2 + 2;
+      }
+    }
+    for (const p of placed) {
+      p.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
+      p.el.style.opacity = p.shown ? '1' : '0';
     }
   });
   return null;
@@ -590,6 +650,7 @@ function HeartModel({
   still,
   pointer,
   skin,
+  skinPointer,
   own,
 }: {
   groupRef: MutableRefObject<THREE.Group | null>;
@@ -600,8 +661,10 @@ function HeartModel({
   xray: boolean;
   speed: number;
   still: boolean;
-  pointer: Pointer;
+  /** Absent over a real model: then the model takes the pointer (skinPointer). */
+  pointer?: Pointer;
   skin: THREE.Mesh | null;
+  skinPointer: Partial<Pointer> & { onPointerMove?: (e: ThreeEvent<PointerEvent>) => void };
   own: Shared;
 }) {
   const { curves, geometries: g } = useMemo(() => buildHeart(), []);
@@ -679,7 +742,7 @@ function HeartModel({
 
   return (
     <group ref={groupRef} rotation={[0.12, -0.26, 0.42]} position={[0.55, -1.45, 0]}>
-      {skin && <primitive object={skin} />}
+      {skin && <primitive object={skin} {...skinPointer} />}
       {/* The ventricles, scaled about the base for the heartbeat. */}
       <group position={[0, H, 0]}>
         <group ref={ventricles}>
@@ -760,7 +823,8 @@ function HeartModel({
           g.veins.map((geo, i) => <mesh key={i} geometry={geo} material={m.veins} userData={{ part: 'pulmonary-veins' }} {...pointer} />)}
       </group>
       {anim === 'flow' && <Particles paths={FLOW_PATHS} still={still} speed={speed} size={0.035} />}
-      {(anim === 'coronary-flow' || (anim === 'reperfusion' && !occluded)) && (
+      {/* Over the real model, the arteries' own highlighted bands carry the flow (these dots follow the drawn ones). */}
+      {!skin && (anim === 'coronary-flow' || (anim === 'reperfusion' && !occluded)) && (
         <Particles paths={[curves.lad, curves.lcx, curves.rca, ...curves.diagonals, curves.marginal, curves.acuteMarginal]} still={still} speed={speed} size={0.018} white />
       )}
     </group>

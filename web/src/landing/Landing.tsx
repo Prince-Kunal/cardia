@@ -55,6 +55,8 @@ export function Landing() {
   const counters = useRef<(HTMLElement | null)[]>([]);
   const progress = useRef(0);
   const labels = useRef<LabelRefs>({ slices: [], parts: {} });
+  const labelLayer = useRef<HTMLDivElement>(null);
+  const rail = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
 
   // Every frame: how far through each chapter the page is, as --c on the chapter and u for the scene.
@@ -64,26 +66,52 @@ export function Landing() {
     // In development, ?u=4.5&still holds the scene at that moment without scrolling (to check it by eye).
     const params = new URLSearchParams(window.location.search);
     const still = import.meta.env.DEV && params.has('still') ? Number(params.get('u')) : null;
+    // What was last written, so a frame only touches the styles that changed.
+    const written = new Map<HTMLElement, string>();
+    const write = (el: HTMLElement | null, name: string, value: string) => {
+      if (!el) return;
+      const key = `${name}:${value}`;
+      if (written.get(el) === key) return;
+      el.style.setProperty(name, value);
+      written.set(el, key);
+    };
+    const writtenC = new Map<HTMLElement, string>();
     const tick = () => {
+      // Read every position first, then write: interleaving them would force a layout per chapter.
+      const vh = window.innerHeight;
+      const rects = sections.current.map((el) => (el ? el.getBoundingClientRect() : null));
       let u = 0;
-      sections.current.forEach((el, i) => {
-        if (!el) return;
-        const r = el.getBoundingClientRect();
+      let c8 = 0;
+      const out: [HTMLElement, string, string][] = [];
+      rects.forEach((r, i) => {
+        const el = sections.current[i];
+        if (!r || !el) return;
         const c = clamp01(-r.top / r.height);
-        el.style.setProperty('--c', c.toFixed(4));
+        if (i === 8) c8 = c;
         // How far the chapter has risen into the window: 0 with its top at the bottom edge, 1 at the top.
-        el.style.setProperty('--e', clamp01(1 - r.top / window.innerHeight).toFixed(4));
+        const e = clamp01(1 - r.top / vh);
+        const cs = c.toFixed(3);
+        if (writtenC.get(el) !== cs) {
+          writtenC.set(el, cs);
+          out.push([el, '--c', cs]);
+        }
+        out.push([el, '--e', e.toFixed(3)]);
         if (r.top <= 1) u = i + c;
       });
       if (still !== null) u = still;
       progress.current = u;
-      root.current?.style.setProperty('--u', u.toFixed(3));
+      for (const [el, name, value] of out) {
+        if (name === '--c') el.style.setProperty(name, value);
+        else write(el, name, value);
+      }
+      const us = u.toFixed(3);
+      write(labelLayer.current, '--u', us);
+      write(rail.current, '--u', us);
       // The finale's numbers count up as the scan is read.
-      const finale = sections.current[8];
-      const c8 = finale ? Number(finale.style.getPropertyValue('--c') || 0) : 0;
       const f = clamp01((c8 - 0.32) / 0.3);
       counters.current.forEach((el, i) => {
-        if (el) el.textContent = (FINALE.methods[i].value * (1 - (1 - f) ** 3)).toFixed(1);
+        const text = (FINALE.methods[i].value * (1 - (1 - f) ** 3)).toFixed(1);
+        if (el && el.textContent !== text) el.textContent = text;
       });
       const now = Math.min(N - 1, Math.floor(u + 0.15));
       if (now !== last) {
@@ -147,7 +175,7 @@ export function Landing() {
           </Suspense>
         )}
         <div className="landing-vignette" />
-        <div className="landing-labels">
+        <div className="landing-labels" ref={labelLayer}>
           {SLICE_NAMES.map((name, i) => (
             <span
               key={name}
@@ -182,7 +210,7 @@ export function Landing() {
         </div>
       </div>
 
-      <nav className="landing-rail" aria-label="Chapters">
+      <nav className="landing-rail" aria-label="Chapters" ref={rail}>
         <span className="rail-fill" />
         {CHAPTERS.map((ch, i) => (
           <button

@@ -7,10 +7,6 @@
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { H, buildHeart, taperedTube } from '../heart3d/model';
 import { loadRealHeart } from '../heart3d/realHeart';
 import { CUTS, SLICES, buildBase, buildSlabs, cavityPoint, onEpicardium, rvWallPoint, wallPoint } from './geometry';
@@ -165,7 +161,7 @@ function createHeart() {
 
 function createBlades() {
   const steel = new THREE.MeshPhysicalMaterial({ color: '#c9ccd6', metalness: 1, roughness: 0.18, transparent: true, opacity: 0, envMapIntensity: 1.4 });
-  const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff6b7d').multiplyScalar(3), transparent: true, opacity: 0, toneMapped: false });
+  const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffffff').multiplyScalar(1.6), transparent: true, opacity: 0, toneMapped: false });
   const blades = CUTS.slice(1, -1).map(() => {
     const g = new THREE.Group();
     const plate = new THREE.Mesh(new THREE.BoxGeometry(0.012, 1.8, 2.2), steel);
@@ -187,25 +183,19 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
   micro.renderOrder = 10;
   micro.frustumCulled = false;
 
-  // Light the room for reflections; bloom for everything that glows.
+  // Light the room for reflections. No bloom: edges stay crisp.
   const pmrem = new THREE.PMREMGenerator(gl);
   const environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
   scene.environment = environment;
-  scene.environmentIntensity = 0.32;
-  scene.background = new THREE.Color('#0a0607');
-  scene.fog = new THREE.Fog('#0a0607', 10, 24);
-  const lights = [
-    new THREE.AmbientLight('#ffffff', 0.12),
-    Object.assign(new THREE.DirectionalLight('#fff0e6', 2.1), {}),
-    new THREE.DirectionalLight('#ff6f80', 2.8),
-    new THREE.DirectionalLight('#8090ff', 0.55),
-    new THREE.PointLight('#ffb59e', 4, 9),
-  ];
-  lights[1].position.set(3.5, 4.5, 5);
-  lights[2].position.set(-5, 2.5, -4);
-  lights[3].position.set(4.5, -2, -3.5);
-  lights[4].position.set(0, -2.5, 3);
+  scene.environmentIntensity = 0.4;
+  scene.background = new THREE.Color('#0b0a0a');
+  scene.fog = new THREE.Fog('#0b0a0a', 10, 24);
+  // Studio light, no colour: a soft key from the upper left, a faint fill, a white rim for the edge.
+  const lights = [new THREE.AmbientLight('#ffffff', 0.16), new THREE.DirectionalLight('#fff6ee', 2.3), new THREE.DirectionalLight('#f3f4f6', 0.6), new THREE.DirectionalLight('#ffffff', 1.3)];
+  lights[1].position.set(-3.5, 4.5, 5);
+  lights[2].position.set(5, 0.5, 3);
+  lights[3].position.set(1.5, 3.5, -5);
   // The heart frame: the real heart and the suture ride on it.
   const frame = new THREE.Group();
   frame.add(heart.ligature);
@@ -236,11 +226,6 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
     })
     .catch(() => undefined);
 
-  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
-  const composer = new EffectComposer(gl, target);
-  composer.addPass(new RenderPass(scene, cam));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.5, 1.25));
-  composer.addPass(new OutputPass());
 
   // The point on the focus slice where the infarct meets living muscle, for the closest shot.
   const focus = heart.slabs[FOCUS];
@@ -266,12 +251,13 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
     glow,
     bath,
     micro,
-    composer,
     objects,
     environment,
     keys: cameraKeys(border),
     partAnchors,
     size: { width: 1, height: 1 },
+    /** Frame time, smoothed: if the computer struggles, the canvas drops to a lower resolution. */
+    perf: { frame: 1 / 60, slow: 0, dpr: Math.min(1.5, window.devicePixelRatio || 1) },
     tmp: {
       u: 0,
       pos: new THREE.Vector3(),
@@ -290,17 +276,16 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
   };
 }
 
-export function resizeWorld(w: World, width: number, height: number, dpr: number): void {
+export function resizeWorld(w: World, width: number, height: number): void {
   w.size = { width, height };
-  w.composer.setPixelRatio(dpr);
-  w.composer.setSize(width, height);
+  w.gl.setPixelRatio(w.perf.dpr);
+  w.gl.setSize(width, height, false);
 }
 
 export function disposeWorld(w: World): void {
   w.real.gone = true;
   w.scene.remove(...w.objects);
   w.environment.dispose();
-  w.composer.dispose();
   for (const o of w.objects)
     o.traverse((x) => {
       if (x instanceof THREE.Mesh) {
@@ -453,6 +438,14 @@ export function stepWorld(w: World, { target, dt, reduced, labels }: { target: n
 
   const canvas = w.gl.domElement;
   canvas.style.opacity = String(1 - s.fade);
-  w.composer.render(dt);
+  w.gl.render(w.scene, cam);
+  // Struggling (under about 40 frames a second for a while): draw fewer pixels.
+  w.perf.frame += (Math.min(dt, 0.1) - w.perf.frame) * 0.05;
+  w.perf.slow = w.perf.frame > 1 / 40 ? w.perf.slow + 1 : 0;
+  if (w.perf.slow > 90 && w.perf.dpr > 1) {
+    w.perf.dpr = Math.max(1, w.perf.dpr - 0.25);
+    w.perf.slow = 0;
+    resizeWorld(w, size.width, size.height);
+  }
   if (import.meta.env.DEV) (window as unknown as { __cardiaFrames: number }).__cardiaFrames = ((window as unknown as { __cardiaFrames?: number }).__cardiaFrames ?? 0) + 1;
 }
