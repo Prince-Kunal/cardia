@@ -34,8 +34,8 @@ function Stage({ progress, labels, reduced }: Props) {
   }, [gl, scene, camera]);
 
   useEffect(() => {
-    if (world.current) resizeWorld(world.current, width, height, gl.getPixelRatio());
-  }, [world, width, height, gl]);
+    if (world.current) resizeWorld(world.current, width, height);
+  }, [world, width, height]);
 
   useFrame((_, dt) => {
     if (world.current) stepWorld(world.current, { target: progress.current, dt, reduced, labels: labels.current });
@@ -48,9 +48,9 @@ export default function LandingScene(props: Props) {
   return (
     <Canvas
       className="landing-canvas"
-      dpr={[1, 1.75]}
+      dpr={[1, 1.5]}
       camera={{ fov: 34, near: 0.02, far: 80, position: [0, 0.35, 6.8] }}
-      gl={{ antialias: false, powerPreference: 'high-performance', alpha: false }}
+      gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }}
       aria-hidden="true"
     >
       <Stage {...props} />

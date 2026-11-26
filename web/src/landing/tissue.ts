@@ -41,15 +41,15 @@ const PALETTE = {
   uFat: c('#c4a05c'),
   uCutFresh: c('#64202b'),
   uEndo: c('#5a1822'),
-  uLiving: c('#b23a4b'),
-  uLivingDeep: c('#86223a'),
-  uLivingHi: c('#d46a77'),
+  uLiving: c('#a8434f'),
+  uLivingDeep: c('#7c2a37'),
+  uLivingHi: c('#c46a72'),
   uPale: c('#e9dbb8'),
   uPaleDeep: c('#d2bc88'),
   uBlush: c('#e8b2a6'),
-  uIschCol: c('#5b4266'),
+  uIschCol: c('#5f4c60'),
   uFrostCol: c('#d6e6f0'),
-  uEdge: c('#ff9a7a'),
+  uEdge: c('#ffe6c8'),
 };
 
 const NOISE = /* glsl */ `
@@ -221,14 +221,14 @@ float tGloss = 1.0;
   if (uFrost > 0.0) {
     float fr = uFrost * (0.35 + 0.65 * lnFbm(p * 22.0));
     col = mix(col, uFrostCol, fr * 0.32);
-    tEmit += uFrostCol * uFrost * smoothstep(0.9, 0.97, lnNoise(p * 90.0)) * 0.35;
+    tEmit += uFrostCol * uFrost * smoothstep(0.93, 0.98, lnNoise(p * 90.0)) * 0.12;
   }
 
   // Trimmed parts dissolve, with a glowing edge.
   if (uDissolve > 0.0) {
     float dn = lnFbm(p * 3.2 + 7.0) - (uDissolve * 1.15 - 0.08);
     if (dn < 0.0) discard;
-    tEmit += uEdge * (1.0 - smoothstep(0.0, 0.05, dn)) * 2.5;
+    tEmit += uEdge * (1.0 - smoothstep(0.0, 0.04, dn)) * 1.4;
   }
   diffuseColor.rgb = col;
   // Cut faces are matte and velvety; the outer surface is wet.
@@ -306,7 +306,7 @@ vec3 tEmit = vec3(0.0);
 if (uDissolve > 0.0) {
   float dn = lnFbm(vLocal * 3.2 + 7.0) - (uDissolve * 1.15 - 0.08);
   if (dn < 0.0) discard;
-  tEmit += uEdge * (1.0 - smoothstep(0.0, 0.05, dn)) * 2.5;
+  tEmit += uEdge * (1.0 - smoothstep(0.0, 0.04, dn)) * 1.4;
 }`,
       )
       .replace(
@@ -370,13 +370,13 @@ vec3 tEmit = vec3(0.0);
   float open = uBlockU < 0.0 ? 1.0 : 1.0 - uBlock * smoothstep(uBlockU - 0.004, uBlockU + 0.004, vAlong);
   float s = fract(vAlong * uPulses - uTime * uSpeed);
   float pulse = smoothstep(0.0, 0.04, s) * (1.0 - smoothstep(0.04, 0.32, s));
-  tEmit += uGlow * pulse * open * uFlow * 1.6;
+  tEmit += uGlow * pulse * open * uFlow * 0.8;
   // Blood stops past the tie: the artery goes dark.
   diffuseColor.rgb *= mix(0.45, 1.0, open);
   if (uDissolve > 0.0) {
     float dn = lnFbm(vLocal * 3.2 + 7.0) - (uDissolve * 1.15 - 0.08);
     if (dn < 0.0) discard;
-    tEmit += uEdge * (1.0 - smoothstep(0.0, 0.05, dn)) * 2.5;
+    tEmit += uEdge * (1.0 - smoothstep(0.0, 0.04, dn)) * 1.4;
   }
 }`,
       )
@@ -390,7 +390,7 @@ totalEmissiveRadiance += tEmit;`,
   return m;
 }
 
-/** The TTC bath: a clear, warm liquid in front of the slices, with caustics and a bright meniscus. */
+/** The TTC bath: a clear liquid in front of the slices, with a fine meniscus. */
 export function bathMaterial() {
   return new THREE.ShaderMaterial({
     transparent: true,
@@ -407,19 +407,10 @@ void main() {
   float wave = 0.006 * sin(vUv.x * 38.0 + uTime * 2.0) + 0.004 * sin(vUv.x * 71.0 - uTime * 3.1);
   float y = vUv.y - (uLevel + wave);
   float below = 1.0 - smoothstep(-0.004, 0.004, y);
-  vec2 p = vUv * vec2(16.0, 10.0);
-  float c = sin(p.x + sin(p.y * 1.3 + uTime * 0.9) * 1.4 + uTime * 0.6) * sin(p.y * 1.1 + sin(p.x * 1.7 - uTime * 0.7) * 1.2 - uTime * 0.4);
-  c = pow(abs(c), 14.0);
   float edge = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x) * smoothstep(0.0, 0.1, vUv.y);
-  // Rising bubbles.
-  vec2 b = vec2(vUv.x * 26.0, vUv.y * 9.0 - uTime * 0.6);
-  vec2 cell = floor(b);
-  float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-  vec2 f = fract(b) - vec2(0.5 + 0.3 * (h - 0.5), 0.5);
-  float bubble = step(0.9, h) * (1.0 - smoothstep(0.025, 0.04, length(f * vec2(1.0, 2.6))));
   float meniscus = (1.0 - smoothstep(0.0, 0.004, abs(y))) * 0.6 + (1.0 - smoothstep(0.0, 0.03, abs(y))) * 0.15;
-  vec3 col = vec3(1.0, 0.9, 0.78) * (0.035 + 0.12 * c) * below + vec3(1.0, 0.88, 0.88) * meniscus + vec3(0.9, 0.95, 1.0) * bubble * below * 0.5;
-  float a = (below * (0.09 + 0.2 * c + bubble * 0.4) + meniscus * 0.8) * edge;
+  vec3 col = vec3(1.0, 0.97, 0.92) * 0.035 * below + vec3(1.0) * meniscus * 0.6;
+  float a = (below * 0.08 + meniscus * 0.5) * edge;
   gl_FragColor = vec4(col * a * uAlpha, 1.0);
 }`,
   });
@@ -508,24 +499,28 @@ export function realHeartMaterial(
   trim: THREE.IUniform = { value: 0 },
   vanish: THREE.IUniform = { value: 0 },
   own: Shared = SHARED,
+  /** Learn: tint the model's own labelled regions (heart3d/skinParts.ts) as they are highlighted. */
+  parts?: { levels: THREE.IUniform<number[]>; flags: THREE.IUniform<number[]>; colour: THREE.Color },
 ) {
   const m = new THREE.MeshPhysicalMaterial({
     map: base.map,
     normalMap: base.normalMap,
-    normalScale: new THREE.Vector2(0.9, 0.9),
+    normalScale: new THREE.Vector2(0.75, 0.75),
     roughnessMap: base.roughnessMap,
     metalnessMap: base.metalnessMap,
-    roughness: 0.8,
+    roughness: 0.85,
     metalness: 0,
-    clearcoat: 0.3,
-    clearcoatRoughness: 0.42,
+    clearcoat: 0.18,
+    clearcoatRoughness: 0.5,
     sheen: 0.15,
     sheenRoughness: 0.6,
     sheenColor: new THREE.Color('#ffb0b0'),
     envMapIntensity: 0.55,
     side: THREE.DoubleSide,
   });
+  if (parts) m.defines = { ...m.defines, SKIN_PARTS: '', MAX_PARTS: parts.levels.value.length, MAX_FLAGS: parts.flags.value.length };
   m.onBeforeCompile = (shader) => {
+    if (parts) Object.assign(shader.uniforms, { uPartLevel: parts.levels, uFlagLevel: parts.flags, uHl: { value: parts.colour } });
     shared(shader.uniforms, {
       uAlign: { value: align },
       uAlignInv: { value: align.clone().invert() },
@@ -542,6 +537,13 @@ export function realHeartMaterial(
         `#include <common>
 uniform mat4 uAlign, uAlignInv;
 varying vec3 vHeart;
+#ifdef SKIN_PARTS
+attribute float aPart;
+attribute float aFlags;
+uniform float uPartLevel[MAX_PARTS];
+uniform float uFlagLevel[MAX_FLAGS];
+varying float vHl;
+#endif
 ${UNIFORMS_GLSL}
 ${NOISE}
 ${HEART}
@@ -557,6 +559,18 @@ float lnFront(vec3 p) {
         '#include <begin_vertex>',
         `vec3 hp = (uAlign * vec4(position, 1.0)).xyz;
 vHeart = hp;
+#ifdef SKIN_PARTS
+{
+  // How lit this point is, worked out per vertex and blended across triangles, so a highlighted
+  // region has soft edges instead of steps.
+  int k = int(aPart + 0.5) - 1;
+  float h = k >= 0 ? uPartLevel[k] : 0.0;
+  for (int i = 0; i < MAX_FLAGS; i++) {
+    if (mod(floor(aFlags / exp2(float(i))), 2.0) > 0.5) h = max(h, uFlagLevel[i]);
+  }
+  vHl = h;
+}
+#endif
 {
   // Systole: atria first, then the ventricles squeeze and shorten; starved muscle barely moves.
   float tt = clamp(hp.y / LN_H, 0.0, 1.2);
@@ -573,6 +587,10 @@ vec3 transformed = (uAlignInv * vec4(hp, 1.0)).xyz;`,
         '#include <common>',
         `#include <common>
 varying vec3 vHeart;
+#ifdef SKIN_PARTS
+varying float vHl;
+uniform vec3 uHl;
+#endif
 ${UNIFORMS_GLSL}
 uniform float uTrim, uVanish;
 uniform vec3 uIschCol, uFrostCol, uEdge;
@@ -596,13 +614,13 @@ float lnFront(vec3 p) {
   float dn = lnFbm(p * 3.2 + 7.0) - (uTrim * above * 1.15 - 0.08);
   if (uTrim > 0.0 && above > 0.0) {
     if (dn < 0.0) discard;
-    totalEmissiveRadiance += uEdge * (1.0 - smoothstep(0.0, 0.05, dn)) * 2.5 * step(0.001, uTrim * above);
+    totalEmissiveRadiance += uEdge * (1.0 - smoothstep(0.0, 0.04, dn)) * 1.4 * step(0.001, uTrim * above);
   }
   // Then the whole heart, as the blades cut it into the slices.
   if (uVanish > 0.0) {
     float dv = lnFbm(p * 2.6 + 3.0) - (uVanish * 1.15 - 0.08);
     if (dv < 0.0) discard;
-    totalEmissiveRadiance += uEdge * (1.0 - smoothstep(0.0, 0.06, dv)) * 3.0;
+    totalEmissiveRadiance += uEdge * (1.0 - smoothstep(0.0, 0.05, dv)) * 1.6;
   }
   // The starved territory: dusky, bluish, dull.
   if (uIsch > 0.0) {
@@ -612,11 +630,16 @@ float lnFront(vec3 p) {
   // Chilled: frost catching the light.
   if (uFrost > 0.0) {
     diffuseColor.rgb = mix(diffuseColor.rgb, uFrostCol, uFrost * (0.25 + 0.5 * lnFbm(p * 22.0)) * 0.5);
-    totalEmissiveRadiance += uFrostCol * uFrost * smoothstep(0.9, 0.97, lnNoise(p * 90.0)) * 0.35;
+    totalEmissiveRadiance += uFrostCol * uFrost * smoothstep(0.93, 0.98, lnNoise(p * 90.0)) * 0.12;
   }
+#ifdef SKIN_PARTS
+  // Learn: the highlighted part, in the model's own shape.
+  diffuseColor.rgb = mix(diffuseColor.rgb, uHl, 0.42 * vHl);
+  totalEmissiveRadiance += uHl * 0.22 * vHl;
+#endif
 }`,
       );
   };
-  m.customProgramCacheKey = () => 'cardia-real-heart';
+  m.customProgramCacheKey = () => (parts ? 'cardia-real-heart-parts' : 'cardia-real-heart');
   return m;
 }
