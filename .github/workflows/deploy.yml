@@ -1,0 +1,50 @@
+# Deploy to the Vultr server on every push to main (see deploy/README.md). Needs two repository secrets:
+# DEPLOY_HOST (the server's IP) and DEPLOY_SSH_KEY (private key of the server's `deploy` user).
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Build the web app for the public site
+        working-directory: web
+        env:
+          VITE_CARDIA_PUBLIC: "1"
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Set up SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+      - name: Upload the web app
+        run: rsync -az --delete web/dist/ "deploy@${{ secrets.DEPLOY_HOST }}:/opt/cardia-web/"
+      - name: Pull, reinstall and restart the engine
+        run: ssh "deploy@${{ secrets.DEPLOY_HOST }}" sudo /opt/cardia/deploy/update.sh

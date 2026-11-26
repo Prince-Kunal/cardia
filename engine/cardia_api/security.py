@@ -20,6 +20,8 @@ _bearer = HTTPBearer(
 
 
 def require_token(request: Request, cred: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]) -> None:
+    if request.app.state.settings.public:
+        return  # a public deployment has no per-launch token (settings.public)
     expected = request.app.state.settings.token
     if cred is None or cred.scheme.lower() != "bearer" or not secrets.compare_digest(cred.credentials, expected):
         raise HTTPException(401, "Missing or wrong engine token.", headers={"WWW-Authenticate": "Bearer"})
@@ -32,14 +34,24 @@ class OriginGuard:
     without an Origin (curl, tests, the desktop shell) pass here and still need the token.
     """
 
-    def __init__(self, app: ASGIApp, allowed_origins: tuple[str, ...]):
+    def __init__(self, app: ASGIApp, allowed_origins: tuple[str, ...], same_host: bool = False):
         self.app = app
         self.allowed = set(allowed_origins)
+        self.same_host = same_host  # public deployment: the UI is served from the engine's own address
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             origin = dict(scope["headers"]).get(b"origin")
-            if origin is not None and origin.decode("latin-1") not in self.allowed:
+            if origin is not None and origin.decode("latin-1") not in self.allowed and not self._same_host(
+                scope, origin
+            ):
                 await JSONResponse({"detail": "This origin may not use the Cardia engine."}, 403)(scope, receive, send)
                 return
         await self.app(scope, receive, send)
+
+    def _same_host(self, scope: Scope, origin: bytes) -> bool:
+        """The Origin names the host the request was sent to (a page this server served itself)."""
+        if not self.same_host:
+            return False
+        host = dict(scope["headers"]).get(b"host")
+        return host is not None and origin.decode("latin-1").split("://", 1)[-1] == host.decode("latin-1")

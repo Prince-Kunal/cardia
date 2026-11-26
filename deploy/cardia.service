@@ -1,0 +1,18 @@
+[Unit]
+Description=Cardia engine (public site)
+After=network.target
+
+[Service]
+User=cardia
+WorkingDirectory=/opt/cardia/engine
+# Listens on 127.0.0.1:8765 only; Caddy (deploy/Caddyfile) is the only thing facing the internet.
+ExecStart=/opt/cardia/engine/.venv/bin/python -m cardia_api --public --web-dir /opt/cardia-web --data-dir /var/lib/cardia --workers 1 --max-upload-mb 100
+Restart=on-failure
+RestartSec=3
+StateDirectory=cardia
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
