@@ -6,11 +6,11 @@ How the three of us split the work, push code, and keep every machine giving the
 
 | Person | GitHub | Commit email | Owns |
 |---|---|---|---|
-| Prince | `Prince-Kunal` | kunalprince615@gmail.com | Repo maintainer. Engine shared steps, hole model, Method B, local API, cloud sync, desktop phase |
-| Melove | `MeloveGupta` | melovegupta0406@gmail.com | Method A, golden set and parity tests, export (PDF/CSV/ZIP, Methods paragraph), Learn engine and quizzes, lead on lesson content |
-| Krrish | `krrishverma1805-web` | krrishverma1805@gmail.com | Web app: shell, Analyze screens (import, library, reports), 3D heart, languages, polish |
+| Prince | `Prince-Kunal` | kunalprince615@gmail.com | Repo maintainer. Engine shared steps, hole model, Method C (stain ratio), local API, cloud sync, desktop phase |
+| Melove | `MeloveGupta` | melovegupta0406@gmail.com | Methods A and B (both from the notebooks), golden set and parity tests, export (PDF/CSV/ZIP, Methods paragraph), Learn engine and quizzes, lead on lesson content |
+| Krrish | `krrishverma1805-web` | krrishverma1805@gmail.com | Web app: shell, landing page, Analyze screens (import, library, reports), 3D heart, polish |
 
-The split follows what each of us already built. Prince wrote `ttc/` and the hole scorer, and Melove wrote the notebook, which is the source of Method A. Krrish starts on the web app, which needs nothing from Phase 0. Owners review PRs in their area (`.github/CODEOWNERS`). Anyone may work anywhere, but the owner approves.
+The split follows what each of us already built. Prince wrote `ttc/` and the hole scorer, and Melove wrote the notebooks, the source of Methods A and B. Krrish starts on the web app, which needs nothing from Phase 0. Owners review PRs in their area (`.github/CODEOWNERS`). Anyone may work anywhere, but the owner approves.
 
 ### Milestones by owner (see PLAN.md §11)
 
@@ -24,7 +24,7 @@ The split follows what each of us already built. Prince wrote `ttc/` and the hol
 | 5 | Learn engine: lesson player, quizzes, progress | Melove | now |
 | 6 | 3D heart | Krrish | now |
 | 7 | Learn content v1 | Melove leads, all write, GVSU reviews | now |
-| 8 | Languages wave 1 | Krrish | after 2 |
+| 8 | ~~Languages wave 1~~ | dropped (PLAN.md D10) | — |
 | 9 | Polish, About & Help | Krrish + Prince | late |
 | 10 | Pilot | all | last |
 | 11 | Desktop (Electron, Windows + macOS) | Prince | when we have a Windows machine |
@@ -32,7 +32,7 @@ The split follows what each of us already built. Prince wrote `ttc/` and the hol
 ## First-time setup on a machine
 
 ```bash
-git clone https://github.com/Prince-Kunal/cardia.git && cd cardia
+git clone https://github.com/cardia-gvsu/cardia.git && cd cardia
 scripts/setup.sh <your-github-username>   # sets your commit identity for this repo, hooks, engine env; checks tools and data
 ```
 
@@ -69,7 +69,7 @@ GitHub then shows "MeloveGupta authored and Prince-Kunal committed". The history
 `type(scope): what changed`, in the imperative, under about 70 characters.
 
 * types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`
-* scopes: `engine`, `api`, `web`, `learn`, `heart3d`, `content`, `i18n`, `ci`, `docs`
+* scopes: `engine`, `api`, `web`, `learn`, `heart3d`, `content`, `deploy`, `ci`, `docs`
 
 Example: `feat(engine): port lighting correction from notebook Part D`
 
@@ -82,13 +82,13 @@ Example: `feat(engine): port lighting correction from notebook Part D`
 | Line endings, indentation | `.gitattributes`, `.editorconfig` | LF everywhere |
 | Study data | `scripts/study-data.sha256` | `check_data.py` must pass before running engine tests |
 | Model files | `engine/models/manifest.json` (SHA-256 per file, Phase 0) | The engine refuses a file whose hash doesn't match |
-| Formatting and lint | `ruff` (engine); `prettier` + `eslint` (web, added with the scaffold) | CI runs them on every PR (engine: `.github/workflows/engine.yml`, macOS + Linux) |
+| Formatting and lint | `ruff` (engine); `oxlint` (web) | CI runs them on every PR (`.github/workflows/engine.yml` on macOS + Linux, `.github/workflows/web.yml`) |
 | Git hooks | `.githooks/` via `core.hooksPath` | Set by `setup.sh` |
 
 ## Rules
 
-* **Lab data in git (decided 2026-11-23).** The study set, models, hole outlines, notebook results and golden set are committed; the data is not secret. Add new lab data only in a PR that says what it is and where it comes from. No pickled caches (`*.pkl`), which the pre-commit hook blocks.
-* **No AI attribution in history.** No `Co-Authored-By: Claude` and no "Generated with Claude Code" lines in commits or PRs. `.claude/settings.json` turns this off for Claude Code, and `.githooks/commit-msg` strips such lines from every commit.
+* **Lab data in git (decided 2026-11-23).** The study set, models, hole outlines, notebook results and golden set are committed. The data is private but not secret: GVSU shared it for us to use as we like, deploying it included (confirmed 2026-11-28). Add new lab data only in a PR that says what it is and where it comes from. No pickled caches (`*.pkl`), which the pre-commit hook blocks.
+* **No AI attribution in history.** No `Co-Authored-By: Claude` and no "Generated with Claude Code" lines in commits or PRs. `.claude/settings.json` turns this off for Claude Code, and `.githooks/commit-msg` strips such lines from every commit. The hooks run only where `scripts/setup.sh` has set `core.hooksPath`, so run it before your first commit on a new machine (`git config core.hooksPath` must print `.githooks`).
 * **Engine output is sacred.** Porting code must not change any number (PLAN.md §7). An intended change bumps the pipeline version and regenerates the golden set, and the PR says why.
 
 ## Models and large files

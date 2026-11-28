@@ -8,7 +8,7 @@ Three people work on this repo from different machines. Read [PLAN.md](PLAN.md) 
 - **The committer is always the person at the keyboard** (repo-local `git config user.name/user.email`; never change it). To commit a teammate's part for them, keep that identity and pass `--author="<their GitHub username> <their team email>"`. Git then records both people. The pre-commit hook checks that author and committer are both team identities.
 - **Every commit is authored by the owner of its files** (`.github/CODEOWNERS`, last match wins; with several owners, the first), whoever wrote it. Split a change that spans areas into one commit per owner.
 - **Merge PRs with "Rebase and merge", never squash.** A squash commit is authored by whoever opened the PR, which hides the owners.
-- **Lab data is committed (decided 2026-11-23: not secret).** `data/`, the model files, `engine/annotations/`, `reference/results_local/` (minus caches) and `reference/golden/` are in git. Never edit them by hand. No `*.pkl` caches, and nothing over 5 MB (the notebook stays on the team Drive).
+- **Lab data is committed (decided 2026-11-23: private but not secret; GVSU shared it for us to use as we like, deployment included, confirmed 2026-11-28).** `data/`, the model files, `engine/annotations/`, `reference/results_local/` (minus caches) and `reference/golden/` are in git. Never edit them by hand. No `*.pkl` caches, and nothing over 5 MB (the notebook stays on the team Drive).
 - **Engine behaviour is pinned to the reference notebook** (PLAN.md §7). Porting must not change any output. An intended change bumps the pipeline version and regenerates the golden set.
 - Commit or push only when asked. Work on a branch and open a PR to `main`.
 
@@ -17,5 +17,7 @@ Three people work on this repo from different machines. Read [PLAN.md](PLAN.md) 
 - Setup check: `scripts/setup.sh`
 - Engine: `cd engine && uv sync --locked`, then `uv run pytest` and `uv run ruff check .`
 - Engine API: `cd engine && uv run python -m cardia_api [--mock]`; after changing the API, `uv run python -m cardia_api.openapi` rewrites the contract
+- Web app: `cd web && pnpm install --frozen-lockfile`, then `pnpm dev`, `pnpm lint`, `pnpm test`
+- Public demo: <https://139-84-209-207.sslip.io>, redeployed by `.github/workflows/deploy.yml` on every push to `main` (`deploy/README.md`)
 - Data check: `python3 scripts/check_data.py`
 - Design skill for web work: `npx skills experimental_install -a claude-code -y` restores the taste skill pinned in `skills-lock.json` (not committed: 40 MB of demo photos). It is written for marketing sites; in Cardia follow only its system, motion and access rules (as `web/src/index.css` does), not its heroes, photographs, effects or gate. Lenis stays even though the skill bans smooth-scroll libraries (Prince's call, 2026-11-23).
