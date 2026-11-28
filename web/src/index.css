@@ -2386,6 +2386,24 @@ kbd {
   display: flex;
   gap: var(--s-1);
 }
+.tour-head > .fine {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* "step 1 of 9" never breaks before its number */
+}
+@media (max-width: 640px) {
+  /* A phone shows "Step 1 of 9": the card's title and its label already say it is the walkthrough. */
+  .tour-name {
+    display: none;
+  }
+  .tour-head > .fine::first-letter {
+    text-transform: uppercase;
+  }
+}
+.tour-head-actions .button {
+  white-space: nowrap; /* "Not now" stays on one line on a phone */
+}
 .tour-progress {
   height: 3px;
   border-radius: 2px;

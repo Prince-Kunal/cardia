@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EngineError } from '../api/client';
 import { useRoute } from '../lib/router';
-import { endTour, goToStep, startTour, tourState } from '../lib/tour';
+import { endTour, goToStep, startTour, tourSeen, tourState, useTourOffer } from '../lib/tour';
 import { HelpScreen } from '../screens/HelpScreen';
 import { ImportScreen } from '../screens/ImportScreen';
 import { fakeClient, renderInApp } from '../test/fakeApp';
@@ -13,6 +13,7 @@ afterEach(() => {
   cleanup();
   act(endTour);
   window.location.hash = '';
+  localStorage.clear();
 });
 
 /** The card with the real router, and the Import screen when the route is there. */
@@ -42,7 +43,7 @@ describe('the walkthrough', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Start the walkthrough' }));
     expect(await screen.findByRole('heading', { name: 'One heart, start to finish' })).toBeTruthy();
-    expect(screen.getByText('Walkthrough · step 1 of 9')).toBeTruthy();
+    expect(screen.getByText((_, el) => el?.textContent === 'Walkthrough · step 1 of 9')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Load the demo heart' }));
     expect(await screen.findByRole('heading', { name: 'Check the scans' })).toBeTruthy();
@@ -62,7 +63,7 @@ describe('the walkthrough', () => {
     act(() => void (window.location.hash = '#/jobs/abc'));
     expect(await screen.findByRole('heading', { name: 'The analysis runs here' })).toBeTruthy();
     act(() => void (window.location.hash = '#/hearts/k1'));
-    expect(await screen.findByRole('heading', { name: 'Two methods, side by side' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Three methods, three numbers' })).toBeTruthy();
     expect(document.querySelector('[data-tour="numbers"]')?.classList.contains('tour-target')).toBe(true);
 
     // Opening a slice early skips to the layers step; going back to the heart moves on to export.
@@ -106,5 +107,65 @@ describe('the walkthrough', () => {
     expect(text.closest('[hidden]')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'End' }));
     expect(sessionStorage.getItem('cardia.tour')).toBeNull();
+  });
+});
+
+/** The frame's part of it: the first-visit offer (as Layout calls it) and the card. */
+function Frame({ connected = true }: { connected?: boolean }) {
+  const route = useRoute();
+  useTourOffer(route.name, connected);
+  return <Tour route={route} />;
+}
+
+describe('the walkthrough on a first visit', () => {
+  it('opens by itself the first time the lab opens, and never again', async () => {
+    window.location.hash = '#/library';
+    const first = renderInApp(<Frame />, fakeClient());
+    const heading = await screen.findByRole('heading', { name: 'One heart, start to finish' });
+    expect(screen.getByText(/This opens once\. Later, start it from Help/)).toBeTruthy();
+    // Nobody asked for it, so it leaves the keyboard alone, and declining says "Not now".
+    expect(document.activeElement).not.toBe(heading);
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(tourState()).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Walkthrough' })).toBeNull();
+    first.unmount();
+
+    // The next visit: a new tab, the same browser.
+    sessionStorage.clear();
+    expect(tourSeen()).toBe(true);
+    renderInApp(<Frame />, fakeClient());
+    expect(screen.queryByRole('complementary', { name: 'Walkthrough' })).toBeNull();
+  });
+
+  it('waits for the lab and the engine: not in Learn, not in Help, not while disconnected', async () => {
+    window.location.hash = '#/learn';
+    const view = renderInApp(<Frame />, fakeClient());
+    act(() => void (window.location.hash = '#/help'));
+    expect(screen.queryByRole('complementary', { name: 'Walkthrough' })).toBeNull();
+    view.unmount();
+
+    window.location.hash = '#/library';
+    renderInApp(<Frame connected={false} />, fakeClient()).unmount();
+    expect(tourSeen()).toBe(false);
+
+    renderInApp(<Frame />, fakeClient());
+    expect(await screen.findByRole('heading', { name: 'One heart, start to finish' })).toBeTruthy();
+  });
+
+  it('counts a walkthrough started from Help as seen', () => {
+    act(startTour);
+    act(endTour);
+    window.location.hash = '#/hearts/k1';
+    renderInApp(<Frame />, fakeClient());
+    expect(screen.queryByRole('complementary', { name: 'Walkthrough' })).toBeNull();
+  });
+
+  it('started by hand, it takes the keyboard and offers End', async () => {
+    act(startTour);
+    renderInApp(<Frame />, fakeClient());
+    const heading = await screen.findByRole('heading', { name: 'One heart, start to finish' });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.getByRole('button', { name: 'End' })).toBeTruthy();
+    expect(screen.queryByText(/This opens once/)).toBeNull();
   });
 });

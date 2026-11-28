@@ -3,6 +3,7 @@ import { LEARN_ROUTES, type Route, href } from '../lib/router';
 import { scrollPageTo, takeForwardNavigation } from '../lib/scroll';
 import { useShortcuts } from '../lib/shortcuts';
 import { SYNC_LABEL, SYNC_TONE, signedIn } from '../lib/sync';
+import { LAB_ROUTES, useTourOffer } from '../lib/tour';
 import { AppContext, useApp, useResource } from '../state';
 import { BrandMark } from './BrandMark';
 import { Tour } from './Tour';
@@ -21,14 +22,14 @@ function SyncBadge({ current }: { current: boolean }) {
   );
 }
 
-const ANALYZE: Route['name'][] = ['library', 'import', 'job', 'heart', 'slice'];
-
 /** The app's frame. Learn can be shown without the engine, so the connected app may be missing. */
 export function Layout({ route, children }: { route: Route; children: ReactNode }) {
   const app = useContext(AppContext);
   const learn = LEARN_ROUTES.includes(route.name);
   const at = href(route);
   useShortcuts();
+  // A browser's first visit to the lab opens the walkthrough; after that it waits in Help.
+  useTourOffer(route.name, !!app);
   // A page reached by a link starts at the top; Back and Forward leave the scroll to the browser.
   // A layout effect, so a screen's own effect (the glossary scrolling to a term) runs after it.
   useLayoutEffect(() => {
@@ -59,7 +60,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           </a>
         </div>
         <nav className="nav" aria-label="Main">
-          {!learn && ANALYZE.includes(route.name) && (
+          {!learn && LAB_ROUTES.includes(route.name) && (
             <>
               {tab('library', 'Library')}
               <a href="#/import" className="button primary small">
