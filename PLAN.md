@@ -122,6 +122,12 @@
 - ★ Onboarding with a demo heart from the study set (bundled, so it works offline).
 - ★ Dark mode, colour-blind-safe overlay colours, keyboard navigation, screen-reader labels, reduced-motion setting.
 - ★ One design system, "The Living Stain" (2026-11-26): colours sampled from the study's scans, a darkroom dark theme, bundled fonts.
+- ★ **Two looks, chosen in Settings > Look > Style (2026-11-28).** "Lab notebook", the default, is calm for everyday work: quiet paper with a faint dot grid, white pages and hairlines, Source Serif 4 headings, IBM Plex Sans for the interface and its numbers, graphite controls, and colour kept for what it means (the three methods, the stain, warnings). "Living Stain" stays as the bold choice. The look is kept per browser (localStorage), so it needs no engine and each visitor of the public demo keeps their own; the landing page keeps its own stage in both. Code: `web/src/looks/notebook.css`, `web/src/lib/look.ts`.
+- ★ **Easter eggs, for people who use Cardia every day** (2026-11-28; not in Help on purpose; `web/src/lib/eggs.ts`, `web/src/looks/eggs.css`). None changes a number or takes the keyboard, and reduced motion keeps them still.
+  - In the lab notebook look the logo is an unstained slice; rest the pointer on it and it stains like TTC, pixel by pixel from the cavity outwards, leaving the infarct pale.
+  - Type "pig" anywhere outside a field: a guinea pig, the study's species, trots along the header's trace.
+  - On World Heart Day (29 September) the logo is stained and beats once, and the trace runs in stain red.
+  - In the lab notebook look every page ends on a notebook's witness line ("Recorded <date> · Witnessed ____").
 - *Desktop phase* Signed installers and automatic updates.
 
 ### 1k. Proposed extras (◇, for the team to accept or reject)
