@@ -12,7 +12,7 @@ apt-get install -y git curl rsync ufw debian-keyring debian-archive-keyring apt-
 id cardia &>/dev/null || useradd --system --create-home --home-dir /home/cardia --shell /bin/bash cardia
 id deploy &>/dev/null || useradd --create-home --shell /bin/bash deploy
 
-# A read-only key so the server can pull the private repo.
+# A read-only key so the server can pull the repo over SSH (needed if the repo is ever made private).
 sudo -u cardia -H bash -c 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && [ -f ~/.ssh/id_ed25519 ] || ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 -C cardia-server
   ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null'
 if ! sudo -u cardia -H git ls-remote "$REPO" &>/dev/null; then
