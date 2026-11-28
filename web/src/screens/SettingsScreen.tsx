@@ -9,6 +9,7 @@ import { EngineError, saveFile } from '../api/client';
 import { ErrorNote } from '../components/ui';
 import { METHOD_KIND_LABEL, dateTime, plural, shortHash } from '../lib/format';
 import { useTitle } from '../lib/hooks';
+import { LOOKS, setLook, useLook } from '../lib/look';
 import { href } from '../lib/router';
 import { scrollPageTo } from '../lib/scroll';
 import { useApp, useResource } from '../state';
@@ -28,6 +29,33 @@ function Section({ id, title, children, intro }: { id: string; title: string; in
 }
 
 /** The whole library as one file, and back (PLAN.md §1e). Works without an account. */
+/** The look of the whole app (lib/look.ts). Kept in this browser, so it needs no engine. */
+function StylePicker() {
+  const look = useLook();
+  return (
+    <div className="field">
+      <span className="field-label" id="style-label">
+        Style
+      </span>
+      <div className="choices" role="radiogroup" aria-labelledby="style-label">
+        {LOOKS.map((l) => (
+          <label key={l.key} className="choice">
+            <input type="radio" name="look" checked={look === l.key} onChange={() => setLook(l.key)} />
+            <span>
+              <strong>
+                <span className={`look-swatch ${l.key}`} aria-hidden="true" />
+                {l.name}
+              </strong>
+              <span className="fine">{l.about}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <span className="fine">Kept in this browser. The landing page keeps its own look.</span>
+    </div>
+  );
+}
+
 function Backup() {
   const { client } = useApp();
   const [busy, setBusy] = useState<'backup' | 'restore'>();
@@ -271,6 +299,7 @@ export function SettingsScreen() {
           </Section>
 
           <Section id="look" title="Look">
+            <StylePicker />
             <div className="field">
               <span className="field-label" id="theme-label">
                 Theme
