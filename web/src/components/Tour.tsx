@@ -89,8 +89,9 @@ export function Tour({ route }: { route: Route }) {
     if (later >= 0) goToStep(TOUR[later].id);
   }, [route.name, tour, step, here]);
 
-  // Starting the walkthrough puts the keyboard on its card.
-  const starting = tour?.step === 0;
+  // Starting the walkthrough puts the keyboard on its card. When the app offers it on a first visit,
+  // nobody asked for it, so the keyboard stays where it is (the status line below still announces it).
+  const starting = tour?.step === 0 && !tour.offered;
   useEffect(() => {
     if (starting) heading.current?.focus();
   }, [starting]);
@@ -100,6 +101,8 @@ export function Tour({ route }: { route: Route }) {
   if (!tour || !step || !app) return null;
   const n = tour.step + 1;
   const last = n === TOUR.length;
+  // The first-visit offer: a card nobody asked for says how to decline it and where it waits.
+  const offer = step.id === 'welcome' && !!tour.offered;
 
   async function loadDemo() {
     if (!app) return;
@@ -139,7 +142,7 @@ export function Tour({ route }: { route: Route }) {
     <aside ref={card} className="tour-card no-print" aria-label="Walkthrough" data-place="bottom">
       <div className="tour-head">
         <span className="fine">
-          Walkthrough · step {n} of {TOUR.length}
+          <span className="tour-name">Walkthrough · </span>step {n} of {TOUR.length}
         </span>
         <div className="tour-head-actions">
           <button
@@ -152,7 +155,7 @@ export function Tour({ route }: { route: Route }) {
             {folded ? 'Show' : 'Hide'}
           </button>
           <button type="button" className="button ghost small" onClick={endTour}>
-            End
+            {offer ? 'Not now' : 'End'}
           </button>
         </div>
       </div>
@@ -164,6 +167,7 @@ export function Tour({ route }: { route: Route }) {
       </h2>
       <div id="tour-body" hidden={folded}>
         <p>{body}</p>
+        {offer && <p className="fine">New here? This opens once. Later, start it from Help whenever you like.</p>}
       </div>
       {!here && (
         <p className="note info">

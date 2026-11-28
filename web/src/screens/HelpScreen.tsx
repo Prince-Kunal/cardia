@@ -144,7 +144,8 @@ export function HelpScreen() {
         <div className="note info row between">
           <span>
             <strong>The walkthrough</strong> takes you through one real analysis on a demo heart from the study set: import,
-            processing, the report, a slice’s layers and export. Two or three minutes.
+            processing, the report, a slice’s layers and export. Two or three minutes. It opens by itself the first time you
+            open the lab; start it here whenever you like.
           </span>
           {app ? (
             <button type="button" className="button primary small" onClick={startTour}>

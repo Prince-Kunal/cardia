@@ -1,11 +1,13 @@
 // The walkthrough (PLAN.md §1h, §1j): one real analysis of the demo heart, from import to export. A card
 // follows you from screen to screen; each step points at one part of the screen and moves on by itself
-// when you do what it says (or with Next). Start or replay it from Help, or from an empty library.
+// when you do what it says (or with Next). It offers itself once, the first time a browser opens the lab
+// (`useTourOffer`); after that, start or replay it from Help, or from an empty library.
 //
 // The state lives here, outside React, so the card, the Import screen and the Help page share it, and in
-// sessionStorage, so a reload keeps your place.
+// sessionStorage, so a reload keeps your place. Whether this browser has had the walkthrough is kept in
+// localStorage, so it is offered on the first visit only.
 
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import type { Route } from './router';
 
 export type TourStepId = 'welcome' | 'import' | 'processing' | 'numbers' | 'report' | 'slices' | 'layers' | 'export' | 'done';
@@ -51,7 +53,7 @@ export const TOUR: TourStep[] = [
   },
   {
     id: 'numbers',
-    title: 'Two methods, side by side',
+    title: 'Three methods, three numbers',
     body: 'Each method gives the dead tissue as a % of the heart. Methods A (K-Means + random forest) and B (DBSCAN + random forest) are machine learning and sit side by side to compare; Method C (the stain ratio) is a colour rule, shown apart. They draw the line between dead and alive in different places and can disagree a lot. Until expert tracings settle which is closer, Cardia shows all three. Learn module 10 explains why.',
     on: ['heart'],
     target: ['numbers'],
@@ -99,9 +101,17 @@ export interface TourState {
   where?: string;
   /** The engine has no demo heart (a build without the study scans): you bring your own scans. */
   noDemo?: boolean;
+  /** The app offered it on a first visit; nobody asked for it yet. */
+  offered?: boolean;
 }
 
+/** The screens of the lab (Analyze): the first one a browser opens offers the walkthrough. */
+export const LAB_ROUTES: Route['name'][] = ['library', 'import', 'job', 'heart', 'slice'];
+
 const KEY = 'cardia.tour';
+const SEEN_KEY = 'cardia.tour.seen';
+// For a browser that refuses storage: at least don't offer it twice on the same page.
+let seenHere = false;
 const listeners = new Set<() => void>();
 let state: TourState | null = read();
 let staged: File[] | null = null;
@@ -142,8 +152,43 @@ export function tourState(): TourState | null {
   return state;
 }
 
+/** Whether this browser has had the walkthrough, offered or started. */
+export function tourSeen(): boolean {
+  if (seenHere) return true;
+  try {
+    return localStorage.getItem(SEEN_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function markSeen(): void {
+  try {
+    localStorage.setItem(SEEN_KEY, new Date().toISOString());
+  } catch {
+    // Private windows can refuse storage: remember it for this page, and offer it again on the next visit.
+    seenHere = true;
+  }
+}
+
 export function startTour(): void {
+  markSeen();
   set({ step: 0 });
+}
+
+/** Offer the walkthrough if this browser has never had it: once, then only from Help. */
+export function offerTourOnce(): void {
+  if (state || tourSeen()) return;
+  markSeen();
+  set({ step: 0, offered: true });
+}
+
+/** On a first visit, offer the walkthrough as soon as the connected app shows a screen of the lab. */
+export function useTourOffer(route: Route['name'], connected: boolean): void {
+  const lab = LAB_ROUTES.includes(route);
+  useEffect(() => {
+    if (connected && lab) offerTourOnce();
+  }, [connected, lab]);
 }
 
 export function endTour(): void {
