@@ -2,6 +2,8 @@
 
 One server runs the engine and serves the web app; Caddy puts HTTPS in front on a free `<ip>.sslip.io` address (no domain needed). Every push to `main` redeploys by itself (`.github/workflows/deploy.yml`).
 
+**The live site: <https://139-84-209-207.sslip.io>** (PLAN.md D14). GVSU shared the study data for us to use as we like, deployment included.
+
 ## One-time setup
 
 1. In Vultr, deploy a **Cloud Compute (regular) server, Ubuntu 24.04, 2 GB RAM or more** (the machine-learning libraries need it). Add your SSH key.
