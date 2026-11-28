@@ -4,13 +4,14 @@
 // is a real slice from the study set with the engine's real result. Works without the engine, and
 // without WebGL (the text and the real slice still tell the story).
 
-import { type CSSProperties, Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type RefObject, Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { BrandMark } from '../components/BrandMark';
 import { webglAvailable } from '../heart3d/mode';
 import { reducedMotion } from '../heart/timeline';
 import { useTitle } from '../lib/hooks';
 import { scrollPageTo } from '../lib/scroll';
 import type { LabelRefs } from './world';
+import { DARK_STAGE } from './stage';
 import { CHAPTERS, N, clamp01 } from './story';
 import './landing.css';
 
@@ -46,11 +47,34 @@ function useReduced(): boolean {
   return reduced;
 }
 
+/** The colour of the 3D room, from the page's look and theme (landing.css --stage): it changes when
+ *  the look or theme does (data-look, data-theme on <html>) or the computer turns dark mode on or off. */
+function useStage(root: RefObject<HTMLElement | null>): string {
+  const [stage, setStage] = useState(DARK_STAGE);
+  useEffect(() => {
+    const read = () => {
+      const v = root.current ? getComputedStyle(root.current).getPropertyValue('--stage').trim() : '';
+      setStage(v || DARK_STAGE);
+    };
+    read();
+    const watch = new MutationObserver(read);
+    watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-look', 'data-theme'] });
+    const dark = window.matchMedia?.('(prefers-color-scheme: dark)');
+    dark?.addEventListener?.('change', read);
+    return () => {
+      watch.disconnect();
+      dark?.removeEventListener?.('change', read);
+    };
+  }, [root]);
+  return stage;
+}
+
 export function Landing() {
   useTitle('');
   const reduced = useReduced();
   const [gl] = useState(webglAvailable);
   const root = useRef<HTMLDivElement>(null);
+  const stage = useStage(root);
   const sections = useRef<(HTMLElement | null)[]>([]);
   const counters = useRef<(HTMLElement | null)[]>([]);
   const progress = useRef(0);
@@ -171,7 +195,7 @@ export function Landing() {
       <div className="landing-stage" aria-hidden="true">
         {gl && (
           <Suspense fallback={null}>
-            <LandingScene progress={progress} labels={labels} reduced={reduced} />
+            <LandingScene progress={progress} labels={labels} reduced={reduced} stage={stage} />
           </Suspense>
         )}
         <div className="landing-vignette" />

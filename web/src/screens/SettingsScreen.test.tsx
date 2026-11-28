@@ -14,11 +14,11 @@ describe('Settings, Look', () => {
     renderInApp(<SettingsScreen />, fakeClient());
     const notebook = screen.getByRole('radio', { name: /Lab notebook/ }) as HTMLInputElement;
     const stain = screen.getByRole('radio', { name: /Living Stain/ }) as HTMLInputElement;
-    expect(notebook.checked).toBe(true);
-
-    fireEvent.click(stain);
     expect(stain.checked).toBe(true);
-    expect(document.documentElement.dataset.look).toBe('stain');
-    expect(localStorage.getItem('cardia.look')).toBe('stain');
+
+    fireEvent.click(notebook);
+    expect(notebook.checked).toBe(true);
+    expect(document.documentElement.dataset.look).toBe('notebook');
+    expect(localStorage.getItem('cardia.look')).toBe('notebook');
   });
 });

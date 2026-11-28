@@ -1,6 +1,6 @@
-// Cardia's two looks (Settings > Look > Style). "notebook", the default, is the lab notebook: quiet
-// paper, hairlines and journal type, calm enough for everyday work (looks/notebook.css). "stain" is
-// the Living Stain: bold colour and motion (index.css alone).
+// Cardia's two looks (Settings > Look > Style). "stain", the default for now, is the Living Stain:
+// bold colour and motion (index.css alone). "notebook" is the lab notebook: quiet paper, hairlines and
+// journal type, calm enough for everyday work (looks/notebook.css, and the end of landing.css).
 //
 // The look is kept per browser in localStorage, not in the engine's settings: it applies before the
 // engine answers (Learn, Help and the landing page work without one), and every visitor of the public
@@ -11,11 +11,12 @@ import { useSyncExternalStore } from 'react';
 export type Look = 'notebook' | 'stain';
 
 export const LOOKS: { key: Look; name: string; about: string }[] = [
-  { key: 'notebook', name: 'Lab notebook', about: 'Quiet paper, fine rules and journal type. Calm for everyday work.' },
   { key: 'stain', name: 'Living Stain', about: 'The original: warm colour, glow and motion.' },
+  { key: 'notebook', name: 'Lab notebook', about: 'Quiet paper, fine rules and journal type. Calm for everyday work.' },
 ];
 
-export const DEFAULT_LOOK: Look = 'notebook';
+/** The look a browser gets until it chooses one. One line to change. */
+export const DEFAULT_LOOK: Look = 'stain';
 const KEY = 'cardia.look';
 const listeners = new Set<() => void>();
 let current: Look = read();

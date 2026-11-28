@@ -10,6 +10,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { H, buildHeart, taperedTube } from '../heart3d/model';
 import { loadRealHeart } from '../heart3d/realHeart';
 import { CUTS, SLICES, buildBase, buildSlabs, cavityPoint, onEpicardium, rvWallPoint, wallPoint } from './geometry';
+import { DARK_STAGE } from './stage';
 import { beat, seg, stateAt } from './story';
 import { SHARED, bathMaterial, microscopeMaterial, organMaterial, realHeartMaterial, tissueMaterial, vesselMaterial } from './tissue';
 
@@ -189,8 +190,8 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
   pmrem.dispose();
   scene.environment = environment;
   scene.environmentIntensity = 0.4;
-  scene.background = new THREE.Color('#0b0a0a');
-  scene.fog = new THREE.Fog('#0b0a0a', 10, 24);
+  scene.background = new THREE.Color(DARK_STAGE);
+  scene.fog = new THREE.Fog(DARK_STAGE, 10, 24);
   // Studio light, no colour: a soft key from the upper left, a faint fill, a white rim for the edge.
   const lights = [new THREE.AmbientLight('#ffffff', 0.16), new THREE.DirectionalLight('#fff6ee', 2.3), new THREE.DirectionalLight('#f3f4f6', 0.6), new THREE.DirectionalLight('#ffffff', 1.3)];
   lights[1].position.set(-3.5, 4.5, 5);
@@ -251,6 +252,7 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
     glow,
     bath,
     micro,
+    lights,
     objects,
     environment,
     keys: cameraKeys(border),
@@ -274,6 +276,30 @@ export function createWorld(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: TH
       first: true,
     },
   };
+}
+
+const DARK_SURROUND = new THREE.Color(0.025, 0.015, 0.02);
+
+/** Paint the room the story happens in: the stage colour the page's look gives (landing.css --stage).
+ *  A light stage is paper (the lab notebook look): more ambient light so the heart's shadow side does
+ *  not read as a hole, the bath drawn as a tint instead of light, and the eyepiece set on paper. */
+export function paintStage(w: World, colour: string): void {
+  const c = new THREE.Color(colour);
+  const paper = c.getHSL({ h: 0, s: 0, l: 0 }).l > 0.5;
+  w.scene.background = c;
+  (w.scene.fog as THREE.Fog).color.copy(c);
+  w.lights[0].intensity = paper ? 0.32 : 0.16;
+  const bath = w.bath.material as THREE.ShaderMaterial;
+  bath.uniforms.uPaper.value = paper ? 1 : 0;
+  const blending = paper ? THREE.NormalBlending : THREE.AdditiveBlending;
+  if (bath.blending !== blending) {
+    bath.blending = blending;
+    bath.needsUpdate = true;
+  }
+  // The shader writes this colour as it is, so give it the page's sRGB values.
+  const micro = (w.micro.material as THREE.ShaderMaterial).uniforms.uSurround.value as THREE.Color;
+  if (paper) c.getRGB(micro, THREE.SRGBColorSpace);
+  else micro.copy(DARK_SURROUND);
 }
 
 export function resizeWorld(w: World, width: number, height: number): void {
