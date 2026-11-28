@@ -2,6 +2,7 @@
 
 Cardia measures infarct size on scanned TTC heart slices automatically, and teaches the science behind it with an interactive 3D heart. It is built as a local web app first (a browser UI plus a Python engine on your own computer) and will become a desktop app for Windows and macOS.
 
+* **Live demo: <https://139-84-209-207.sslip.io>.** The real engine in public mode, redeployed on every push to `main` ([deploy/README.md](deploy/README.md)). Everyone who opens the link shares one library and can see, add and delete hearts (PLAN.md D14); backup, restore and the watch folder are off.
 * The plan: [PLAN.md](PLAN.md)
 * Who does what, setup and workflow: [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -10,10 +11,12 @@ Cardia measures infarct size on scanned TTC heart slices automatically, and teac
 | Path | What | In git |
 |---|---|---|
 | `engine/` | Python engine: `ttc_pipeline/` (analysis), `cardia_api/` (the local API the web app calls, contract in `openapi.json`), `training/` (one-time training and Phase 0 checks), `models/`, `annotations/`, `tests/` | yes |
-| `web/` | React + TypeScript web app (milestone 2) | yes |
-| `content/` | Learn lessons, glossary and quizzes, one folder per language | yes |
+| `web/` | React + TypeScript web app: the landing page, Analyze (import, library, reports, export, sync), Learn (lessons, quizzes, the 3D heart) and Help. Layout: [web/README.md](web/README.md) | yes |
+| `content/` | Learn lessons, glossary and quizzes, in English (`content/en/`) | yes |
+| `cloud/` | The Supabase schema for cloud sync, with row-level security per workspace (off until the project's keys exist) | yes |
+| `deploy/` | The public demo: server setup, Caddy (HTTPS on sslip.io) and the systemd service; `.github/workflows/deploy.yml` redeploys on every push to `main` | yes |
 | `scripts/` | `setup.sh`, `check_data.py`, `study-data.sha256` | yes |
-| `data/` | GVSU study scans and `.out` reference files (41 files, checked by SHA-256) | yes |
+| `data/` | GVSU study scans and `.out` reference files (41 files, checked by SHA-256). Private but not secret: GVSU shared them for us to use as we like, deployment included | yes |
 | `reference/` | The notebook's saved results (`results_local/`), the golden set (`golden/`) and Phase 0 outputs (`phase0/`); also, not in git, the notebook itself (team Drive) and a clone of the research repo (`research-repo/`) | yes, except the notebook, its caches and the research repo |
 
 ## Quick start
@@ -22,9 +25,10 @@ Cardia measures infarct size on scanned TTC heart slices automatically, and teac
 scripts/setup.sh <your-github-username>
 cd engine && uv run python -m cardia_api --mock   # the engine API with fake analysis, for UI work
 cd engine && uv run python -m cardia_api          # the real engine
+cd web && pnpm install --frozen-lockfile && pnpm dev   # the web app, in another terminal
 ```
 
-The engine listens on 127.0.0.1 only and prints a link that opens the app with a fresh token. How the app uses it: [engine/cardia_api/README.md](engine/cardia_api/README.md).
+The engine listens on 127.0.0.1 only and prints a link that opens the app (the dev server on port 5173) with a fresh token. How the app uses it: [engine/cardia_api/README.md](engine/cardia_api/README.md).
 
 ## Study data at a glance
 
