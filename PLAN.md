@@ -109,7 +109,7 @@
 
 ### 1h. About and Help
 - ★ About: what the app does, who made it (team + GVSU credits), how to cite it, a research-use-only disclaimer, and open-source and 3D-model licences.
-- ★ How to use it: a guided **walkthrough** on the bundled demo heart (import → processing → heart report → layers → export), replayable from Help.
+- ★ How to use it: a guided **walkthrough** on the bundled demo heart (import → processing → heart report → layers → export). It opens by itself the first time a browser opens the lab (2026-11-28; once per browser, remembered in localStorage), and is replayable from Help.
 - ★ "Why was my slice flagged?": each QC flag links to a plain explanation and how to fix it (rescan, add the weight, even lighting, blue/green background).
 - ★ FAQ, keyboard shortcuts, and "What's new" (lists pipeline version changes).
 - ★ "About the method" page: version, settings, what was validated, known limits (§2h).
