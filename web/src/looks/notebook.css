@@ -1,5 +1,5 @@
-/* Cardia's everyday look: "The lab notebook" (Settings > Look > Style; lib/look.ts sets
-   <html data-look="notebook">). The Living Stain (index.css) stays the other choice, and this file only
+/* Cardia's calm look: "The lab notebook" (Settings > Look > Style; lib/look.ts sets
+   <html data-look="notebook">). The Living Stain (index.css) is the default, and this file only
    overrides it.
 
    A well-kept research notebook and a journal page: quiet paper with a faint dot grid, hairline rules,
@@ -10,7 +10,7 @@
 
    index.css's rules still hold: 16px text and a 13px floor, the spacing scale, hover and press only by
    transform on a fine pointer, a focus ring that never animates, data-theme for light and dark, and
-   reduced motion stops every animation. The landing page keeps its own stage (landing.css). */
+   reduced motion stops every animation. The landing page's notebook version is at the end of landing.css. */
 
 /* ---------- tokens: the paper (light) ---------- */
 
@@ -153,21 +153,6 @@
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 18px 40px -18px rgb(0 0 0 / 0.8);
   --glow: 0 0 0 1px var(--border-strong);
   color-scheme: dark;
-}
-
-/* The landing page is its own stage: it keeps the Living Stain's type (its colours are its own). */
-:root[data-look='notebook'] .landing {
-  --display: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
-  --sans: 'Instrument Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --radius: 18px;
-  --radius-small: 10px;
-  --radius-tiny: 6px;
-  --m-in: 180ms;
-  --m-out: 140ms;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  font-family: var(--sans);
-  font-feature-settings: 'ss01', 'cv11';
 }
 
 /* ---------- the page: notebook paper ---------- */
@@ -316,43 +301,43 @@
 /* ---------- controls ---------- */
 
 /* Buttons are labelled keys, not pills: square-ish, flat, no bloom and no lift. */
-:root[data-look='notebook'] .button:not(.landing *) {
+:root[data-look='notebook'] .button {
   border-radius: var(--radius-small);
   font-weight: 550;
   letter-spacing: 0;
 }
-:root[data-look='notebook'] .button:not(.landing *)::before {
+:root[data-look='notebook'] .button::before {
   display: none;
 }
-:root[data-look='notebook'] .button:not(.landing *):hover {
+:root[data-look='notebook'] .button:hover {
   background: var(--surface-2);
   border-color: var(--text-faint);
 }
 @media (hover: hover) and (pointer: fine) {
-  :root[data-look='notebook'] .button:not(.landing *):not(:disabled, [aria-disabled='true']):hover {
+  :root[data-look='notebook'] .button:not(:disabled, [aria-disabled='true']):hover {
     transform: none;
   }
 }
-:root[data-look='notebook'] .button:not(.landing *):not(:disabled, [aria-disabled='true']):active {
+:root[data-look='notebook'] .button:not(:disabled, [aria-disabled='true']):active {
   transform: translateY(1px);
 }
-:root[data-look='notebook'] .button.primary:not(.landing *) {
+:root[data-look='notebook'] .button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
   box-shadow: none;
 }
-:root[data-look='notebook'] .button.primary:not(.landing *):hover {
+:root[data-look='notebook'] .button.primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   color: var(--accent-contrast);
   box-shadow: none;
 }
-:root[data-look='notebook'] .button.danger:not(.landing *):hover {
+:root[data-look='notebook'] .button.danger:hover {
   background: var(--danger-soft);
   border-color: var(--danger);
 }
-:root[data-look='notebook'] .button.ghost:not(.landing *):hover {
+:root[data-look='notebook'] .button.ghost:hover {
   background: var(--surface-2);
   border-color: transparent;
 }

@@ -7,24 +7,24 @@ afterEach(() => {
 });
 
 describe('the look', () => {
-  it('is the lab notebook until a browser chooses otherwise', () => {
-    expect(DEFAULT_LOOK).toBe('notebook');
+  it('is the Living Stain until a browser chooses otherwise', () => {
+    expect(DEFAULT_LOOK).toBe('stain');
     startLook();
-    expect(document.documentElement.dataset.look).toBe('notebook');
+    expect(document.documentElement.dataset.look).toBe('stain');
   });
 
   it('keeps the choice in this browser and puts it on the page', () => {
-    setLook('stain');
-    expect(document.documentElement.dataset.look).toBe('stain');
-    expect(localStorage.getItem('cardia.look')).toBe('stain');
+    setLook('notebook');
+    expect(document.documentElement.dataset.look).toBe('notebook');
+    expect(localStorage.getItem('cardia.look')).toBe('notebook');
     delete document.documentElement.dataset.look;
     startLook(); // the next visit
-    expect(document.documentElement.dataset.look).toBe('stain');
+    expect(document.documentElement.dataset.look).toBe('notebook');
   });
 
   it('ignores a stored value it does not know', () => {
     localStorage.setItem('cardia.look', 'neon');
     startLook();
-    expect(document.documentElement.dataset.look).toBe('notebook');
+    expect(document.documentElement.dataset.look).toBe(DEFAULT_LOOK);
   });
 });

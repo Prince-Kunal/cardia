@@ -51,7 +51,7 @@ function StylePicker() {
           </label>
         ))}
       </div>
-      <span className="fine">Kept in this browser. The landing page keeps its own look.</span>
+      <span className="fine">Kept in this browser. The landing page follows it too.</span>
     </div>
   );
 }

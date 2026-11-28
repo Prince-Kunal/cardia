@@ -390,27 +390,35 @@ totalEmissiveRadiance += tEmit;`,
   return m;
 }
 
-/** The TTC bath: a clear liquid in front of the slices, with a fine meniscus. */
+/** The TTC bath: a clear liquid in front of the slices, with a fine meniscus. On a dark stage it adds
+ *  light; on paper (uPaper 1, the lab notebook look; world.ts paintStage) light would not show, so it is
+ *  a faint cool tint with a darker meniscus line instead. */
 export function bathMaterial() {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { uLevel: { value: -0.1 }, uTime: SHARED.uTime, uAlpha: { value: 0 } },
+    uniforms: { uLevel: { value: -0.1 }, uTime: SHARED.uTime, uAlpha: { value: 0 }, uPaper: { value: 0 } },
     vertexShader: /* glsl */ `
 varying vec2 vUv;
 void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
 varying vec2 vUv;
-uniform float uLevel, uTime, uAlpha;
+uniform float uLevel, uTime, uAlpha, uPaper;
 void main() {
   float wave = 0.006 * sin(vUv.x * 38.0 + uTime * 2.0) + 0.004 * sin(vUv.x * 71.0 - uTime * 3.1);
   float y = vUv.y - (uLevel + wave);
   float below = 1.0 - smoothstep(-0.004, 0.004, y);
   float edge = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x) * smoothstep(0.0, 0.1, vUv.y);
   float meniscus = (1.0 - smoothstep(0.0, 0.004, abs(y))) * 0.6 + (1.0 - smoothstep(0.0, 0.03, abs(y))) * 0.15;
-  vec3 col = vec3(1.0, 0.97, 0.92) * 0.035 * below + vec3(1.0) * meniscus * 0.6;
   float a = (below * 0.08 + meniscus * 0.5) * edge;
+  if (uPaper > 0.5) {
+    vec3 tint = mix(vec3(0.84, 0.88, 0.92), vec3(0.42, 0.47, 0.53), clamp(meniscus * 1.6, 0.0, 1.0));
+    float pa = (below * 0.04 + meniscus * 0.6) * edge;
+    gl_FragColor = vec4(tint, clamp(pa, 0.0, 1.0) * uAlpha);
+    return;
+  }
+  vec3 col = vec3(1.0, 0.97, 0.92) * 0.035 * below + vec3(1.0) * meniscus * 0.6;
   gl_FragColor = vec4(col * a * uAlpha, 1.0);
 }`,
   });
@@ -423,13 +431,21 @@ export function microscopeMaterial() {
     transparent: true,
     depthTest: false,
     depthWrite: false,
-    uniforms: { uTime: SHARED.uTime, uOpacity: { value: 0 }, uZoom: { value: 0 }, uAspect: { value: 1 } },
+    uniforms: {
+      uTime: SHARED.uTime,
+      uOpacity: { value: 0 },
+      uZoom: { value: 0 },
+      uAspect: { value: 1 },
+      // Around the eyepiece: dark, or the paper itself in the lab notebook look (world.ts paintStage).
+      uSurround: { value: new THREE.Color(0.025, 0.015, 0.02) },
+    },
     vertexShader: /* glsl */ `
 varying vec2 vUv;
 void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
 varying vec2 vUv;
 uniform float uTime, uOpacity, uZoom, uAspect;
+uniform vec3 uSurround;
 vec2 h2(vec2 p) { p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
 float vn(vec2 x) { vec2 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
   float a = h2(i).x, b = h2(i + vec2(1, 0)).x, c = h2(i + vec2(0, 1)).x, d = h2(i + vec2(1, 1)).x;
@@ -482,7 +498,7 @@ void main() {
   float field = 1.0 - smoothstep(R0 - 0.004, R0 + 0.002, rad);
   col *= 1.0 - 3.2 * rad * rad;
   col += vec3(0.35, 0.12, 0.18) * smoothstep(R0 - 0.03, R0, rad) * field;
-  vec3 outCol = mix(vec3(0.025, 0.015, 0.02), col, field);
+  vec3 outCol = mix(uSurround, col, field);
   gl_FragColor = vec4(outCol, uOpacity);
 }`,
   });

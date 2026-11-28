@@ -5,7 +5,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { type MutableRefObject, useEffect, useRef } from 'react';
 import type * as THREE from 'three';
-import { type LabelRefs, type World, createWorld, disposeWorld, resizeWorld, stepWorld } from './world';
+import { type LabelRefs, type World, createWorld, disposeWorld, paintStage, resizeWorld, stepWorld } from './world';
 
 export type { LabelRefs };
 
@@ -14,9 +14,11 @@ interface Props {
   progress: MutableRefObject<number>;
   labels: MutableRefObject<LabelRefs>;
   reduced: boolean;
+  /** The colour of the room: dark for the Living Stain, paper or dark for the lab notebook. */
+  stage: string;
 }
 
-function Stage({ progress, labels, reduced }: Props) {
+function Stage({ progress, labels, reduced, stage }: Props) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -36,6 +38,11 @@ function Stage({ progress, labels, reduced }: Props) {
   useEffect(() => {
     if (world.current) resizeWorld(world.current, width, height);
   }, [world, width, height]);
+
+  // After the world is built (the effect above runs first), and whenever the look or theme changes.
+  useEffect(() => {
+    if (world.current) paintStage(world.current, stage);
+  }, [world, stage, gl, scene, camera]);
 
   useFrame((_, dt) => {
     if (world.current) stepWorld(world.current, { target: progress.current, dt, reduced, labels: labels.current });

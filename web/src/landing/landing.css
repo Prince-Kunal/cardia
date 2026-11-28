@@ -3,6 +3,8 @@
    from Landing.tsx. */
 
 .landing {
+  /* The 3D room's colour (Landing.tsx reads it; world.ts paintStage). */
+  --stage: #0b0a0a;
   --bg: #0b0a0a;
   --surface: #150e10;
   --surface-2: #1f1517;
@@ -778,5 +780,228 @@
 @media (prefers-reduced-motion: reduce) {
   .scan {
     transform: none;
+  }
+}
+
+/* ---------- the lab notebook look (Settings > Look > Style; looks/notebook.css) ----------
+   The same story on notebook paper: a light room for the heart (or the microscope room in dark mode),
+   paper scrims instead of shadow behind the words, labels as white tags, journal type, tabular numbers.
+   The 3D room takes its colour from --stage. */
+
+:root[data-look='notebook'] .landing {
+  --stage: #f6f6f3;
+  --scrim: 246 246 243;
+  --bg: #f6f6f3;
+  --surface: #ffffff;
+  --surface-2: #f2f2ee;
+  --surface-3: #e7e7e1;
+  --border: #dcdcd5;
+  --border-strong: #c2c2ba;
+  --text: #1c1f22;
+  --text-muted: #555b61;
+  --text-faint: #676e74;
+  --accent: #1f262c;
+  --accent-hover: #38424b;
+  --accent-soft: #eceef0;
+  --accent-contrast: #ffffff;
+  --focus: #a8323f;
+  --formazan: #a8323f;
+  --rose: #a8323f;
+  --rose-soft: #f3dadd;
+  --ivory: #efe6cc;
+  --method-a: #2f66b3;
+  --method-b: #b8650a;
+  --method-c: #00785e;
+  --path: #3d5590;
+  --lift: 0 0 0 1px var(--border), 0 30px 60px -32px rgb(20 26 32 / 0.32);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-look='notebook']:not([data-theme='light']) .landing {
+    --stage: #111315;
+    --scrim: 17 19 21;
+    --bg: #111315;
+    --surface: #171a1d;
+    --surface-2: #1e2226;
+    --surface-3: #272c31;
+    --border: rgb(230 235 240 / 0.1);
+    --border-strong: rgb(230 235 240 / 0.22);
+    --text: #e6e8ea;
+    --text-muted: #a5acb2;
+    --text-faint: #8d959b;
+    --accent: #e6e8ea;
+    --accent-hover: #ffffff;
+    --accent-soft: rgb(230 232 234 / 0.1);
+    --accent-contrast: #111315;
+    --focus: #eb8c96;
+    --formazan: #e2606f;
+    --rose: #eb8c96;
+    --rose-soft: rgb(235 140 150 / 0.18);
+    --ivory: #ece3c8;
+    --method-a: #7aa2ea;
+    --method-b: #d08d4d;
+    --method-c: #45c7a2;
+    --path: #93a3ee;
+    --lift: 0 0 0 1px var(--border), 0 40px 80px -30px rgb(0 0 0 / 0.8);
+    color-scheme: dark;
+  }
+}
+:root[data-look='notebook'][data-theme='dark'] .landing {
+  --stage: #111315;
+  --scrim: 17 19 21;
+  --bg: #111315;
+  --surface: #171a1d;
+  --surface-2: #1e2226;
+  --surface-3: #272c31;
+  --border: rgb(230 235 240 / 0.1);
+  --border-strong: rgb(230 235 240 / 0.22);
+  --text: #e6e8ea;
+  --text-muted: #a5acb2;
+  --text-faint: #8d959b;
+  --accent: #e6e8ea;
+  --accent-hover: #ffffff;
+  --accent-soft: rgb(230 232 234 / 0.1);
+  --accent-contrast: #111315;
+  --focus: #eb8c96;
+  --formazan: #e2606f;
+  --rose: #eb8c96;
+  --rose-soft: rgb(235 140 150 / 0.18);
+  --ivory: #ece3c8;
+  --method-a: #7aa2ea;
+  --method-b: #d08d4d;
+  --method-c: #45c7a2;
+  --path: #93a3ee;
+  --lift: 0 0 0 1px var(--border), 0 40px 80px -30px rgb(0 0 0 / 0.8);
+  color-scheme: dark;
+}
+
+/* The words' side of the room is paper (or the dark room), not shadow. */
+:root[data-look='notebook'] .landing-vignette {
+  background:
+    linear-gradient(90deg, rgb(var(--scrim) / 0.94) 0%, rgb(var(--scrim) / 0.62) 30%, transparent 52%),
+    radial-gradient(130% 90% at 65% 50%, transparent 55%, rgb(var(--scrim) / 0.55) 100%);
+}
+:root[data-look='notebook'] .no-gl .landing-stage {
+  background:
+    radial-gradient(60% 50% at 70% 45%, color-mix(in srgb, var(--formazan) 12%, transparent), transparent 70%),
+    var(--bg);
+}
+:root[data-look='notebook'] .landing-nav {
+  background: linear-gradient(180deg, rgb(var(--scrim) / 0.9), transparent);
+}
+
+/* Labels are tags on the specimen; small captions are captions, not stamps. */
+:root[data-look='notebook'] :is(.part-label, .micro-label) {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgb(20 26 32 / 0.06);
+}
+:root[data-look='notebook'] .part-label {
+  border-radius: 6px;
+}
+:root[data-look='notebook'] .micro-label {
+  border-radius: 8px;
+}
+:root[data-look='notebook'] :is(.part-label, .micro-label) i {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--surface) 70%, transparent);
+}
+:root[data-look='notebook'] :is(.slice-label, .rail-tip, .scroll-cue, .chapter-facts dt) {
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+:root[data-look='notebook'] .landing-rail::before,
+:root[data-look='notebook'] .rail-dot::before,
+:root[data-look='notebook'] .scroll-cue i {
+  background: var(--border-strong);
+}
+:root[data-look='notebook'] .rail-dot[aria-current='step']::before,
+:root[data-look='notebook'] .rail-dot:hover::before {
+  background: var(--text);
+}
+:root[data-look='notebook'] .scroll-cue i::after {
+  background: var(--formazan);
+}
+:root[data-look='notebook'] .landing .eyebrow {
+  color: var(--formazan);
+}
+
+/* Type like a paper: upright and firm; numbers in tabular figures. */
+:root[data-look='notebook'] .hero-title {
+  font-variation-settings: normal;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+:root[data-look='notebook'] .hero-title em {
+  font-variation-settings: normal;
+  color: var(--formazan);
+}
+:root[data-look='notebook'] :is(.chapter-card h2, .doors-head h2) {
+  font-variation-settings: normal;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+:root[data-look='notebook'] .doors-head h2 em {
+  color: var(--formazan);
+}
+:root[data-look='notebook'] :is(.chapter-facts dd, .finale-method dd) {
+  font-family: var(--sans);
+  font-variation-settings: normal;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The finale's scan lies on the page like a figure; the doors are white pages. */
+:root[data-look='notebook'] .scan {
+  border-radius: 8px;
+  box-shadow: var(--lift);
+}
+:root[data-look='notebook'] .door {
+  border-radius: 12px;
+  background: var(--surface);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-look='notebook'] .door:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--lift);
+  }
+}
+:root[data-look='notebook'] .door strong {
+  font-variation-settings: normal;
+  font-weight: 600;
+}
+:root[data-look='notebook'] .door-go {
+  color: var(--formazan);
+}
+:root[data-look='notebook'] .door.lab .door-art i {
+  box-shadow: 0 0 0 1px var(--border), 0 10px 20px -12px rgb(20 26 32 / 0.35);
+}
+:root[data-look='notebook'] .door.course .door-art path {
+  stroke: color-mix(in srgb, var(--path) 55%, transparent);
+}
+:root[data-look='notebook'] .door.course .door-art circle {
+  stroke: var(--path);
+}
+:root[data-look='notebook'] .door.course .door-art circle:nth-of-type(-n + 2) {
+  fill: var(--path);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-look='notebook'] .door.course:hover .door-art circle:nth-of-type(3) {
+    fill: var(--path);
+  }
+}
+:root[data-look='notebook'] .landing-foot span:first-child {
+  font-style: normal;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  :root[data-look='notebook'] .landing-vignette {
+    background:
+      linear-gradient(0deg, rgb(var(--scrim) / 0.94) 0%, rgb(var(--scrim) / 0.66) 38%, transparent 60%),
+      radial-gradient(130% 90% at 50% 40%, transparent 55%, rgb(var(--scrim) / 0.55) 100%);
   }
 }
