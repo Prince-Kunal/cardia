@@ -1097,6 +1097,22 @@ select.input {
 .choice strong {
   display: block;
 }
+/* A chip of each look's palette for Settings > Look > Style (lib/look.ts): paper, ink, stain. */
+.look-swatch {
+  display: inline-block;
+  width: 30px;
+  height: 14px;
+  margin-inline-end: var(--s-2);
+  vertical-align: -2px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+.look-swatch.notebook {
+  background: linear-gradient(90deg, #ffffff 0 45%, #1f262c 45% 75%, #a8323f 75%);
+}
+.look-swatch.stain {
+  background: linear-gradient(90deg, #f3efe7 0 45%, #dc7480 45% 75%, #a3253a 75%);
+}
 
 /* ---------- small parts ---------- */
 

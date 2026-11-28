@@ -1,0 +1,75 @@
+/* The small things in lib/eggs.ts, in both looks. Each waits for a word on <html data-egg="…">. */
+
+/* "pig": a guinea pig, the study's species, trots along the header's trace once, left to right. */
+.cavia {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  bottom: -2px;
+  width: 34px;
+  height: 20px;
+  pointer-events: none;
+}
+.cavia svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.cavia-fur {
+  fill: #9a6a4b;
+}
+.cavia-patch {
+  fill: #f1e6d4;
+}
+.cavia-dark {
+  fill: #2a1f1b;
+}
+:root[data-egg~='pig'] .cavia {
+  display: block;
+  animation: cavia-trot 5.6s linear forwards;
+}
+:root[data-egg~='pig'] .cavia svg {
+  animation: cavia-step 0.32s steps(2) infinite;
+}
+@keyframes cavia-trot {
+  from {
+    transform: translateX(-48px);
+  }
+  to {
+    transform: translateX(calc(100vw + 48px));
+  }
+}
+@keyframes cavia-step {
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+/* Reduced motion: it sits still in the middle for a moment instead. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-egg~='pig'] .cavia,
+  :root[data-egg~='pig'] .cavia svg {
+    animation: none;
+  }
+  :root[data-egg~='pig'] .cavia {
+    left: calc(50% - 17px);
+  }
+}
+:root[data-motion='reduced'][data-egg~='pig'] :is(.cavia, .cavia svg) {
+  animation: none;
+}
+:root[data-motion='reduced'][data-egg~='pig'] .cavia {
+  left: calc(50% - 17px);
+}
+
+/* 29 September, World Heart Day: the mark is stained and beats once; the trace runs in stain red. */
+:root[data-egg~='heart-day'] .brand-mark rect[fill^='var(--mark-red'] {
+  fill: var(--formazan);
+}
+:root[data-egg~='heart-day'] .brand-mark {
+  animation: lubdub 1.1s var(--ease) 0.6s 1;
+}
+:root[data-egg~='heart-day'] .vital {
+  color: var(--formazan);
+}

@@ -1,0 +1,508 @@
+/* Cardia's everyday look: "The lab notebook" (Settings > Look > Style; lib/look.ts sets
+   <html data-look="notebook">). The Living Stain (index.css) stays the other choice, and this file only
+   overrides it.
+
+   A well-kept research notebook and a journal page: quiet paper with a faint dot grid, hairline rules,
+   white pages, headings set like a paper (Source Serif 4), the interface and its tabular numbers in
+   IBM Plex Sans, and IBM Plex Mono for codes and the notebook's own lines. Colour is kept for what it means: the
+   three methods, the stain and the infarct, warnings. Chrome is graphite ink; the stain appears in the
+   logo, the focus ring and the engine's pulse while it works.
+
+   index.css's rules still hold: 16px text and a 13px floor, the spacing scale, hover and press only by
+   transform on a fine pointer, a focus ring that never animates, data-theme for light and dark, and
+   reduced motion stops every animation. The landing page keeps its own stage (landing.css). */
+
+/* ---------- tokens: the paper (light) ---------- */
+
+:root[data-look='notebook'] {
+  --bg: #f6f6f3;
+  --bg-deep: #eeeeea;
+  --surface: #ffffff;
+  --surface-2: #f2f2ee;
+  --surface-3: #e7e7e1;
+  --border: #e0e0da;
+  --border-strong: #c6c6be;
+  --text: #1c1f22;
+  --text-muted: #555b61;
+  --text-faint: #676e74;
+  --grid: rgb(28 34 40 / 0.05);
+  --grid-strong: rgb(28 34 40 / 0.16);
+
+  --formazan: #a8323f;
+  --formazan-deep: #74222d;
+  --rose: #d07a85;
+  --rose-soft: #f3dadd;
+  --ivory: #efe6cc;
+  --ivory-deep: #d6c493;
+  --evans: #2c3d8f;
+
+  --accent: #1f262c;
+  --accent-hover: #38424b;
+  --accent-soft: #eceef0;
+  --accent-contrast: #ffffff;
+  --focus: #a8323f;
+
+  --ok: #2b7a4e;
+  --ok-soft: #e3efe7;
+  --warn: #835809;
+  --warn-soft: #f4ecd8;
+  --danger: #b02a24;
+  --danger-soft: #f7e3e1;
+  --info: #33529a;
+  --info-soft: #e6ebf5;
+
+  --shadow: 0 1px 2px rgb(20 26 32 / 0.04);
+  --shadow-raised: 0 1px 2px rgb(20 26 32 / 0.06), 0 14px 32px -18px rgb(20 26 32 / 0.24);
+  --glow: 0 0 0 1px var(--border-strong);
+
+  /* Not colours: the same in light and dark. */
+  --radius: 10px;
+  --radius-small: 6px;
+  --radius-tiny: 4px;
+  --grain-opacity: 0;
+  --display: 'Source Serif 4 Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --sans: 'IBM Plex Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --game: var(--sans);
+  /* Shorter and plainer: things settle, nothing spreads. */
+  --m-in: 120ms;
+  --m-out: 110ms;
+  --m-press: 70ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  font-feature-settings: normal;
+}
+
+/* ---------- tokens: the microscope room (dark), defined twice like index.css ---------- */
+
+@media (prefers-color-scheme: dark) {
+  :root[data-look='notebook']:not([data-theme='light']) {
+    --bg: #111315;
+    --bg-deep: #0c0d0f;
+    --surface: #171a1d;
+    --surface-2: #1e2226;
+    --surface-3: #272c31;
+    --border: #2b3035;
+    --border-strong: #40474e;
+    --text: #e6e8ea;
+    --text-muted: #a5acb2;
+    --text-faint: #8d959b;
+    --grid: rgb(220 230 240 / 0.04);
+    --grid-strong: rgb(220 230 240 / 0.08);
+    --formazan: #e2606f;
+    --formazan-deep: #a33546;
+    --rose: #eb8c96;
+    --rose-soft: rgb(235 140 150 / 0.18);
+    --ivory: #ece3c8;
+    --ivory-deep: #c7b483;
+    --evans: #93a3ee;
+    --accent: #e6e8ea;
+    --accent-hover: #ffffff;
+    --accent-soft: rgb(230 232 234 / 0.1);
+    --accent-contrast: #111315;
+    --focus: #eb8c96;
+    --ok: #6cc596;
+    --ok-soft: rgb(108 197 150 / 0.12);
+    --warn: #e0b25c;
+    --warn-soft: rgb(224 178 92 / 0.12);
+    --danger: #ef8473;
+    --danger-soft: rgb(239 132 115 / 0.13);
+    --info: #94a9ea;
+    --info-soft: rgb(148 169 234 / 0.13);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 18px 40px -18px rgb(0 0 0 / 0.8);
+    --glow: 0 0 0 1px var(--border-strong);
+    color-scheme: dark;
+  }
+}
+
+:root[data-look='notebook'][data-theme='dark'] {
+  --bg: #111315;
+  --bg-deep: #0c0d0f;
+  --surface: #171a1d;
+  --surface-2: #1e2226;
+  --surface-3: #272c31;
+  --border: #2b3035;
+  --border-strong: #40474e;
+  --text: #e6e8ea;
+  --text-muted: #a5acb2;
+  --text-faint: #8d959b;
+  --grid: rgb(220 230 240 / 0.04);
+  --grid-strong: rgb(220 230 240 / 0.08);
+  --formazan: #e2606f;
+  --formazan-deep: #a33546;
+  --rose: #eb8c96;
+  --rose-soft: rgb(235 140 150 / 0.18);
+  --ivory: #ece3c8;
+  --ivory-deep: #c7b483;
+  --evans: #93a3ee;
+  --accent: #e6e8ea;
+  --accent-hover: #ffffff;
+  --accent-soft: rgb(230 232 234 / 0.1);
+  --accent-contrast: #111315;
+  --focus: #eb8c96;
+  --ok: #6cc596;
+  --ok-soft: rgb(108 197 150 / 0.12);
+  --warn: #e0b25c;
+  --warn-soft: rgb(224 178 92 / 0.12);
+  --danger: #ef8473;
+  --danger-soft: rgb(239 132 115 / 0.13);
+  --info: #94a9ea;
+  --info-soft: rgb(148 169 234 / 0.13);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 18px 40px -18px rgb(0 0 0 / 0.8);
+  --glow: 0 0 0 1px var(--border-strong);
+  color-scheme: dark;
+}
+
+/* The landing page is its own stage: it keeps the Living Stain's type (its colours are its own). */
+:root[data-look='notebook'] .landing {
+  --display: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --sans: 'Instrument Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius: 18px;
+  --radius-small: 10px;
+  --radius-tiny: 6px;
+  --m-in: 180ms;
+  --m-out: 140ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--sans);
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+/* ---------- the page: notebook paper ---------- */
+
+/* A faint dot grid at the top of the page, fading out: an engineering notebook, not a pattern. No grain.
+   <html> already paints the paper, so <body> stays clear: an opaque body would cover this layer, which
+   sits below it (z-index -1). */
+:root[data-look='notebook'] body {
+  background-color: transparent;
+}
+:root[data-look='notebook'] body::before {
+  background-image: radial-gradient(circle at 1px 1px, var(--grid-strong) 1px, transparent 1.4px);
+  background-size: 24px 24px;
+  background-position: 11px 11px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, rgb(0 0 0 / 0.5) 240px, transparent 75vh);
+  mask-image: linear-gradient(to bottom, #000 0, rgb(0 0 0 / 0.5) 240px, transparent 75vh);
+}
+:root[data-look='notebook'] body::after {
+  display: none;
+}
+
+/* Headings like a paper: upright, firm, no wonk. */
+:root[data-look='notebook'] :is(h1, h2, .display):not(.landing *) {
+  font-variation-settings: normal;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+:root[data-look='notebook'] h1:not(.landing *) {
+  font-size: clamp(1.75rem, 1.35rem + 1.1vw, 2.25rem);
+  line-height: 1.12;
+}
+:root[data-look='notebook'] h2:not(.landing *) {
+  font-size: 1.3rem;
+}
+:root[data-look='notebook'] h3:not(.landing *) {
+  font-weight: 600;
+}
+:root[data-look='notebook'] :is(h1, h2, .display) em:not(.landing *) {
+  font-variation-settings: normal;
+  color: inherit;
+}
+
+/* Labels: a quiet caption, not a stamped specimen tag. */
+:root[data-look='notebook'] :is(.eyebrow, .section-title, .method-group-title, .table th) {
+  font-family: var(--sans);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+:root[data-look='notebook'] .table tbody th {
+  font-size: 1rem;
+}
+:root[data-look='notebook'] .back {
+  font-family: var(--sans);
+  font-size: var(--t-small);
+  letter-spacing: 0;
+}
+
+/* ---------- the header ---------- */
+
+:root[data-look='notebook'] .topbar {
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+:root[data-look='notebook'] .brand {
+  font-style: normal;
+  font-variation-settings: normal;
+  font-weight: 600;
+  font-size: 1.3rem;
+  letter-spacing: -0.012em;
+}
+
+/* The mark is a slice before staining: graphite and pale. Rest the pointer on it and it stains like a
+   TTC slice, pixel by pixel from the cavity outwards: the living ring turns brick red, the infarct
+   stays pale. It fades back when the pointer leaves. */
+:root[data-look='notebook'] .brand-mark rect {
+  transition: fill 600ms var(--ease);
+}
+:root[data-look='notebook'] .brand-mark rect[fill^='var(--mark-red'] {
+  fill: color-mix(in srgb, var(--text) 82%, var(--bg));
+}
+:root[data-look='notebook'] .brand-mark rect[fill^='var(--mark-ivory'] {
+  fill: var(--border-strong);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-look='notebook'] .brand:hover .brand-mark rect {
+    animation: none;
+    transition-duration: 450ms;
+    transition-delay: calc(900ms + var(--d) * 150ms);
+  }
+  :root[data-look='notebook'] .brand:hover .brand-mark rect[fill^='var(--mark-red'] {
+    fill: var(--formazan);
+  }
+  :root[data-look='notebook'] .brand:hover .brand-mark rect[fill^='var(--mark-ivory'] {
+    fill: var(--ivory-deep);
+  }
+}
+
+/* The Analyze / Learn switch and the current page: drawn with a ruler. */
+:root[data-look='notebook'] .switch {
+  border-radius: var(--radius-small);
+  padding: 3px;
+}
+:root[data-look='notebook'] .switch-option {
+  border-radius: var(--radius-tiny);
+}
+:root[data-look='notebook'] :is(.switch-option[aria-current='page'], .switch-option[aria-checked='true']) {
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+:root[data-look='notebook'] .nav-link[aria-current='page']::after {
+  left: var(--s-1);
+  right: var(--s-1);
+  width: auto;
+  height: 2px;
+  bottom: 4px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: none;
+}
+
+/* The engine's pulse: a faint trace that sweeps slowly while the engine idles, and turns stain red and
+   quick while it analyses, so the one moment that matters is the one you notice. */
+:root[data-look='notebook'] .vital {
+  --vital-rate: 5.5s;
+  color: var(--text-faint);
+}
+:root[data-look='notebook'] .vital .vital-base {
+  stroke: var(--border);
+  opacity: 1;
+}
+:root[data-look='notebook'] .vital .vital-tail {
+  opacity: 0.3;
+}
+:root[data-look='notebook'] .vital .vital-head {
+  opacity: 0.75;
+  filter: none;
+}
+:root[data-look='notebook'] .vital[data-state='busy'] {
+  --vital-rate: 1.3s;
+  color: var(--formazan);
+}
+:root[data-look='notebook'] .vital[data-state='flat'] {
+  color: var(--text-faint);
+}
+
+/* ---------- controls ---------- */
+
+/* Buttons are labelled keys, not pills: square-ish, flat, no bloom and no lift. */
+:root[data-look='notebook'] .button:not(.landing *) {
+  border-radius: var(--radius-small);
+  font-weight: 550;
+  letter-spacing: 0;
+}
+:root[data-look='notebook'] .button:not(.landing *)::before {
+  display: none;
+}
+:root[data-look='notebook'] .button:not(.landing *):hover {
+  background: var(--surface-2);
+  border-color: var(--text-faint);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-look='notebook'] .button:not(.landing *):not(:disabled, [aria-disabled='true']):hover {
+    transform: none;
+  }
+}
+:root[data-look='notebook'] .button:not(.landing *):not(:disabled, [aria-disabled='true']):active {
+  transform: translateY(1px);
+}
+:root[data-look='notebook'] .button.primary:not(.landing *) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: none;
+}
+:root[data-look='notebook'] .button.primary:not(.landing *):hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-contrast);
+  box-shadow: none;
+}
+:root[data-look='notebook'] .button.danger:not(.landing *):hover {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+:root[data-look='notebook'] .button.ghost:not(.landing *):hover {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+:root[data-look='notebook'] .input {
+  background: var(--surface);
+}
+
+/* Status chips are labels on a tube, not pills. */
+:root[data-look='notebook'] .badge {
+  border-radius: var(--radius-tiny);
+}
+
+/* ---------- pages ---------- */
+
+:root[data-look='notebook'] .card-link:hover {
+  box-shadow: var(--glow);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-look='notebook'] .card-link:hover {
+    transform: none;
+  }
+}
+:root[data-look='notebook'] .table tr.clickable:hover :is(td, th) {
+  background: var(--surface-2);
+}
+
+/* The methods: white pages with the method's colour as a margin rule, and each number in tabular
+   figures, like a readout. */
+:root[data-look='notebook'] .method {
+  background: var(--surface);
+}
+:root[data-look='notebook'] .method::before {
+  top: 0;
+  bottom: 0;
+  border-radius: 0;
+}
+:root[data-look='notebook'] .method-value {
+  font-family: var(--sans);
+  font-variation-settings: normal;
+  font-size: 2.6rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+:root[data-look='notebook'] :is(.facts dt, .stat .stat-label) {
+  font-family: var(--sans);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+:root[data-look='notebook'] .choice:has(input:checked) {
+  border-color: var(--text-faint);
+  box-shadow: none;
+}
+:root[data-look='notebook'] .method-group + .method-group {
+  border-top-style: solid;
+  border-top-color: var(--border);
+}
+
+/* ---------- Learn: the same course, in a quieter voice ---------- */
+
+:root[data-look='notebook'] :is(.learn-home, .lesson, .lesson-done, .review) :is(h1, h2, h3) {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+:root[data-look='notebook'] .chunky {
+  border-width: 1px;
+  border-bottom-width: 3px;
+  border-radius: var(--radius-small);
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-look='notebook'] .chunky:not(:disabled):active {
+  border-bottom-width: 1px;
+  transform: translateY(2px);
+  margin-bottom: 2px;
+}
+:root[data-look='notebook'] .chunky.primary {
+  --c: var(--accent);
+  --c-deep: color-mix(in srgb, var(--accent) 65%, var(--text-faint));
+  --c-text: var(--accent-contrast);
+}
+:root[data-look='notebook'] .chunky.ghost {
+  border-bottom-width: 1px;
+}
+:root[data-look='notebook'] .chunky.on-tone {
+  border-width: 1px;
+}
+:root[data-look='notebook'] .node-bubble {
+  font-family: var(--sans);
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* Units keep their colours, ground down like dyes on a shelf. */
+:root[data-look='notebook'] .unit.tone-rose {
+  --tone: #9a4652;
+  --tone-deep: #6c2d37;
+}
+:root[data-look='notebook'] .unit.tone-violet {
+  --tone: #5e5683;
+  --tone-deep: #423b5f;
+}
+:root[data-look='notebook'] .unit.tone-gold {
+  --tone: #85692f;
+  --tone-deep: #5f4a1f;
+}
+:root[data-look='notebook'] .unit.tone-evans {
+  --tone: #3d5590;
+  --tone-deep: #2a3c69;
+}
+:root[data-look='notebook'] .unit-banner {
+  border-radius: var(--radius);
+  background: var(--tone);
+}
+:root[data-look='notebook'] .unit-banner::before,
+:root[data-look='notebook'] .unit-banner::after {
+  display: none;
+}
+
+/* ---------- a notebook page ends on its witness line ---------- */
+
+.witness {
+  display: none;
+}
+:root[data-look='notebook'] .witness {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-5);
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: var(--s-4) var(--s-6) var(--s-6);
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  color: var(--text-faint);
+}
+:root[data-look='notebook'] .witness > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+:root[data-look='notebook'] .witness .blank {
+  display: inline-block;
+  width: 132px;
+  border-bottom: 1px solid var(--border-strong);
+}
+@media (max-width: 640px) {
+  :root[data-look='notebook'] .witness {
+    padding: var(--s-4) var(--s-4) var(--s-5);
+  }
+}

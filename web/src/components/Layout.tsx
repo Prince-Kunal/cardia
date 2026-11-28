@@ -6,8 +6,12 @@ import { SYNC_LABEL, SYNC_TONE, signedIn } from '../lib/sync';
 import { LAB_ROUTES, useTourOffer } from '../lib/tour';
 import { AppContext, useApp, useResource } from '../state';
 import { BrandMark } from './BrandMark';
+import { Cavia } from './Cavia';
 import { Tour } from './Tour';
 import { VitalLine } from './VitalLine';
+
+// Today as a lab notebook writes it (ISO), for the witness line at the foot of a page.
+const today = () => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 /** How sync is going, in the header, once signed in (a link to the Cloud sync screen). */
 function SyncBadge({ current }: { current: boolean }) {
@@ -86,10 +90,18 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
           </span>
         )}
         <VitalLine />
+        <Cavia />
       </header>
       <main id="main" className="content">
         {children}
       </main>
+      {/* The lab notebook look ends every page like a notebook's page (looks/notebook.css). */}
+      <footer className="witness no-print" aria-hidden="true">
+        <span>Recorded {today()} · Cardia</span>
+        <span>
+          Witnessed <span className="blank" />
+        </span>
+      </footer>
       <Tour route={route} />
     </div>
   );
